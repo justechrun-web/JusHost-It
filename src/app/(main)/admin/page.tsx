@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useCollection } from '@/firebase';
 import { AdminAction } from './components/admin-action';
+import { cn } from '@/lib/utils';
 
 type Site = {
   id: string;
@@ -21,12 +22,13 @@ type Site = {
   status: 'Active' | 'Suspended' | 'Provisioning';
   plan: string;
   userId: string;
+  billingStatus: 'active' | 'past_due' | 'canceled';
 };
 
 export default function AdminDashboard() {
   const { data: sites, loading } = useCollection<Site>('sites');
 
-  const getBadgeVariant = (status: Site['status']) => {
+  const getStatusBadgeVariant = (status: Site['status']) => {
     switch (status) {
       case 'Active':
         return 'success';
@@ -36,6 +38,18 @@ export default function AdminDashboard() {
         return 'secondary';
     }
   };
+
+  const getBillingStatusClass = (billingStatus: Site['billingStatus']) => {
+    switch (billingStatus) {
+        case 'active':
+            return 'text-green-600';
+        case 'past_due':
+        case 'canceled':
+            return 'text-red-600';
+        default:
+            return 'text-muted-foreground';
+    }
+  }
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
@@ -57,6 +71,7 @@ export default function AdminDashboard() {
             <TableRow>
               <TableHead>Domain</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Billing Status</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>User ID</TableHead>
               <TableHead className="text-right">Action</TableHead>
@@ -65,7 +80,7 @@ export default function AdminDashboard() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={6} className="text-center">
                   <div className="flex justify-center items-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
@@ -76,9 +91,12 @@ export default function AdminDashboard() {
                 <TableRow key={site.id}>
                   <TableCell className="font-medium">{site.domain}</TableCell>
                   <TableCell>
-                    <Badge variant={getBadgeVariant(site.status)}>
+                    <Badge variant={getStatusBadgeVariant(site.status)}>
                       {site.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell className={cn("capitalize font-medium", getBillingStatusClass(site.billingStatus))}>
+                    {site.billingStatus || 'N/A'}
                   </TableCell>
                   <TableCell>{site.plan}</TableCell>
                   <TableCell className="font-mono text-xs">{site.userId}</TableCell>

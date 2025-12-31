@@ -44,9 +44,61 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "stripeSubscriptionId": {
+            "type": "string"
+        },
+        "billingStatus": {
+            "type": "string",
+            "enum": ["active", "past_due", "canceled"]
         }
       },
       "required": ["domain", "plan", "status", "userId", "createdAt"]
+    },
+    "audit_log": {
+      "title": "Audit Log",
+      "description": "A log of administrative actions.",
+      "type": "object",
+      "properties": {
+        "adminId": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metadata": {
+          "type": "object"
+        }
+      },
+      "required": ["adminId", "action", "targetId", "timestamp"]
+    },
+    "site_metric": {
+        "title": "Site Metric",
+        "description": "Resource usage metrics for a site.",
+        "type": "object",
+        "properties": {
+            "cpu": {
+                "type": "string"
+            },
+            "memory": {
+                "type": "string"
+            },
+            "disk": {
+                "type": "string"
+            },
+            "timestamp": {
+                "type": "string",
+                "format": "date-time"
+            }
+        },
+        "required": ["cpu", "memory", "disk", "timestamp"]
     }
   },
   "auth": {
@@ -60,6 +112,14 @@
     "/sites/{siteId}": {
       "schema": { "$ref": "#/entities/site" },
       "description": "Hosted site data."
+    },
+    "/audit_logs/{logId}": {
+        "schema": { "$ref": "#/entities/audit_log" },
+        "description": "Admin audit trail."
+    },
+    "/site_metrics/{siteId}": {
+        "schema": { "$ref": "#/entities/site_metric" },
+        "description": "Site resource usage metrics."
     }
   }
 }

@@ -13,5 +13,13 @@ service cloud.firestore {
     match /sites/{siteId} {
       allow read, write: if isAdmin();
     }
+
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /site_metrics/{siteId} {
+      allow read, write: if isAdmin();
+    }
   }
 }
