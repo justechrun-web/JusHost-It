@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "A user of the application.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "company": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "admin"]
+        }
+      },
+      "required": ["email", "createdAt", "role"]
+    },
+    "site": {
+      "title": "Site",
+      "description": "A website hosted on the platform.",
+      "type": "object",
+      "properties": {
+        "domain": {
+          "type": "string"
+        },
+        "plan": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Provisioning", "Active", "Suspended"]
+        },
+        "userId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["domain", "plan", "status", "userId", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["email"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/user" },
+      "description": "User profile data."
+    },
+    "/sites/{siteId}": {
+      "schema": { "$ref": "#/entities/site" },
+      "description": "Hosted site data."
+    }
+  }
+}
