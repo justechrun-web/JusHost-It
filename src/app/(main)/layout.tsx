@@ -9,8 +9,8 @@ import { usePathname } from "next/navigation";
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Do not show the main layout on the admin page, for now.
-  if (pathname === '/admin') {
+  // Admin routes have their own layout
+  if (pathname.startsWith('/admin')) {
     return <>{children}</>
   }
 

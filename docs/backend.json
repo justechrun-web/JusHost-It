@@ -99,6 +99,27 @@
             }
         },
         "required": ["cpu", "memory", "disk", "timestamp"]
+    },
+    "access_review": {
+      "title": "Access Review",
+      "description": "A log of quarterly admin access reviews.",
+      "type": "object",
+      "properties": {
+        "reviewerId": {
+          "type": "string"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "adminCount": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": ["reviewerId", "reviewedAt", "adminCount"]
     }
   },
   "auth": {
@@ -120,6 +141,10 @@
     "/site_metrics/{siteId}": {
         "schema": { "$ref": "#/entities/site_metric" },
         "description": "Site resource usage metrics."
+    },
+    "/access_reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/access_review" },
+      "description": "Logs of quarterly access reviews."
     }
   }
 }

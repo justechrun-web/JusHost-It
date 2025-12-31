@@ -21,5 +21,9 @@ service cloud.firestore {
     match /site_metrics/{siteId} {
       allow read, write: if isAdmin();
     }
+    
+    match /access_reviews/{reviewId} {
+      allow read, write: if isAdmin();
+    }
   }
 }
