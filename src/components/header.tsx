@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -13,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Link from "next/link";
-import { Settings, User, LifeBuoy, LogOut, HardDrive } from "lucide-react";
+import { Settings, User, LifeBuoy, LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
 
@@ -22,7 +23,9 @@ export function Header() {
   const userAvatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
 
   const handleLogout = () => {
-    signOut(auth);
+    if (auth) {
+      signOut(auth);
+    }
   };
 
   return (
