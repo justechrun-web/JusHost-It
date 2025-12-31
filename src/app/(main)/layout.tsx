@@ -4,8 +4,16 @@ import * as React from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MainSidebar } from "@/components/main-sidebar";
 import { Header } from "@/components/header";
+import { usePathname } from "next/navigation";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  // Do not show the main layout on the admin page, for now.
+  if (pathname === '/admin') {
+    return <>{children}</>
+  }
+
   return (
     <SidebarProvider>
       <div className="flex h-full">
