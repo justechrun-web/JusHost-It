@@ -10,11 +10,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
-import { useCollection } from '@/firebase';
+import { useCollection, useFirestore } from '@/firebase';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { collection, query, orderBy } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
 
 type AuditLog = {
   id: string;
@@ -26,7 +25,10 @@ type AuditLog = {
 
 export function AuditLogsTable() {
   const db = useFirestore();
-  const auditLogQuery = useMemo(() => query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc')), [db]);
+  const auditLogQuery = useMemo(
+    () => query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc')),
+    [db]
+  );
   const { data: logs, loading } = useCollection<AuditLog>(auditLogQuery);
   const [adminFilter, setAdminFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
@@ -99,10 +101,13 @@ export function AuditLogsTable() {
             ))
           )}
           {!loading && filteredLogs.length === 0 && (
-             <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No audit logs found.
-                </TableCell>
+            <TableRow>
+              <TableCell
+                colSpan={4}
+                className="text-center text-muted-foreground"
+              >
+                No audit logs found.
+              </TableCell>
             </TableRow>
           )}
         </TableBody>
