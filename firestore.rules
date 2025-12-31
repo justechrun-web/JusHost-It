@@ -1,3 +1,4 @@
+
 /**
  * Core Philosophy: This ruleset enforces a strict user-ownership model. All data is
  * considered private to the user who created it. Access control is based on matching the
@@ -55,11 +56,11 @@ service cloud.firestore {
     
     /**
      * Returns true if the user is an administrator.
-     * NOTE: This is not currently used in any rules but is provided for future admin features.
+     * This checks for a custom claim on the user's auth token.
      */
-    // function isAdmin() {
-    //   return request.auth.token.admin == true;
-    // }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
 
     /**
      * Verifies ownership for an existing document. Used for update and delete operations.
@@ -89,6 +90,16 @@ service cloud.firestore {
     // ------------------------------------------------------------------------
     // Collection Rules
     // ------------------------------------------------------------------------
+    
+    /**
+     * @description Admin access to the root sites collection.
+     * @path /sites/{siteId}
+     * @allow (get, list) Admins can read any site document.
+     */
+    match /sites/{siteId} {
+        allow get, list: if isAdmin();
+    }
+
 
     /**
      * @description Manages a user's own profile document.
@@ -100,8 +111,8 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree and allows self-creation of their root document.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
       allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
       allow delete: if isExistingOwner(userId);
@@ -115,12 +126,12 @@ service cloud.firestore {
         * @deny (update) A user attempting to modify another user's site.
         * @principle Enforces document ownership for all operations within a user-specific subcollection.
         */
-        match /users/{userId}/sites/{siteId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
+        match /sites/{siteId} {
+          allow get: if isOwner(userId) || isAdmin();
+          allow list: if isOwner(userId) || isAdmin();
           allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
-          allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
-          allow delete: if isExistingOwner(userId);
+          allow update: if (isExistingOwner(userId) && isOwnerFieldImmutable()) || isAdmin();
+          allow delete: if isExistingOwner(userId) || isAdmin();
         }
 
         /**
@@ -132,9 +143,9 @@ service cloud.firestore {
          * @deny (delete) A user trying to delete their billing history.
          * @principle Protects sensitive financial data by making it read-only for the client, deferring all writes to a trusted backend.
          */
-        match /users/{userId}/billing/{billingId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
+        match /billing/{billingId} {
+          allow get: if isOwner(userId) || isAdmin();
+          allow list: if isOwner(userId) || isAdmin();
           allow create: if false;
           allow update: if false;
           allow delete: if false;
@@ -149,12 +160,12 @@ service cloud.firestore {
          * @deny (update) A user attempting to modify another user's ticket.
          * @principle Enforces document ownership for all operations within a user-specific subcollection.
          */
-        match /users/{userId}/supportTickets/{ticketId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
+        match /supportTickets/{ticketId} {
+          allow get: if isOwner(userId) || isAdmin();
+          allow list: if isOwner(userId) || isAdmin();
           allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
-          allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
-          allow delete: if isExistingOwner(userId);
+          allow update: if (isExistingOwner(userId) && isOwnerFieldImmutable()) || isAdmin();
+          allow delete: if isExistingOwner(userId) || isAdmin();
         }
     }
   }

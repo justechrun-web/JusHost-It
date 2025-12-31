@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useUser } from '@/firebase';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { Loader2, ArrowLeft, Cpu, MemoryStick, HardDrive, CheckCircle, Clock } from 'lucide-react';
 import {
   Card,
@@ -15,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { CustomerSiteAction } from './components/customer-site-action';
+import { doc } from 'firebase/firestore';
 
 type SiteEvent = {
   type: string;
@@ -53,13 +55,20 @@ export default function SiteDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
+  const db = useFirestore();
 
   const siteId = Array.isArray(params.siteId) ? params.siteId[0] : params.siteId;
+  
+  const siteRef = useMemoFirebase(() => {
+    if (!user || !db || !siteId) return null;
+    return doc(db, `users/${user.uid}/sites`, siteId);
+  }, [db, user, siteId]);
+
   const {
     data: site,
     loading: siteLoading,
     error,
-  } = useDoc<Site>(`sites/${siteId}`);
+  } = useDoc<Site>(siteRef);
   
   if (siteLoading || userLoading) {
     return (

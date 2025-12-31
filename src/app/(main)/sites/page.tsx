@@ -39,8 +39,7 @@ export default function SitesPage() {
   const sitesQuery = useMemoFirebase(() => {
     if (!user || !db) return null;
     return query(
-      collection(db, 'sites'),
-      where('ownerId', '==', user.uid),
+      collection(db, `users/${user.uid}/sites`),
       orderBy('createdAt', 'desc')
     );
   }, [db, user]);
