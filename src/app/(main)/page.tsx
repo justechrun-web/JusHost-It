@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -11,14 +13,8 @@ import {
   Globe,
   Signal,
 } from "lucide-react";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartConfig,
-} from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { RecentSites } from './components/recent-sites';
+import { ResourceUsageChart } from "./components/resource-usage-chart";
 
 const statCards = [
   { title: "Active Sites", value: "3", icon: Server },
@@ -26,26 +22,6 @@ const statCards = [
   { title: "Bandwidth", value: "120 GB", icon: Globe },
   { title: "Uptime", value: "99.98%", icon: Signal },
 ];
-
-const chartData = [
-  { month: "January", bandwidth: 186, storage: 80 },
-  { month: "February", bandwidth: 305, storage: 200 },
-  { month: "March", bandwidth: 237, storage: 120 },
-  { month: "April", bandwidth: 73, storage: 190 },
-  { month: "May", bandwidth: 209, storage: 130 },
-  { month: "June", bandwidth: 214, storage: 140 },
-];
-
-const chartConfig = {
-  bandwidth: {
-    label: "Bandwidth (GB)",
-    color: "hsl(var(--accent))",
-  },
-  storage: {
-    label: "Storage (GB)",
-    color: "hsl(var(--primary))",
-  },
-} satisfies ChartConfig;
 
 export default function DashboardPage() {
   return (
@@ -80,24 +56,7 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <BarChart data={chartData} accessibilityLayer>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                />
-                <YAxis />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent />}
-                />
-                <Bar dataKey="bandwidth" fill="var(--color-bandwidth)" radius={4} />
-                <Bar dataKey="storage" fill="var(--color-storage)" radius={4} />
-              </BarChart>
-            </ChartContainer>
+            <ResourceUsageChart />
           </CardContent>
         </Card>
         <Card className="lg:col-span-3">
