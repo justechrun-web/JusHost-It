@@ -93,6 +93,9 @@
               "timestamp"
             ]
           }
+        },
+        "containerId": {
+            "type": "string"
         }
       },
       "required": [
