@@ -7,6 +7,8 @@ import { ArrowLeft } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SitesTable } from './components/sites-table';
 import { UsersTable } from './components/users-table';
+import { AuditLogsTable } from './components/audit-logs-table';
+import { ResourceMetrics } from './components/resource-metrics';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('sites');
@@ -25,15 +27,23 @@ export default function AdminDashboard() {
         </h1>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList>
+        <TabsList className='grid w-full grid-cols-4'>
           <TabsTrigger value="sites">Sites</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+          <TabsTrigger value="metrics">Metrics</TabsTrigger>
         </TabsList>
         <TabsContent value="sites">
           <SitesTable />
         </TabsContent>
         <TabsContent value="users">
           <UsersTable />
+        </TabsContent>
+        <TabsContent value="audit">
+          <AuditLogsTable />
+        </TabsContent>
+        <TabsContent value="metrics">
+          <ResourceMetrics />
         </TabsContent>
       </Tabs>
     </div>
