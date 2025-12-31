@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PlusCircle, Loader2, Sparkles } from "lucide-react";
-import { useFlow } from "@genkit-ai/next/client";
+import { streamFlow } from "@genkit-ai/next/client";
 import { domainNameSuggestions } from "@/ai/flows/domain-name-suggestions";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -32,18 +32,7 @@ export function CreateSiteDialog() {
   const [domain, setDomain] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { toast } = useToast();
-  const [run, running] = useFlow(domainNameSuggestions, {
-    onSuccess: (result) => {
-      setSuggestions(result.suggestions);
-    },
-    onError: (err) => {
-      toast({
-        variant: "destructive",
-        title: "Error generating suggestions",
-        description: err.message,
-      });
-    },
-  });
+  const [running, setRunning] = useState(false);
 
   const handleSuggest = async () => {
     if (!sitePurpose) {
@@ -55,7 +44,22 @@ export function CreateSiteDialog() {
       return;
     }
     setSuggestions([]);
-    await run({ sitePurpose });
+    setRunning(true);
+    try {
+      const { response } = streamFlow(domainNameSuggestions, { sitePurpose });
+      const result = await response;
+      if (result) {
+        setSuggestions(result.suggestions);
+      }
+    } catch (err: any) {
+       toast({
+        variant: "destructive",
+        title: "Error generating suggestions",
+        description: err.message,
+      });
+    } finally {
+        setRunning(false);
+    }
   };
   
   const handleSelectSuggestion = (suggestion: string) => {
