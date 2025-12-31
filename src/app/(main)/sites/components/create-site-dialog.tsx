@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -10,41 +10,47 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { PlusCircle, Loader2, Sparkles } from "lucide-react";
-import { streamFlow } from "@genkit-ai/next/client";
-import { domainNameSuggestions } from "@/ai/flows/domain-name-suggestions";
-import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/select';
+import { PlusCircle, Loader2, Sparkles } from 'lucide-react';
+import { streamFlow } from '@genkit-ai/next/client';
+import { domainNameSuggestions } from '@/ai/flows/domain-name-suggestions';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { httpsCallable } from 'firebase/functions';
+import { useFunctions, useUser } from '@/firebase';
 
 export function CreateSiteDialog() {
   const [open, setOpen] = useState(false);
-  const [sitePurpose, setSitePurpose] = useState("");
-  const [domain, setDomain] = useState("");
+  const [sitePurpose, setSitePurpose] = useState('');
+  const [domain, setDomain] = useState('');
+  const [plan, setPlan] = useState('basic');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { toast } = useToast();
-  const [running, setRunning] = useState(false);
+  const [suggestRunning, setSuggestRunning] = useState(false);
+  const [createRunning, setCreateRunning] = useState(false);
+  const functions = useFunctions();
+  const { user } = useUser();
 
   const handleSuggest = async () => {
     if (!sitePurpose) {
       toast({
-        variant: "destructive",
-        title: "Please enter a site purpose",
-        description: "Describe your site to get domain suggestions.",
+        variant: 'destructive',
+        title: 'Please enter a site purpose',
+        description: 'Describe your site to get domain suggestions.',
       });
       return;
     }
     setSuggestions([]);
-    setRunning(true);
+    setSuggestRunning(true);
     try {
       const { response } = streamFlow(domainNameSuggestions, { sitePurpose });
       const result = await response;
@@ -52,32 +58,56 @@ export function CreateSiteDialog() {
         setSuggestions(result.suggestions);
       }
     } catch (err: any) {
-       toast({
-        variant: "destructive",
-        title: "Error generating suggestions",
+      toast({
+        variant: 'destructive',
+        title: 'Error generating suggestions',
         description: err.message,
       });
     } finally {
-        setRunning(false);
+      setSuggestRunning(false);
     }
   };
-  
+
   const handleSelectSuggestion = (suggestion: string) => {
     setDomain(suggestion);
     setSuggestions([]);
-  }
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Site Creation Initiated",
-      description: `Your new site "${domain}" is being provisioned.`,
-    });
-    setDomain("");
-    setSitePurpose("");
-    setSuggestions([]);
-    setOpen(false);
-  }
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'You must be logged in to create a site.',
+      });
+      return;
+    }
+    setCreateRunning(true);
+
+    try {
+      const createSite = httpsCallable(functions, 'createSite');
+      await createSite({ domain, plan });
+
+      toast({
+        title: 'Site Creation Initiated',
+        description: `Your new site "${domain}" is being provisioned.`,
+      });
+      setDomain('');
+      setSitePurpose('');
+      setSuggestions([]);
+      setOpen(false);
+    } catch (error: any) {
+      console.error('Cloud Function error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error creating site',
+        description:
+          error.message || 'There was a problem creating your site.',
+      });
+    } finally {
+      setCreateRunning(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -105,8 +135,13 @@ export function CreateSiteDialog() {
                   value={sitePurpose}
                   onChange={(e) => setSitePurpose(e.target.value)}
                 />
-                <Button type="button" variant="outline" onClick={handleSuggest} disabled={running}>
-                  {running ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSuggest}
+                  disabled={suggestRunning}
+                >
+                  {suggestRunning ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Sparkles className="h-4 w-4" />
@@ -120,11 +155,16 @@ export function CreateSiteDialog() {
             </div>
             {suggestions.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                  {suggestions.map((s) => (
-                      <Badge key={s} variant="secondary" className="cursor-pointer hover:bg-primary/10" onClick={() => handleSelectSuggestion(s)}>
-                          {s}
-                      </Badge>
-                  ))}
+                {suggestions.map((s) => (
+                  <Badge
+                    key={s}
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-primary/10"
+                    onClick={() => handleSelectSuggestion(s)}
+                  >
+                    {s}
+                  </Badge>
+                ))}
               </div>
             )}
             <div className="grid gap-2">
@@ -139,20 +179,31 @@ export function CreateSiteDialog() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="plan">Hosting Plan</Label>
-              <Select defaultValue="basic">
+              <Select
+                value={plan}
+                onValueChange={setPlan}
+                defaultValue="basic"
+              >
                 <SelectTrigger id="plan">
                   <SelectValue placeholder="Select a plan" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="basic">Basic Plan ($15/mo)</SelectItem>
                   <SelectItem value="pro">Pro Plan ($30/mo)</SelectItem>
-                  <SelectItem value="business">Business Plan ($50/mo)</SelectItem>
+                  <SelectItem value="business">
+                    Business Plan ($50/mo)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit">Create Site</Button>
+            <Button type="submit" disabled={createRunning}>
+              {createRunning && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Create Site
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
