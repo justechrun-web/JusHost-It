@@ -3,8 +3,24 @@
 import * as React from 'react';
 import { useUser } from '@/firebase';
 import { multiFactor } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+
+const adminTabs = [
+  { name: 'Overview', href: '/admin' },
+  { name: 'Sites', href: '/admin/sites' },
+  { name: 'Users', href: '/admin/users' },
+  { name: 'Audit Logs', href: '/admin/audit' },
+  { name: 'Metrics', href: '/admin/metrics' },
+];
 
 export default function AdminLayout({
   children,
@@ -13,7 +29,10 @@ export default function AdminLayout({
 }) {
   const { user, loading } = useUser();
   const router = useRouter();
+  const pathname = usePathname();
   const [isAdmin, setIsAdmin] = React.useState(false);
+  
+  const activeTab = adminTabs.find(tab => pathname === tab.href)?.href || '/admin';
 
   React.useEffect(() => {
     if (!loading) {
@@ -47,5 +66,29 @@ export default function AdminLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="flex items-center gap-4 mb-8">
+        <Button variant="outline" size="icon" asChild>
+          <Link href="/">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="sr-only">Back to Dashboard</span>
+          </Link>
+        </Button>
+        <h1 className="text-3xl font-bold font-headline tracking-tight">
+          Admin Panel
+        </h1>
+      </div>
+      <Tabs value={activeTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-5 mb-4">
+            {adminTabs.map((tab) => (
+                <TabsTrigger value={tab.href} key={tab.href} asChild>
+                    <Link href={tab.href}>{tab.name}</Link>
+                </TabsTrigger>
+            ))}
+        </TabsList>
+        {children}
+      </Tabs>
+    </div>
+  );
 }

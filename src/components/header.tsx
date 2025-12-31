@@ -13,13 +13,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Link from "next/link";
-import { Settings, User, LifeBuoy, LogOut } from "lucide-react";
+import { Settings, User, LifeBuoy, LogOut, HardDrive } from "lucide-react";
+import { signOut } from "firebase/auth";
+import { useAuth } from "@/firebase";
 
 export function Header() {
+  const auth = useAuth();
   const userAvatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
 
+  const handleLogout = () => {
+    signOut(auth);
+  };
+
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-4 md:px-6">
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
@@ -61,11 +68,9 @@ export function Header() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/login">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </Link>
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -9,21 +9,20 @@ import { usePathname } from "next/navigation";
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // Admin routes have their own layout
   if (pathname.startsWith('/admin')) {
     return <>{children}</>
   }
-
+  
   return (
     <SidebarProvider>
-      <div className="flex h-full">
+      <div className="flex h-screen bg-gray-50">
         <MainSidebar />
-        <main className="flex-1 flex flex-col h-full">
+        <div className="flex-1 flex flex-col">
           <Header />
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
             {children}
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );

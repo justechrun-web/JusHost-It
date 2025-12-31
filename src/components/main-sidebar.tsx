@@ -23,6 +23,7 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/firebase";
 
 const menuItems = [
   { href: "/", label: "Dashboard", icon: LayoutGrid },
@@ -30,11 +31,21 @@ const menuItems = [
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/support", label: "Support", icon: LifeBuoy },
   { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/admin", label: "Admin", icon: Shield },
 ];
 
 export function MainSidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const [isAdmin, setIsAdmin] = React.useState(false);
+
+  React.useEffect(() => {
+    if (user) {
+      user.getIdTokenResult().then((idTokenResult) => {
+        const isAdminClaim = !!idTokenResult.claims.admin;
+        setIsAdmin(isAdminClaim);
+      });
+    }
+  }, [user]);
 
   return (
     <Sidebar>
@@ -62,6 +73,22 @@ export function MainSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          {isAdmin && (
+             <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/admin')}
+                className={cn(
+                  pathname.startsWith('/admin') && "bg-sidebar-accent"
+                )}
+              >
+                <Link href="/admin">
+                  <Shield className="h-4 w-4" />
+                  <span>Admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
