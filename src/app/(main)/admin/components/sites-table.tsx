@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -19,7 +20,7 @@ type Site = {
   domain: string;
   status: 'Active' | 'Suspended' | 'Provisioning';
   plan: string;
-  userId: string;
+  ownerId: string;
   billingStatus: 'active' | 'past_due' | 'canceled';
 };
 
@@ -58,7 +59,7 @@ export function SitesTable() {
             <TableHead>Status</TableHead>
             <TableHead>Billing Status</TableHead>
             <TableHead>Plan</TableHead>
-            <TableHead>User ID</TableHead>
+            <TableHead>Owner ID</TableHead>
             <TableHead className="text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -90,7 +91,7 @@ export function SitesTable() {
                 </TableCell>
                 <TableCell>{site.plan}</TableCell>
                 <TableCell className="font-mono text-xs">
-                  {site.userId}
+                  {site.ownerId}
                 </TableCell>
                 <TableCell className="text-right">
                   <AdminAction site={site} />

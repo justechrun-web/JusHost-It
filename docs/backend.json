@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "user": {
@@ -49,7 +50,7 @@
             "Suspended"
           ]
         },
-        "userId": {
+        "ownerId": {
           "type": "string"
         },
         "createdAt": {
@@ -98,7 +99,7 @@
         "domain",
         "plan",
         "status",
-        "userId",
+        "ownerId",
         "createdAt"
       ]
     },

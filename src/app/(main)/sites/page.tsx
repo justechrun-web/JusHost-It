@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -40,7 +41,7 @@ export default function SitesPage() {
     if (!user) return null;
     return query(
       collection(db, 'sites'),
-      where('userId', '==', user.uid),
+      where('ownerId', '==', user.uid),
       orderBy('createdAt', 'desc')
     );
   }, [db, user]);
