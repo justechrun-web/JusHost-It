@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useMemo } from 'react';
 import {
   collection,
   query,
@@ -17,12 +16,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Loader2 } from 'lucide-react';
 import { CreateSiteDialog } from './components/create-site-dialog';
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+
 
 type Site = {
   id: string;
@@ -37,8 +36,8 @@ export default function SitesPage() {
   const db = useFirestore();
   const router = useRouter();
 
-  const sitesQuery = useMemo(() => {
-    if (!user) return null;
+  const sitesQuery = useMemoFirebase(() => {
+    if (!user || !db) return null;
     return query(
       collection(db, 'sites'),
       where('ownerId', '==', user.uid),
@@ -106,14 +105,14 @@ export default function SitesPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : sites.length === 0 ? (
+            ) : sites && sites.length === 0 ? (
                <TableRow>
                 <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                   You haven't created any sites yet.
                 </TableCell>
               </TableRow>
             ) : (
-              sites.map((site) => (
+              sites && sites.map((site) => (
                 <TableRow key={site.id} onClick={() => handleRowClick(site.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{site.domain}</TableCell>
                   <TableCell>

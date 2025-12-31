@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -10,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
-import { useCollection, useFirestore } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -25,8 +26,8 @@ type AuditLog = {
 
 export function AuditLogsTable() {
   const db = useFirestore();
-  const auditLogQuery = useMemo(
-    () => query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc')),
+  const auditLogQuery = useMemoFirebase(
+    () => db ? query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc')) : null,
     [db]
   );
   const { data: logs, loading } = useCollection<AuditLog>(auditLogQuery);
@@ -42,15 +43,15 @@ export function AuditLogsTable() {
     return format(date, 'PPP p');
   };
 
-  const filteredLogs = useMemo(() => {
-    return logs
-      .filter((log) =>
-        log.adminId.toLowerCase().includes(adminFilter.toLowerCase())
-      )
-      .filter((log) =>
-        log.action.toLowerCase().includes(actionFilter.toLowerCase())
-      );
-  }, [logs, adminFilter, actionFilter]);
+  const filteredLogs = logs
+    ? logs
+        .filter((log) =>
+          log.adminId.toLowerCase().includes(adminFilter.toLowerCase())
+        )
+        .filter((log) =>
+          log.action.toLowerCase().includes(actionFilter.toLowerCase())
+        )
+    : [];
 
   return (
     <div className="border rounded-lg mt-4">

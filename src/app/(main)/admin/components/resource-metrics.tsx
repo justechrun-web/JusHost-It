@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/chart';
 import { Loader2 } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-import { useCollection, useFirestore } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -31,9 +32,9 @@ export function ResourceMetrics() {
   const db = useFirestore();
   // In a real app, you'd query for a specific site's metrics.
   // For this demo, we'll grab the latest metric document we find.
-  const metricsQuery = useMemo(
+  const metricsQuery = useMemoFirebase(
     () =>
-      query(collection(db, 'site_metrics'), orderBy('timestamp', 'desc'), limit(1)),
+      db ? query(collection(db, 'site_metrics'), orderBy('timestamp', 'desc'), limit(1)) : null,
     [db]
   );
   const { data: metrics, loading } = useCollection<SiteMetric>(metricsQuery);
@@ -60,7 +61,7 @@ export function ResourceMetrics() {
     return data;
   };
 
-  const metricData = metrics.length > 0 ? metrics[0] : undefined;
+  const metricData = metrics && metrics.length > 0 ? metrics[0] : undefined;
   const chartData = generateChartData(metricData);
   const siteId = metricData?.id || 'default_site';
 
