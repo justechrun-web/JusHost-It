@@ -27,7 +27,7 @@ export default function AdminDashboard() {
         </h1>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className='grid w-full grid-cols-4'>
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="sites">Sites</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>

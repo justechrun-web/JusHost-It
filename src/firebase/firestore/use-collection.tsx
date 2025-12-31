@@ -5,35 +5,58 @@ import {
   onSnapshot,
   Query,
   DocumentData,
+  QuerySnapshot,
 } from 'firebase/firestore';
 import { useFirestore } from '../provider';
 
-export function useCollection<T>(path: string) {
+type CollectionSource<T> = string | Query<T>;
+
+export function useCollection<T>(source: CollectionSource<T>) {
   const db = useFirestore();
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const collectionRef = collection(db, path);
-    const unsubscribe = onSnapshot(
-      collectionRef,
-      (snapshot) => {
-        const result: T[] = [];
-        snapshot.forEach((doc) => {
-          result.push({ id: doc.id, ...doc.data() } as T);
-        });
-        setData(result);
-        setLoading(false);
-      },
-      (err) => {
+    if (!db) {
+      return;
+    }
+
+    let unsubscribe: () => void;
+
+    try {
+      const collectionRef =
+        typeof source === 'string' ? collection(db, source) : source;
+
+      unsubscribe = onSnapshot(
+        collectionRef as Query<DocumentData>,
+        (snapshot: QuerySnapshot<DocumentData>) => {
+          const result: T[] = [];
+          snapshot.forEach((doc) => {
+            result.push({ id: doc.id, ...doc.data() } as T);
+          });
+          setData(result);
+          setLoading(false);
+        },
+        (err) => {
+          console.error(`Error fetching collection: `, err);
+          setError(err);
+          setLoading(false);
+        }
+      );
+    } catch (err: any) {
+        console.error(`Error setting up collection listener: `, err);
         setError(err);
         setLoading(false);
-      }
-    );
+    }
 
-    return () => unsubscribe();
-  }, [db, path]);
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [db, source]);
 
   return { data, loading, error };
 }

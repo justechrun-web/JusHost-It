@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -13,7 +13,8 @@ import { Loader2 } from 'lucide-react';
 import { useCollection } from '@/firebase';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 type AuditLog = {
   id: string;
@@ -24,7 +25,9 @@ type AuditLog = {
 };
 
 export function AuditLogsTable() {
-  const { data: logs, loading } = useCollection<AuditLog>('audit_logs');
+  const db = useFirestore();
+  const auditLogQuery = useMemo(() => query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc')), [db]);
+  const { data: logs, loading } = useCollection<AuditLog>(auditLogQuery);
   const [adminFilter, setAdminFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
 
@@ -37,19 +40,15 @@ export function AuditLogsTable() {
     return format(date, 'PPP p');
   };
 
-  const filteredLogs = logs
-    .filter(
-      (log) =>
+  const filteredLogs = useMemo(() => {
+    return logs
+      .filter((log) =>
         log.adminId.toLowerCase().includes(adminFilter.toLowerCase())
-    )
-    .filter((log) =>
-      log.action.toLowerCase().includes(actionFilter.toLowerCase())
-    )
-    .sort((a, b) => {
-        const dateA = typeof a.timestamp === 'string' ? new Date(a.timestamp) : new Date((a.timestamp as any).seconds * 1000);
-        const dateB = typeof b.timestamp === 'string' ? new Date(b.timestamp) : new Date((b.timestamp as any).seconds * 1000);
-        return dateB.getTime() - dateA.getTime();
-    });
+      )
+      .filter((log) =>
+        log.action.toLowerCase().includes(actionFilter.toLowerCase())
+      );
+  }, [logs, adminFilter, actionFilter]);
 
   return (
     <div className="border rounded-lg mt-4">
@@ -98,6 +97,13 @@ export function AuditLogsTable() {
                 </TableCell>
               </TableRow>
             ))
+          )}
+          {!loading && filteredLogs.length === 0 && (
+             <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    No audit logs found.
+                </TableCell>
+            </TableRow>
           )}
         </TableBody>
       </Table>

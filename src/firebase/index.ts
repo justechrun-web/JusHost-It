@@ -2,6 +2,7 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFunctions, Functions } from 'firebase/functions';
 import { firebaseConfig } from './config';
 
 import { useCollection } from './firestore/use-collection';
@@ -13,6 +14,7 @@ import {
   useFirebaseApp,
   useFirestore,
   useAuth,
+  useFunctions,
 } from './provider';
 import { FirebaseClientProvider } from './client-provider';
 
@@ -20,12 +22,14 @@ function initializeFirebase(): {
   firebaseApp: FirebaseApp;
   auth: Auth;
   firestore: Firestore;
+  functions: Functions;
 } {
   const apps = getApps();
   const firebaseApp = !apps.length ? initializeApp(firebaseConfig) : getApp();
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
-  return { firebaseApp, auth, firestore };
+  const functions = getFunctions(firebaseApp);
+  return { firebaseApp, auth, firestore, functions };
 }
 
 export {
@@ -39,4 +43,5 @@ export {
   useFirebaseApp,
   useFirestore,
   useAuth,
+  useFunctions,
 };
