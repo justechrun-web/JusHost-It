@@ -32,5 +32,9 @@ service cloud.firestore {
     match /access_reviews/{reviewId} {
       allow read, write: if isAdmin();
     }
+
+    match /billing_events/{eventId} {
+      allow read, write: if isAdmin();
+    }
   }
 }

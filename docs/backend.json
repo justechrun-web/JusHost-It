@@ -185,6 +185,28 @@
         "reviewedAt",
         "adminCount"
       ]
+    },
+    "billing_event": {
+      "title": "Billing Event",
+      "description": "An event related to billing, such as usage reporting or suspension.",
+      "type": "object",
+      "properties": {
+        "siteId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["USAGE_REPORTED", "SUSPENDED", "RESUMED"]
+        },
+        "details": {
+          "type": "object"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["siteId", "type", "timestamp"]
     }
   },
   "auth": {
@@ -222,6 +244,12 @@
         "$ref": "#/entities/access_review"
       },
       "description": "Logs of quarterly access reviews."
+    },
+    "/billing_events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/billing_event"
+      },
+      "description": "Logs of automated billing events."
     }
   }
 }
