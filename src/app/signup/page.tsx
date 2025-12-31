@@ -11,6 +11,9 @@ import {
   sendEmailVerification,
   GoogleAuthProvider,
   signInWithPopup,
+  fetchSignInMethodsForEmail,
+  signInWithEmailAndPassword,
+  linkWithCredential,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -19,6 +22,25 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+function mapAuthError(code: string): string {
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'This email address is already in use. Please log in.';
+    case 'auth/weak-password':
+      return 'The password is too weak. Please choose a stronger password.';
+    case 'auth/popup-closed-by-user':
+      return 'Sign-up process was cancelled.';
+    case 'auth/account-exists-with-different-credential':
+      return 'An account already exists with this email. Please sign in using your original method to link your accounts.';
+    case 'auth/operation-not-allowed':
+      return 'This sign-in method is not enabled. Please contact support.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    default:
+      return 'An unexpected error occurred during signup. Please try again.';
+  }
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -50,11 +72,12 @@ export default function SignupPage() {
       });
       router.push('/login');
     } catch (err: any) {
-      setError(err.message);
+      const friendlyError = mapAuthError(err.code);
+      setError(friendlyError);
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
-        description: err.message,
+        description: friendlyError,
       });
     } finally {
       setLoading(false);
@@ -65,16 +88,52 @@ export default function SignupPage() {
     setGoogleLoading(true);
     setError(null);
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ hd: 'company.com' });
+
     try {
       await signInWithPopup(auth, provider);
       router.push('/');
     } catch (err: any) {
-      setError(err.message);
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-up Failed',
-        description: err.message,
-      });
+        if (err.code === 'auth/account-exists-with-different-credential') {
+        const email = err.customData.email;
+        const pendingCred = GoogleAuthProvider.credentialFromError(err);
+        
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, email);
+
+          if (methods.includes('password')) {
+            const password = prompt('You already have an account with this email. Please enter your password to link your Google Account.');
+            if (password) {
+              const userCred = await signInWithEmailAndPassword(auth, email, password);
+              await linkWithCredential(userCred.user, pendingCred!);
+              router.push('/');
+            } else {
+               toast({
+                variant: 'destructive',
+                title: 'Login Cancelled',
+                description: 'Password was not provided. Account linking cancelled.',
+              });
+            }
+          }
+        } catch (linkError: any) {
+            const friendlyError = mapAuthError(linkError.code);
+            setError(friendlyError);
+            toast({
+                variant: 'destructive',
+                title: 'Account Linking Failed',
+                description: friendlyError,
+            });
+        }
+
+      } else {
+        const friendlyError = mapAuthError(err.code);
+        setError(friendlyError);
+        toast({
+          variant: 'destructive',
+          title: 'Google Sign-up Failed',
+          description: friendlyError,
+        });
+      }
     } finally {
       setGoogleLoading(false);
     }

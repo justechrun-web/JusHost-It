@@ -12,6 +12,17 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+function mapAuthError(code: string): string {
+  switch (code) {
+    case 'auth/user-not-found':
+      return 'No account found with that email address.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    default:
+      return 'An unexpected error occurred. Please try again.';
+  }
+}
+
 export default function ForgotPasswordPage() {
   const auth = useAuth();
   const { toast } = useToast();
@@ -33,11 +44,12 @@ export default function ForgotPasswordPage() {
         description: 'Check your inbox for a link to reset your password.',
       });
     } catch (err: any) {
-      setError(err.message);
+      const friendlyError = mapAuthError(err.code);
+      setError(friendlyError);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: err.message,
+        description: friendlyError,
       });
     } finally {
       setLoading(false);
