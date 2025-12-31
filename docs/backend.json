@@ -18,10 +18,17 @@
         },
         "role": {
           "type": "string",
-          "enum": ["user", "admin"]
+          "enum": [
+            "user",
+            "admin"
+          ]
         }
       },
-      "required": ["email", "createdAt", "role"]
+      "required": [
+        "email",
+        "createdAt",
+        "role"
+      ]
     },
     "site": {
       "title": "Site",
@@ -36,7 +43,11 @@
         },
         "status": {
           "type": "string",
-          "enum": ["Provisioning", "Active", "Suspended"]
+          "enum": [
+            "Provisioning",
+            "Active",
+            "Suspended"
+          ]
         },
         "userId": {
           "type": "string"
@@ -46,14 +57,50 @@
           "format": "date-time"
         },
         "stripeSubscriptionId": {
-            "type": "string"
+          "type": "string"
         },
         "billingStatus": {
-            "type": "string",
-            "enum": ["active", "past_due", "canceled"]
+          "type": "string",
+          "enum": [
+            "active",
+            "past_due",
+            "canceled"
+          ]
+        },
+        "region": {
+          "type": "string"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "type",
+              "message",
+              "timestamp"
+            ]
+          }
         }
       },
-      "required": ["domain", "plan", "status", "userId", "createdAt"]
+      "required": [
+        "domain",
+        "plan",
+        "status",
+        "userId",
+        "createdAt"
+      ]
     },
     "audit_log": {
       "title": "Audit Log",
@@ -77,28 +124,38 @@
           "type": "object"
         }
       },
-      "required": ["adminId", "action", "targetId", "timestamp"]
+      "required": [
+        "adminId",
+        "action",
+        "targetId",
+        "timestamp"
+      ]
     },
     "site_metric": {
-        "title": "Site Metric",
-        "description": "Resource usage metrics for a site.",
-        "type": "object",
-        "properties": {
-            "cpu": {
-                "type": "string"
-            },
-            "memory": {
-                "type": "string"
-            },
-            "disk": {
-                "type": "string"
-            },
-            "timestamp": {
-                "type": "string",
-                "format": "date-time"
-            }
+      "title": "Site Metric",
+      "description": "Resource usage metrics for a site.",
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "type": "string"
         },
-        "required": ["cpu", "memory", "disk", "timestamp"]
+        "memory": {
+          "type": "string"
+        },
+        "disk": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "cpu",
+        "memory",
+        "disk",
+        "timestamp"
+      ]
     },
     "access_review": {
       "title": "Access Review",
@@ -119,31 +176,47 @@
           "type": "string"
         }
       },
-      "required": ["reviewerId", "reviewedAt", "adminCount"]
+      "required": [
+        "reviewerId",
+        "reviewedAt",
+        "adminCount"
+      ]
     }
   },
   "auth": {
-    "providers": ["email"]
+    "providers": [
+      "email"
+    ]
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": { "$ref": "#/entities/user" },
+      "schema": {
+        "$ref": "#/entities/user"
+      },
       "description": "User profile data."
     },
     "/sites/{siteId}": {
-      "schema": { "$ref": "#/entities/site" },
+      "schema": {
+        "$ref": "#/entities/site"
+      },
       "description": "Hosted site data."
     },
     "/audit_logs/{logId}": {
-        "schema": { "$ref": "#/entities/audit_log" },
-        "description": "Admin audit trail."
+      "schema": {
+        "$ref": "#/entities/audit_log"
+      },
+      "description": "Admin audit trail."
     },
     "/site_metrics/{siteId}": {
-        "schema": { "$ref": "#/entities/site_metric" },
-        "description": "Site resource usage metrics."
+      "schema": {
+        "$ref": "#/entities/site_metric"
+      },
+      "description": "Site resource usage metrics."
     },
     "/access_reviews/{reviewId}": {
-      "schema": { "$ref": "#/entities/access_review" },
+      "schema": {
+        "$ref": "#/entities/access_review"
+      },
       "description": "Logs of quarterly access reviews."
     }
   }

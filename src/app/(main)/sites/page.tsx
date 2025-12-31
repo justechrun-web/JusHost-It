@@ -16,17 +16,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Loader2 } from 'lucide-react';
 import { CreateSiteDialog } from './components/create-site-dialog';
 import { useCollection, useFirestore, useUser } from '@/firebase';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 type Site = {
   id: string;
@@ -39,6 +34,7 @@ type Site = {
 export default function SitesPage() {
   const { user, loading: userLoading } = useUser();
   const db = useFirestore();
+  const router = useRouter();
 
   const sitesQuery = useMemo(() => {
     if (!user) return null;
@@ -73,6 +69,10 @@ export default function SitesPage() {
   
   const isLoading = userLoading || sitesLoading;
 
+  const handleRowClick = (siteId: string) => {
+    router.push(`/sites/${siteId}`);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -94,13 +94,12 @@ export default function SitesPage() {
               <TableHead>Status</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Date Added</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={4} className="text-center">
                   <div className="flex justify-center items-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
@@ -108,13 +107,13 @@ export default function SitesPage() {
               </TableRow>
             ) : sites.length === 0 ? (
                <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                   You haven't created any sites yet.
                 </TableCell>
               </TableRow>
             ) : (
               sites.map((site) => (
-                <TableRow key={site.id}>
+                <TableRow key={site.id} onClick={() => handleRowClick(site.id)} className="cursor-pointer">
                   <TableCell className="font-medium">{site.domain}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(site.status)}>
@@ -123,23 +122,6 @@ export default function SitesPage() {
                   </TableCell>
                   <TableCell>{site.plan}</TableCell>
                   <TableCell>{formatDate(site.createdAt)}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Manage</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
                 </TableRow>
               ))
             )}
