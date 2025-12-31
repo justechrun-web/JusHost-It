@@ -5,9 +5,10 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { HardDrive, Loader2 } from 'lucide-react';
+import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
-  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
@@ -18,9 +19,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
@@ -32,25 +32,35 @@ export default function LoginPage() {
 
   const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      await sendEmailVerification(userCredential.user);
+      toast({
+        title: 'Verification Email Sent',
+        description:
+          'Please check your inbox to verify your email and complete signup.',
+      });
+      router.push('/login');
     } catch (err: any) {
       setError(err.message);
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
+        title: 'Signup Failed',
         description: err.message,
       });
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError(null);
@@ -62,7 +72,7 @@ export default function LoginPage() {
       setError(err.message);
       toast({
         variant: 'destructive',
-        title: 'Google Login Failed',
+        title: 'Google Sign-up Failed',
         description: err.message,
       });
     } finally {
@@ -76,12 +86,14 @@ export default function LoginPage() {
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
             <HardDrive className="h-8 w-8 mx-auto text-primary" />
-            <h1 className="text-3xl font-bold font-headline">JusHostIt</h1>
+            <h1 className="text-3xl font-bold font-headline">
+              Create an Account
+            </h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
+              Enter your details to get started with JusHostIt.
             </p>
           </div>
-          <form onSubmit={handleLogin} className="grid gap-4">
+          <form onSubmit={handleSignup} className="grid gap-4">
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -101,26 +113,19 @@ export default function LoginPage() {
               />
             </div>
             <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="ml-auto inline-block text-sm underline"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="Must be at least 6 characters"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Login
+              Create Account
             </Button>
             <Button
               variant="outline"
@@ -132,13 +137,13 @@ export default function LoginPage() {
               {googleLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Login with Google
+              Sign up with Google
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
+            Already have an account?{' '}
+            <Link href="/login" className="underline">
+              Sign in
             </Link>
           </div>
         </div>

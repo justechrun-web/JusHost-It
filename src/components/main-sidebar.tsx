@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sidebar,
   SidebarHeader,
@@ -24,7 +24,8 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser } from "@/firebase";
+import { useUser, useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 const menuItems = [
   { href: "/", label: "Dashboard", icon: LayoutGrid },
@@ -36,6 +37,8 @@ const menuItems = [
 
 export function MainSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = React.useState(false);
 
@@ -47,6 +50,12 @@ export function MainSidebar() {
       });
     }
   }, [user]);
+  
+  const handleLogout = () => {
+    signOut(auth).then(() => {
+      router.push('/login');
+    });
+  };
 
   return (
     <Sidebar>
@@ -95,11 +104,9 @@ export function MainSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/login">
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </Link>
+            <SidebarMenuButton onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

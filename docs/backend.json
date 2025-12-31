@@ -211,7 +211,8 @@
   },
   "auth": {
     "providers": [
-      "email"
+      "email",
+      "google.com"
     ]
   },
   "firestore": {
