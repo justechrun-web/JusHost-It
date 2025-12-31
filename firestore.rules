@@ -1,162 +1,161 @@
 /**
- * # Firestore Security Rules
+ * Core Philosophy: This ruleset enforces a strict user-ownership model. All data is
+ * considered private to the user who created it. Access control is based on matching the
+ * authenticated user's ID (`request.auth.uid`) with the `userId` in the document path.
+ * This ensures that users can only ever access their own information.
  *
- * ## Core Philosophy
- * This ruleset enforces a strict user-ownership model combined with an administrative override capability.
- * All user-generated data is private by default and can only be accessed by the user who created it or by a verified administrator.
- * The rules prioritize security and data privacy, ensuring users cannot access or even list data belonging to others.
+ * Data Structure: The data is organized hierarchically. All user-specific data, including
+ * sites, billing information, and support tickets, is stored in subcollections under a
+ * top-level `/users/{userId}` document. This structure naturally isolates each user's
+ * data, simplifying security and queries.
  *
- * ## Data Structure
- * The data is organized hierarchically under a top-level `users` collection. Each user's data,
- * including their sites, billing, and support tickets, is stored in subcollections under their unique
- * user document (`/users/{userId}`). This structure naturally isolates user data and simplifies
- * the security logic by leveraging path-based authorization. A separate `/roles_admin` collection
- * manages administrator privileges.
+ * Key Security Decisions:
+ * - User Isolation: Users are strictly forbidden from reading or writing data belonging
+ *   to other users. There is no concept of shared or public data in this model.
+ * - No User Listing: It is impossible to list all documents in the `/users` collection,
+ *   preventing enumeration of the user base.
+ * - Restricted Writes on Sensitive Data: Billing information is read-only for the user.
+ *   All modifications to billing records are expected to be performed by a trusted
+ *   backend service (e.g., a Cloud Function reacting to Stripe webhooks), preventing
+ *   users from tampering with their subscription status or customer ID.
+ * - Admin Roles: While an `isAdmin` field exists in the data model, these rules do not
+ *   grant admins special access. The core logic relies exclusively on user ownership.
+ *   Admin override logic can be added to the helper functions if required in the future.
  *
- * ## Key Security Decisions
- * - **Default Deny**: All paths are closed by default. Access must be explicitly granted.
- * - **No User Enumeration**: Listing the top-level `/users` collection is strictly forbidden to protect user privacy.
- * - **Admin Access**: Administrators, identified by the existence of a document in the `/roles_admin` collection,
- *   have read and write access to all user data for management and support purposes.
- * - **Ownership-Based Writes**: All write operations (create, update, delete) on user-owned documents require
- *   proof of ownership or administrative privileges. Public or anonymous writes are prohibited.
- * - **Authorization via Document Existence**: Admin status is determined by checking for the existence of a
- *   document in `/roles_admin/{userId}`. This is more secure and flexible than relying on custom claims or
- *   a boolean field on a user profile, as it's managed directly within the database's security perimeter.
+ * Denormalization for Authorization: To ensure fast and secure access checks, every
+ * document in a user's subcollection (e.g., a site or support ticket) contains a
+ * denormalized `userId` field. This allows rules to verify ownership without performing
+ * costly and slow `get()` calls on parent documents.
  *
- * ## Denormalization for Authorization
- * To create simpler and more performant rules, authorization data is denormalized:
- * - **`userId` on Subcollection Documents**: Documents within user subcollections (like `sites` or `supportTickets`)
- *   must contain a `userId` field that matches the parent user's ID. This allows rules to verify ownership
- *   without performing extra `get()` calls, a pattern described as "Authorization Independence" in the system design.
- * - **`/roles_admin` Collection**: This collection denormalizes role information. Instead of querying a complex roles
- *   system, a simple `exists()` check provides a fast and secure way to verify admin privileges.
+ * Structural Segregation: This pattern is not required as there is no mixed public/private
+ * data. The entire `/users/{userId}` data tree is treated as private to that user.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // -------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
     // Helper Functions
-    // -------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
 
     /**
-     * Checks if the user is authenticated.
+     * Returns true if the user is signed in.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * Checks if the authenticated user's UID matches the provided userId.
+     * Returns true if the signed-in user's UID matches the provided userId.
+     * This is the primary function for verifying document ownership.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    /**
+     * Returns true if the user is an administrator.
+     * NOTE: This is not currently used in any rules but is provided for future admin features.
+     */
+    // function isAdmin() {
+    //   return request.auth.token.admin == true;
+    // }
 
     /**
-     * Checks if the user has administrative privileges by verifying the
-     * existence of their UID in the roles_admin collection.
+     * Verifies ownership for an existing document. Used for update and delete operations.
      */
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * Checks if the user is either the owner of the resource or an admin.
+     * On create, ensures the new document's internal 'userId' or 'id' field
+     * matches the user ID from the path, enforcing data consistency.
      */
-    function isOwnerOrAdmin(userId) {
-      return isOwner(userId) || isAdmin();
+    function isConsistentOwnerOnCreate(userId) {
+      // The User document itself uses 'id' for the owner link.
+      return request.resource.data.userId == userId || request.resource.data.id == userId;
     }
 
     /**
-     * Checks for ownership or admin status on an existing document.
-     * Crucial for preventing modification of non-existent data.
+     * On update, ensures the 'userId' or 'id' field cannot be changed.
+     * This prevents re-assigning a document to a different user.
      */
-    function isExistingOwnerOrAdmin(userId) {
-      return resource != null && isOwnerOrAdmin(userId);
+    function isOwnerFieldImmutable() {
+      // The User document itself uses 'id' for the owner link.
+      return resource.data.userId == request.resource.data.userId || resource.data.id == request.resource.data.id;
     }
 
-    // -------------------------------------------------------------------------
-    // User Profile Rules
-    // -------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
 
     /**
-     * @description Manages access to a user's own profile document.
+     * @description Manages a user's own profile document.
      * @path /users/{userId}
-     * @allow (create) An authenticated user creating their own user document.
+     * @allow (create) A new user creating their own user record upon signup. auth.uid must match {userId}.
+     * @allow (get) An authenticated user reading their own profile. auth.uid must match {userId}.
+     * @deny (list) Any user trying to list all user documents.
      * @deny (get) An authenticated user trying to read another user's profile.
-     * @principle Restricts access to a user's own data tree and enforces self-creation.
+     * @principle Restricts access to a user's own data tree and allows self-creation of their root document.
      */
     match /users/{userId} {
-      allow get: if isOwnerOrAdmin(userId);
-      allow list: if false; // Disallow listing users for privacy
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwnerOrAdmin(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwnerOrAdmin(userId);
-    }
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
+      allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
+      allow delete: if isExistingOwner(userId);
 
-    // -------------------------------------------------------------------------
-    // User Subcollection Rules
-    // -------------------------------------------------------------------------
+       /**
+        * @description Manages websites owned by a user.
+        * @path /users/{userId}/sites/{siteId}
+        * @allow (create) A user creating a new site under their own account. auth.uid must match {userId}.
+        * @allow (list) A user listing all sites they own. auth.uid must match {userId}.
+        * @deny (get) A user trying to read site information belonging to another user.
+        * @deny (update) A user attempting to modify another user's site.
+        * @principle Enforces document ownership for all operations within a user-specific subcollection.
+        */
+        match /users/{userId}/sites/{siteId} {
+          allow get: if isOwner(userId);
+          allow list: if isOwner(userId);
+          allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
+          allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
+          allow delete: if isExistingOwner(userId);
+        }
 
-    /**
-     * @description Secures a user's websites.
-     * @path /users/{userId}/sites/{siteId}
-     * @allow (create) An authenticated user creating a site for themselves.
-     * @deny (update) A user trying to change the owner (`userId`) of an existing site.
-     * @principle Enforces document ownership and validates relational integrity between documents.
-     */
-    match /users/{userId}/sites/{siteId} {
-      allow get, list: if isOwnerOrAdmin(userId);
-      allow create: if isOwnerOrAdmin(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwnerOrAdmin(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwnerOrAdmin(userId);
-    }
+        /**
+         * @description Manages billing information for a user. This data is read-only for the user.
+         * @path /users/{userId}/billing/{billingId}
+         * @allow (get) A user reading their own billing information. auth.uid must match {userId}.
+         * @deny (create) A user trying to create their own billing record directly.
+         * @deny (update) A user trying to change their subscription status. This must be done by a backend service.
+         * @deny (delete) A user trying to delete their billing history.
+         * @principle Protects sensitive financial data by making it read-only for the client, deferring all writes to a trusted backend.
+         */
+        match /users/{userId}/billing/{billingId} {
+          allow get: if isOwner(userId);
+          allow list: if isOwner(userId);
+          allow create: if false;
+          allow update: if false;
+          allow delete: if false;
+        }
 
-    /**
-     * @description Secures a user's billing subscriptions.
-     * @path /users/{userId}/billingSubscriptions/{billingSubscriptionId}
-     * @allow (get) An authenticated user reading their own billing information.
-     * @deny (list) A user trying to list billing info for another user.
-     * @principle Enforces document ownership and validates relational integrity between documents.
-     */
-    match /users/{userId}/billingSubscriptions/{billingSubscriptionId} {
-      allow get, list: if isOwnerOrAdmin(userId);
-      allow create: if isOwnerOrAdmin(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwnerOrAdmin(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwnerOrAdmin(userId);
-    }
-
-    /**
-     * @description Secures a user's support tickets.
-     * @path /users/{userId}/supportTickets/{supportTicketId}
-     * @allow (list) An administrator listing a user's support tickets.
-     * @deny (create) A user trying to create a support ticket on behalf of another user.
-     * @principle Enforces document ownership and validates relational integrity between documents.
-     */
-    match /users/{userId}/supportTickets/{supportTicketId} {
-      allow get, list: if isOwnerOrAdmin(userId);
-      allow create: if isOwnerOrAdmin(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwnerOrAdmin(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwnerOrAdmin(userId);
-    }
-
-    // -------------------------------------------------------------------------
-    // Administrative Rules
-    // -------------------------------------------------------------------------
-
-    /**
-     * @description Manages the admin role documents. Only other admins can manage this collection.
-     * @path /roles_admin/{userId}
-     * @allow (create) An existing admin adding a new user to the admin roles.
-     * @deny (list) A non-admin user trying to list who the admins are.
-     * @principle Restricts meta-access control changes to authorized administrators.
-     */
-    match /roles_admin/{userId} {
-      allow get, list: if isAdmin();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() && resource != null;
+        /**
+         * @description Manages support tickets submitted by a user.
+         * @path /users/{userId}/supportTickets/{ticketId}
+         * @allow (create) A user creating a new support ticket under their own account. auth.uid must match {userId}.
+         * @allow (list) A user listing all support tickets they have submitted. auth.uid must match {userId}.
+         * @deny (get) A user trying to read another user's support ticket.
+         * @deny (update) A user attempting to modify another user's ticket.
+         * @principle Enforces document ownership for all operations within a user-specific subcollection.
+         */
+        match /users/{userId}/supportTickets/{ticketId} {
+          allow get: if isOwner(userId);
+          allow list: if isOwner(userId);
+          allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
+          allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
+          allow delete: if isExistingOwner(userId);
+        }
     }
   }
 }

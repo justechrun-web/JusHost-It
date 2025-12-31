@@ -4,11 +4,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user account within the JusHostIt platform.",
+      "description": "Represents a user account within the JusHostIt system.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the user entity."
+          "description": "Unique identifier for the User entity."
         },
         "email": {
           "type": "string",
@@ -17,20 +17,20 @@
         },
         "displayName": {
           "type": "string",
-          "description": "The user's display name or full name."
+          "description": "Display name of the user."
         },
         "photoURL": {
           "type": "string",
           "description": "URL of the user's profile photo.",
           "format": "uri"
         },
+        "emailVerified": {
+          "type": "boolean",
+          "description": "Indicates whether the user's email address has been verified."
+        },
         "isAdmin": {
           "type": "boolean",
-          "description": "Indicates if the user has admin privileges."
-        },
-        "mfaEnabled": {
-          "type": "boolean",
-          "description": "Indicates if multi-factor authentication is enabled for the user."
+          "description": "Indicates whether the user has administrative privileges."
         }
       },
       "required": [
@@ -42,11 +42,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Site",
       "type": "object",
-      "description": "Represents a website hosted on the JusHostIt platform.",
+      "description": "Represents a website hosted on JusHostIt.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the site entity."
+          "description": "Unique identifier for the Site entity."
         },
         "userId": {
           "type": "string",
@@ -58,15 +58,15 @@
         },
         "plan": {
           "type": "string",
-          "description": "Hosting plan selected for the website (e.g., Basic, Pro)."
+          "description": "Hosting plan associated with the website."
         },
         "status": {
           "type": "string",
-          "description": "Current status of the website (e.g., Active, Suspended, Provisioning)."
+          "description": "Current status of the website (e.g., active, suspended, provisioning)."
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the site was created.",
+          "description": "Timestamp of when the site was created.",
           "format": "date-time"
         }
       },
@@ -78,59 +78,58 @@
         "status"
       ]
     },
-    "BillingSubscription": {
+    "Billing": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BillingSubscription",
+      "title": "Billing",
       "type": "object",
-      "description": "Represents a billing subscription for a user.",
+      "description": "Billing information for a user.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the billing subscription."
+          "description": "Unique identifier for the Billing entity."
         },
         "userId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:1 BillingSubscription)"
+          "description": "Reference to User. (Relationship: User 1:1 Billing)"
         },
-        "stripeSubscriptionId": {
+        "stripeCustomerId": {
           "type": "string",
-          "description": "Stripe Subscription ID for managing billing through Stripe."
+          "description": "Stripe customer ID associated with the user."
         },
-        "plan": {
+        "subscriptionStatus": {
           "type": "string",
-          "description": "Name of plan subscribed to. (e.g. Basic, Pro)."
+          "description": "Status of the user's subscription (e.g., active, canceled)."
         },
-        "status": {
+        "currentPlan": {
           "type": "string",
-          "description": "Status of the subscription. (e.g. Active, Canceled)"
-        },
-        "nextBillingDate": {
-          "type": "string",
-          "description": "The next date the customer will be billed.",
-          "format": "date-time"
+          "description": "The current billing plan for the account."
         }
       },
       "required": [
         "id",
         "userId",
-        "stripeSubscriptionId",
-        "plan",
-        "status"
+        "stripeCustomerId",
+        "subscriptionStatus",
+        "currentPlan"
       ]
     },
     "SupportTicket": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "SupportTicket",
       "type": "object",
-      "description": "Represents a support ticket submitted by a user.",
+      "description": "Represents a support ticket opened by a user.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the support ticket."
+          "description": "Unique identifier for the SupportTicket entity."
         },
         "userId": {
           "type": "string",
           "description": "Reference to User. (Relationship: User 1:N SupportTicket)"
+        },
+        "siteId": {
+          "type": "string",
+          "description": "Reference to Site. (Relationship: Site 1:N SupportTicket) Optional since tickets may not always be site-specific."
         },
         "subject": {
           "type": "string",
@@ -142,11 +141,11 @@
         },
         "status": {
           "type": "string",
-          "description": "Current status of the support ticket (e.g., Open, In Progress, Closed)."
+          "description": "Current status of the ticket (e.g., open, in progress, closed)."
         },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the ticket was created.",
+          "description": "Timestamp of when the ticket was created.",
           "format": "date-time"
         }
       },
@@ -174,11 +173,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profile information. Path-based ownership ensures that only the user can access their profile data.",
+          "description": "Stores user account information. Access is restricted to the authenticated user.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user."
+              "description": "The unique identifier of the user."
             }
           ]
         }
@@ -190,76 +189,60 @@
           "schema": {
             "$ref": "#/backend/entities/Site"
           },
-          "description": "Stores website information. Enforces ownership via path-based access and the 'userId' field within the document. This achieves Authorization Independence.",
+          "description": "Stores website information for a given user. Includes denormalized 'userId' for authorization independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user (site owner)."
+              "description": "The unique identifier of the user."
             },
             {
               "name": "siteId",
-              "description": "The unique identifier for the site."
+              "description": "The unique identifier of the site."
             }
           ]
         }
       },
       {
-        "path": "/users/{userId}/billingSubscriptions/{billingSubscriptionId}",
+        "path": "/users/{userId}/billing/{billingId}",
         "definition": {
-          "entityName": "BillingSubscription",
+          "entityName": "Billing",
           "schema": {
-            "$ref": "#/backend/entities/BillingSubscription"
+            "$ref": "#/backend/entities/Billing"
           },
-          "description": "Stores billing subscription information. Enforces ownership via path-based access and the 'userId' field within the document. This achieves Authorization Independence.",
+          "description": "Stores billing information for a given user. Includes denormalized 'userId' for authorization independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user (subscription owner)."
+              "description": "The unique identifier of the user."
             },
             {
-              "name": "billingSubscriptionId",
-              "description": "The unique identifier for the billing subscription."
+              "name": "billingId",
+              "description": "The unique identifier of the billing record."
             }
           ]
         }
       },
       {
-        "path": "/users/{userId}/supportTickets/{supportTicketId}",
+        "path": "/users/{userId}/supportTickets/{ticketId}",
         "definition": {
           "entityName": "SupportTicket",
           "schema": {
             "$ref": "#/backend/entities/SupportTicket"
           },
-          "description": "Stores support ticket information. Enforces ownership via path-based access and the 'userId' field within the document. This achieves Authorization Independence.",
+          "description": "Stores support tickets opened by a user. Includes denormalized 'userId' for authorization independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user (ticket submitter)."
+              "description": "The unique identifier of the user."
             },
             {
-              "name": "supportTicketId",
-              "description": "The unique identifier for the support ticket."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/roles_admin/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores admin role information. Existence of a document implies the user has admin privileges. Uses existence over content.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
+              "name": "ticketId",
+              "description": "The unique identifier of the support ticket."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability for the JusHostIt application. User data, site information, billing subscriptions, and support tickets are organized into collections, with clear ownership enforced through path-based access and denormalization where necessary. The structure supports the required QAPs (Rules are not Filters) by segregating data based on access requirements and utilizing path-based ownership for secure listing operations.\n\n1.  **Users Collection:** Stores user profiles. Path-based ownership ensures that only the user can access their own profile data.\n2.  **Sites Collection:** Stores website information. Each site document includes the `userId` field, enabling security rules to enforce that only the owner (user) of the site can read or modify it. The path `/users/{userId}/sites/{siteId}` enforces ownership and enables efficient listing of sites owned by a specific user. Also, this achieves Authorization Independence.\n3.  **BillingSubscriptions Collection:** Stores billing subscription information. Each subscription document includes the `userId` field, enabling security rules to enforce that only the owner (user) of the subscription can read or modify it. The path `/users/{userId}/billingSubscriptions/{billingSubscriptionId}` enforces ownership and enables efficient listing of subscriptions owned by a specific user. Also, this achieves Authorization Independence.\n4.  **SupportTickets Collection:** Stores support ticket information. Each ticket document includes the `userId` field, enabling security rules to enforce that only the owner (user) of the ticket can read or modify it. The path `/users/{userId}/supportTickets/{supportTicketId}` enforces ownership and enables efficient listing of tickets owned by a specific user. Also, this achieves Authorization Independence.\n5.  **RolesAdmin Collection:** Stores admin role information. This collection contains documents with the user's UID as the document ID. Existence of a document implies the user has admin privileges. This approach avoids custom claims, relying instead on database existence for authorization."
+    "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability for the JusHostIt application. User data, site information, billing details, and support tickets are organized into collections that allow for straightforward security rules based on the authenticated user's ID (request.auth.uid). \n\nAuthorization Independence: Each document that requires user-based authorization includes the 'userId' field. This denormalization prevents the need for complex `get()` calls in security rules to verify ownership, enabling atomic operations and improving rule simplicity and debuggability.\n\nQAPs Support:\n*   Private User Data: The `/users/{userId}` collection stores private user data. Access is restricted to the authenticated user via security rules, ensuring that users can only access their own data.\n*   User-Owned Data: Sites, Billing, and SupportTickets are structured as subcollections under the user. Each document stores the `userId` enabling list operations to securely display only the records associated with the authenticated user, eliminating the risk of unauthorized data exposure. The `userId` field within each subcollection document ensures QAPs compliance, enabling secure list operations.\n*   Admin Roles: While the application uses Firebase Authentication for user management, including the ability to set custom claims like 'admin', the Firestore structure does not directly rely on custom claims for its core authorization logic. Instead, the emphasis is placed on leveraging the authenticated user's ID (`request.auth.uid`) in conjunction with data stored within the Firestore documents themselves (specifically, the `userId` field) to enforce access control. This strategy aligns with the principles of Authorization Independence and simplifies security rules.\n\nData Clarity and Predictability: All collections use explicit and consistent naming conventions. Documents include a status field where applicable (e.g., Site, SupportTicket) to represent the entity's state clearly. This ensures consistency and simplifies querying and data management."
   }
 }
