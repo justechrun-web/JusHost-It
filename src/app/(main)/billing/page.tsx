@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,12 +17,18 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-const billingHistory = [
-  { invoice: "INV-2024-005", date: "2024-05-01", amount: "$15.00", status: "Paid" },
-  { invoice: "INV-2024-004", date: "2024-04-01", amount: "$15.00", status: "Paid" },
-  { invoice: "INV-2024-003", date: "2024-03-01", amount: "$15.00", status: "Paid" },
-  { invoice: "INV-2024-002", date: "2024-02-01", amount: "$15.00", status: "Paid" },
-];
+const billingInfo = {
+  plan: "Pro",
+  status: "active",
+  nextInvoice: "2025-01-15",
+  amount: "$29.00",
+  invoices: [
+    { date: "2024-12-15", amount: "$29.00", url: "#" },
+    { date: "2024-11-15", amount: "$29.00", url: "#" },
+    { date: "2024-10-15", amount: "$29.00", url: "#" },
+    { date: "2024-09-15", amount: "$29.00", url: "#" },
+  ]
+};
 
 export default function BillingPage() {
   return (
@@ -40,12 +47,16 @@ export default function BillingPage() {
               <CardTitle>Current Plan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <p className="text-2xl font-semibold">Basic</p>
-                <p className="text-muted-foreground">$15 / month</p>
+              <div className="space-y-2">
+                 <p className="text-2xl font-semibold capitalize">{billingInfo.plan} Plan</p>
+                <div className="flex items-center gap-2">
+                    <Badge variant={billingInfo.status === 'active' ? 'success' : 'destructive'} className="capitalize">
+                        {billingInfo.status}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">Renews on {billingInfo.nextInvoice}</span>
+                </div>
               </div>
-              <Button className="w-full bg-primary text-primary-foreground">Manage Subscription</Button>
-              <Button variant="outline" className="w-full">Upgrade Plan</Button>
+              <Button className="w-full bg-primary text-primary-foreground">Manage in Stripe Portal</Button>
             </CardContent>
           </Card>
         </div>
@@ -53,27 +64,27 @@ export default function BillingPage() {
         <div className="md:col-span-2">
            <Card>
             <CardHeader>
-                <CardTitle>Billing History</CardTitle>
+                <CardTitle>Invoice History</CardTitle>
                 <CardDescription>A record of your past payments.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>Invoice</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Amount</TableHead>
-                        <TableHead className="text-right">Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {billingHistory.map((item) => (
-                        <TableRow key={item.invoice}>
-                        <TableCell className="font-medium">{item.invoice}</TableCell>
-                        <TableCell>{item.date}</TableCell>
-                        <TableCell>{item.amount}</TableCell>
+                    {billingInfo.invoices.map((invoice, index) => (
+                        <TableRow key={index}>
+                        <TableCell className="font-medium">{invoice.date}</TableCell>
+                        <TableCell>{invoice.amount}</TableCell>
                         <TableCell className="text-right">
-                            <Badge variant={item.status === 'Paid' ? 'success' : 'destructive'}>{item.status}</Badge>
+                           <Button variant="outline" size="sm" asChild>
+                             <a href={invoice.url} target="_blank" rel="noopener noreferrer">View Invoice</a>
+                           </Button>
                         </TableCell>
                         </TableRow>
                     ))}
