@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import {
   Card,
@@ -7,28 +7,57 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import {
   Server,
   HardDrive,
   Globe,
   Signal,
-} from "lucide-react";
+  Loader2,
+} from 'lucide-react';
 import { RecentSites } from '../components/recent-sites';
-import { ResourceUsageChart } from "../components/resource-usage-chart";
+import { ResourceUsageChart } from '../components/resource-usage-chart';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
-const statCards = [
-  { title: "Active Sites", value: "3", icon: Server },
-  { title: "Storage Used", value: "4.2 GB", icon: HardDrive },
-  { title: "Bandwidth", value: "120 GB", icon: Globe },
-  { title: "Uptime", value: "99.98%", icon: Signal },
-];
+const StatCard = ({ title, value, icon: Icon, loading }: { title: string, value: string, icon: React.ElementType, loading: boolean }) => (
+    <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      {loading ? (
+         <div className="pt-2">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+         </div>
+      ) : (
+        <div className="text-2xl font-bold">{value}</div>
+      )}
+    </CardContent>
+  </Card>
+)
 
 export default function DashboardPage() {
+  const { user } = useUser();
+  const db = useFirestore();
+  
+  const userRef = useMemoFirebase(() => user ? doc(db, 'users', user.uid) : null, [user, db]);
+  const { data: userData, isLoading: isUserLoading } = useDoc(userRef);
+
+  const statCards = [
+    { title: 'Active Sites', value: userData?.sites || '0', icon: Server, loading: isUserLoading },
+    { title: 'Storage Used', value: `${userData?.storageUsed || '0'} GB`, icon: HardDrive, loading: isUser_loading },
+    { title: 'Bandwidth', value: `${userData?.bandwidthUsed || '0'} GB`, icon: Globe, loading: isUserLoading },
+    { title: 'Uptime', value: '99.98%', icon: Signal, loading: isUserLoading },
+  ];
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold font-headline tracking-tight">
+          Dashboard
+        </h1>
         <p className="text-muted-foreground">
           Welcome back! Here's a quick overview of your account.
         </p>
@@ -36,15 +65,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-              <card.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
-            </CardContent>
-          </Card>
+          <StatCard key={card.title} {...card} />
         ))}
       </div>
 
@@ -53,7 +74,8 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Resource Usage</CardTitle>
             <CardDescription>
-              A summary of your bandwidth and storage usage for the last 6 months.
+              A summary of your bandwidth and storage usage for the last 6
+              months.
             </CardDescription>
           </CardHeader>
           <CardContent>
