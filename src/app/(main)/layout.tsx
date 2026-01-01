@@ -16,19 +16,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
 
   React.useEffect(() => {
-    // If the user is not loading and there's no user, redirect to login.
-    // This allows unauthenticated users to access specific pages like /trust or /sla.
-    if (!isUserLoading && !user && !['/trust', '/sla'].includes(pathname)) {
+    // If auth is done loading and there's no user, they must log in.
+    if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, isUserLoading, router, pathname]);
+  }, [user, isUserLoading, router]);
 
-  // Public pages that don't require any auth or billing checks
-  if (['/trust', '/sla'].includes(pathname)) {
-    return <>{children}</>;
-  }
-  
   React.useEffect(() => {
+    // If the billing gate is done loading and access is not allowed,
+    // redirect to the billing required page.
     if (!isGateLoading && !allowed) {
       router.push('/billing-required');
     }
@@ -44,17 +40,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
+  // If still loading or not allowed, render nothing to prevent component flicker.
   if (!user || !allowed) {
     return null; 
   }
   
+  // The admin layout handles its own structure.
   if (pathname.startsWith('/admin')) {
     return <>{children}</>
   }
   
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-muted/40">
         <MainSidebar />
         <div className="flex-1 flex flex-col">
           <Header />

@@ -28,7 +28,7 @@ import { useUser, useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
 
 const menuItems = [
-  { href: "/", label: "Dashboard", icon: LayoutGrid },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { href: "/sites", label: "Sites", icon: Server },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/support", label: "Support", icon: LifeBuoy },
@@ -60,7 +60,7 @@ export function MainSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
           <HardDrive className="w-7 h-7 text-sidebar-primary" />
           <span className="font-bold text-lg font-headline text-sidebar-foreground">JusHostIt</span>
         </Link>
