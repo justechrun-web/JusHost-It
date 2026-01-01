@@ -85,12 +85,15 @@ export function CreateSiteDialog() {
     setCreateRunning(true);
 
     try {
+      // This Cloud Function is the secure entrypoint to the provisioning pipeline.
+      // It will authenticate the user, check their plan limits, and then
+      // trigger the Kubernetes resource creation you've designed.
       const createSite = httpsCallable(functions, 'createSite');
       await createSite({ domain, plan });
 
       toast({
         title: 'Site Creation Initiated',
-        description: `Your new site "${domain}" is being provisioned.`,
+        description: `Your new site "${domain}" is being provisioned. This may take a few minutes.`,
       });
       setDomain('');
       setSitePurpose('');
@@ -102,7 +105,7 @@ export function CreateSiteDialog() {
         variant: 'destructive',
         title: 'Error creating site',
         description:
-          error.message || 'There was a problem creating your site.',
+          error.message || 'There was a problem provisioning your site. Please contact support if the issue persists.',
       });
     } finally {
       setCreateRunning(false);
@@ -202,7 +205,7 @@ export function CreateSiteDialog() {
               {createRunning && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Create Site
+              Provision Site
             </Button>
           </DialogFooter>
         </form>
