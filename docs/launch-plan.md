@@ -1,16 +1,12 @@
-# JusHostIt - Beta to General Availability (GA) Launch Plan
-
-**Version:** 1.0
-**Status:** Approved for Execution
-**Owner:** Founding Team
+# JusHostIt - Launch Plan: From Beta to General Availability (GA)
 
 ---
 
 ## 1. Guiding Principles
 
-This launch is governed by three core principles: **Control, Validation, and Trust.**
+Our launch is governed by three core principles: **Control, Validation, and Trust.**
 
-1.  **Control:** We will control the rollout at every stage. No "big bang" launches. We onboard users deliberately to ensure platform stability and service quality.
+1.  **Control:** We will control the rollout at every stage. We will onboard users deliberately to ensure platform stability and service quality.
 2.  **Validation:** We will validate every core system—provisioning, billing, and security—with real users and real money before scaling.
 3.  **Trust:** We will earn customer trust by being transparent, meeting our commitments (SLA), and demonstrating operational excellence from day one.
 
@@ -20,81 +16,72 @@ This launch is governed by three core principles: **Control, Validation, and Tru
 
 The launch is structured in three distinct phases. Progress to the next phase is determined by meeting specific readiness gates, not by dates.
 
-### Phase I: Internal Alpha (Complete)
+### **Phase I: Private Beta (30–60 days)**
 
-*   **Goal:** Validate core functionality and deployment pipeline.
-*   **Users:** Founding team only.
-*   **Environment:** Production infrastructure, using dev/test Stripe accounts.
-*   **Key Activities:**
-    *   Deploy and test the complete Terraform stack.
-    *   Run end-to-end tests on the provisioning worker (create, suspend, resume sites).
-    *   Verify all admin and user roles function as per Firestore rules.
-    *   Trigger and verify all audit log events.
-    *   Generate mock usage data and test the `aggregateDailyUsage` function.
-
-*   **Readiness Gate to Phase II (Complete):**
-    *   [x] At least 10 successful site creation/deletion cycles completed.
-    *   [x] All core UI flows in the admin and user dashboards are verified against the backend.
-    *   [x] End-to-end billing cycle simulated successfully (usage report → Stripe invoice).
-    *   [x] CI/CD pipeline successfully deploys app and infra changes to a staging environment.
-
-### Phase II: Private Beta (Invite-Only)
-
-*   **Goal:** Validate the platform with trusted, friendly users and test real-world billing.
-*   **Users:** 5-10 trusted beta customers (e.g., from personal network, advisors).
-*   **Environment:** Production infrastructure with live Stripe keys.
-*   **Offer:** Free service for the first month, then 50% discount for 6 months. Clear communication that this is a beta.
-*   **Key Activities:**
-    *   Onboard users manually. Provide high-touch support.
-    *   Monitor provisioning jobs and billing events for any failures.
-    *   **CRITICAL:** Manually verify first real Stripe usage records and invoices for accuracy.
-    *   Rehearse incident response plan with a simulated outage.
-    *   Collect feedback on user experience, documentation, and onboarding.
-
-*   **Readiness Gate to Phase III:**
-    *   [ ] First set of metered billing invoices successfully generated and paid via Stripe.
-    *   [ ] At least one full billing cycle (e.g., 30 days) completed without major billing discrepancies.
-    *   [x] Public Trust Center and SLA documents are live and reviewed.
+*   **Audience:**
+    *   Friendly startups
+    *   Dev agencies
+    *   Power users (containers, APIs)
+*   **Goals:**
+    *   Validate provisioning reliability
+    *   Validate billing accuracy
+    *   Gather UX feedback
+*   **Controls:**
+    *   Invite-only
+    *   Usage caps enforced
+    *   High-touch, manual support SLA
+*   **Success Metrics (Readiness Gate to Public Beta):**
+    *   [ ] ≥99.9% provisioning success rate over the beta period.
+    *   [ ] Zero billing disputes or inaccuracies reported by beta customers.
+    *   [ ] <5% weekly churn of active beta users.
+    *   [ ] Public Trust Center and SLA documents are live and reviewed.
     *   [ ] `status.jushostit.com` is operational and tested.
-    *   [ ] No critical, un-remediated security vulnerabilities found.
 
-### Phase III: General Availability (GA) - Public Launch
+### **Phase II: Public Beta**
 
-*   **Goal:** Open the platform to the public for self-service sign-ups and scale customer acquisition.
-*   **Users:** Public.
-*   **Environment:** Production.
-*   **Key Activities:**
-    *   Enable self-service sign-up on the website.
-    *   Activate the official SLA (as defined in `sla.md`).
-    *   Launch marketing and PR activities (e.g., Product Hunt, Hacker News, targeted outreach).
-    *   Scale monitoring and support systems.
-    *   Begin formal SOC 2 Type I audit process with a third-party firm.
+*   **Unlock:**
+    *   Public self-service signup on the website.
+    *   Credit card required for all new accounts.
+    *   Fully self-service provisioning is enabled.
+*   **Add / Go-Live:**
+    *   Customer-facing usage dashboards are live.
+    *   Automated usage alerts and cost forecasting are active.
+    *   Public status page is actively maintained.
+
+### **Phase III: General Availability (GA)**
+
+*   **Requirements to Declare GA:**
+    *   SOC 2 Type I audit is formally in progress with a third-party firm.
+    *   A formal on-call rotation and process is established for the engineering team.
+    *   Incident response playbooks are documented and have been rehearsed.
+    *   Contract-ready billing, terms of service, and enterprise agreements are finalized.
+*   **Marketing & Growth Activities:**
+    *   Official launch on Product Hunt, Hacker News, and other relevant communities.
+    *   Announce cloud credit programs for startups.
+    *   Begin targeted outreach for enterprise and business-tier customers.
 
 ---
 
 ## 3. Pre-Launch Readiness Checklist
 
 ### Technical
-
-*   [x] **Terraform:** State is stored in a secure, remote backend (e.g., GCS bucket with versioning and encryption).
-*   [x] **Kubernetes:** Controller is deployed with RBAC and resource quotas configured.
-*   [x] **Firebase:** Firestore rules are locked down. Cloud Functions have been deployed and tested.
-*   [x] **Stripe:** Live and test mode API keys are in Secret Manager. Webhook endpoint is configured and secret is secured.
-*   [x] **CI/CD:** Automated pipeline for app and infra is in place (GitHub Actions).
-*   [x] **Monitoring:** Alerts are configured for provisioning job failures, high resource usage, and function errors.
+*   [x] **Terraform:** State is stored in a secure, remote backend. The entire infrastructure is managed as code.
+*   [x] **Kubernetes:** The GKE cluster, node pools, and namespaces are fully codified via Terraform.
+*   [x] **Firebase:** Firestore rules are locked down. All data mutations are handled by secure Cloud Functions.
+*   [x] **Stripe:** Live and test mode API keys are in Secret Manager. Webhook endpoint is configured and secure.
+*   [x] **CI/CD:** A unified, automated pipeline for both application code and infrastructure is in place (GitHub Actions).
+*   [x] **Monitoring & Alerts:** Core infrastructure and application-level monitoring is active. Admin alerts for critical failures are configured.
 *   [x] **Backups:** Firestore point-in-time recovery (PITR) is enabled.
 
 ### Legal & Compliance
-
 *   [x] Terms of Service and Privacy Policy are published.
 *   [x] Public Trust Center and SLA pages are live.
 *   [x] All compliance documents (`security-questionnaire.md`, etc.) are ready for distribution.
 
 ### Business & Operations
-
 *   [x] Pricing page is live and accurate.
 *   [x] Support channels (e.g., support ticket system) are operational.
-*   [x] Incident response roles are assigned (e.g., Incident Commander).
+*   [x] Incident response roles are assigned.
 
 ---
 
