@@ -46,7 +46,7 @@ const tiers = [
       'Invoice billing'
     ],
     cta: 'Contact Sales',
-    href: 'mailto:sales@jushostit.com'
+    href: '/signup?plan=business'
   }
 ];
 

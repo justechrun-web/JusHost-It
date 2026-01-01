@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
   createUserWithEmailAndPassword,
@@ -69,8 +69,7 @@ const formSchema = z.object({
   plan: z.string({ required_error: "Please select a plan." }),
 });
 
-
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
   const auth = useAuth();
   const functions = useFunctions();
@@ -79,7 +78,8 @@ export default function SignupPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
+  const searchParams = useSearchParams();
+  const preselectedPlan = searchParams.get('plan') || 'basic';
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -87,17 +87,31 @@ export default function SignupPage() {
       fullName: "",
       email: "",
       password: "",
-      plan: "basic",
+      plan: preselectedPlan,
     },
     mode: 'onTouched'
   });
   
   const password = useWatch({ control: form.control, name: 'password' });
 
+  useEffect(() => {
+    // If the plan from URL is valid, set it in the form.
+    const plan = searchParams.get('plan');
+    if (plan && ['basic', 'pro', 'business'].includes(plan)) {
+      form.setValue('plan', plan);
+    }
+  }, [searchParams, form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     setError(null);
+    
+    if (values.plan === 'business') {
+        router.push('mailto:sales@jushostit.com');
+        setLoading(false);
+        return;
+    }
 
     try {
       // Step 1: Create user client-side to get a UID
@@ -188,10 +202,8 @@ export default function SignupPage() {
       setGoogleLoading(false);
     }
   };
-
-  return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12">
+  
+    return (
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
             <HardDrive className="h-8 w-8 mx-auto text-primary" />
@@ -257,7 +269,7 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Hosting Plan</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a plan" />
@@ -275,7 +287,7 @@ export default function SignupPage() {
               />
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Account & Proceed to Payment
+                {form.getValues('plan') === 'business' ? 'Contact Sales' : 'Create Account & Proceed to Payment'}
               </Button>
             </form>
           </Form>
@@ -322,18 +334,31 @@ export default function SignupPage() {
             </Link>
           </div>
         </div>
+    );
+}
+
+export default function SignupPage() {
+  const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
+
+  return (
+    // Wrap the form in a Suspense boundary for useSearchParams
+    <React.Suspense fallback={<div>Loading...</div>}>
+      <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+        <div className="flex items-center justify-center py-12">
+            <SignupForm />
+        </div>
+        <div className="hidden bg-muted lg:block relative">
+          {loginImage && (
+            <Image
+              src={loginImage.imageUrl}
+              alt={loginImage.description}
+              data-ai-hint={loginImage.imageHint}
+              fill
+              className="object-cover"
+            />
+          )}
+        </div>
       </div>
-      <div className="hidden bg-muted lg:block relative">
-        {loginImage && (
-          <Image
-            src={loginImage.imageUrl}
-            alt={loginImage.description}
-            data-ai-hint={loginImage.imageHint}
-            fill
-            className="object-cover"
-          />
-        )}
-      </div>
-    </div>
+    </React.Suspense>
   );
 }
