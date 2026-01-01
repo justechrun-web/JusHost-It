@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -77,7 +76,6 @@ export default function LoginPage() {
     setGoogleLoading(true);
     setError(null);
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ hd: 'company.com' });
 
     try {
       await signInWithPopup(auth, provider);

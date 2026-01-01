@@ -106,21 +106,13 @@ export default function SignupPage() {
       
       const initializeUserAndBilling = httpsCallable(functions, 'initializeUserAndBilling');
       
-      // const { data } = await initializeUserAndBilling({ 
-      //   fullName: values.fullName,
-      //   plan: values.plan 
-      // });
-      // const { checkoutUrl } = data as { checkoutUrl: string };
-
-      // window.location.href = checkoutUrl;
-      
-      await sendEmailVerification(userCredential.user);
-      toast({
-        title: 'Verification Email Sent',
-        description:
-          'Please check your inbox to verify your email. The next step would be payment.',
+      const { data } = await initializeUserAndBilling({ 
+        fullName: values.fullName,
+        plan: values.plan 
       });
-      router.push('/login');
+      const { checkoutUrl } = data as { checkoutUrl: string };
+
+      window.location.href = checkoutUrl;
 
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
@@ -141,7 +133,6 @@ export default function SignupPage() {
     setGoogleLoading(true);
     setError(null);
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ hd: 'company.com' });
 
     try {
       await signInWithPopup(auth, provider);
