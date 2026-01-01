@@ -30,7 +30,7 @@ export function AuditLogsTable() {
     () => db ? query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc')) : null,
     [db]
   );
-  const { data: logs, loading } = useCollection<AuditLog>(auditLogQuery);
+  const { data: logs, isLoading } = useCollection<AuditLog>(auditLogQuery);
   const [adminFilter, setAdminFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
 
@@ -79,7 +79,7 @@ export function AuditLogsTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {loading ? (
+          {isLoading ? (
             <TableRow>
               <TableCell colSpan={4} className="text-center">
                 <div className="flex justify-center items-center p-8">
@@ -101,7 +101,7 @@ export function AuditLogsTable() {
               </TableRow>
             ))
           )}
-          {!loading && filteredLogs.length === 0 && (
+          {!isLoading && filteredLogs.length === 0 && (
             <TableRow>
               <TableCell
                 colSpan={4}
