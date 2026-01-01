@@ -6,21 +6,30 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { MainSidebar } from "@/components/main-sidebar";
 import { Header } from "@/components/header";
 import { usePathname, useRouter } from "next/navigation";
-import { useUser } from "@/firebase";
+import { useUser, useAuthGate } from "@/firebase";
 import { Loader2 } from "lucide-react";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
+  const { allowed, loading: isGateLoading } = useAuthGate();
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!loading && !user) {
+    if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
 
-  if (loading) {
+  React.useEffect(() => {
+    if (!isGateLoading && !allowed) {
+      router.push('/billing-required');
+    }
+  }, [allowed, isGateLoading, router]);
+
+  const isLoading = isUserLoading || isGateLoading;
+
+  if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -28,7 +37,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  if (!user) {
+  if (!user || !allowed) {
     return null; 
   }
   
@@ -50,3 +59,5 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     </SidebarProvider>
   );
 }
+
+    

@@ -31,6 +31,19 @@
         "mfaEnabled": {
           "type": "boolean",
           "description": "Indicates if multi-factor authentication is enabled for the user."
+        },
+        "plan": {
+            "type": "string",
+            "description": "The user's selected subscription plan (e.g., 'basic', 'pro')."
+        },
+        "stripeCustomerId": {
+            "type": "string",
+            "description": "The customer ID from Stripe."
+        },
+        "subscriptionStatus": {
+            "type": "string",
+            "description": "The current status of the user's subscription.",
+            "enum": ["trialing", "active", "past_due", "canceled", "incomplete"]
         }
       },
       "required": [
