@@ -1,4 +1,3 @@
-
 # JusHostIt - Beta to General Availability (GA) Launch Plan
 
 **Version:** 1.0
@@ -21,7 +20,7 @@ This launch is governed by three core principles: **Control, Validation, and Tru
 
 The launch is structured in three distinct phases. Progress to the next phase is determined by meeting specific readiness gates, not by dates.
 
-### Phase I: Internal Alpha (Current State)
+### Phase I: Internal Alpha (Complete)
 
 *   **Goal:** Validate core functionality and deployment pipeline.
 *   **Users:** Founding team only.
@@ -33,10 +32,11 @@ The launch is structured in three distinct phases. Progress to the next phase is
     *   Trigger and verify all audit log events.
     *   Generate mock usage data and test the `aggregateDailyUsage` function.
 
-*   **Readiness Gate to Phase II:**
+*   **Readiness Gate to Phase II (Complete):**
     *   [x] At least 10 successful site creation/deletion cycles completed.
     *   [x] All core UI flows in the admin and user dashboards are verified against the backend.
     *   [x] End-to-end billing cycle simulated successfully (usage report → Stripe invoice).
+    *   [x] CI/CD pipeline successfully deploys app and infra changes to a staging environment.
 
 ### Phase II: Private Beta (Invite-Only)
 
@@ -46,7 +46,7 @@ The launch is structured in three distinct phases. Progress to the next phase is
 *   **Offer:** Free service for the first month, then 50% discount for 6 months. Clear communication that this is a beta.
 *   **Key Activities:**
     *   Onboard users manually. Provide high-touch support.
-    *   Monitor `provisioning_jobs` and `billing_events` for any failures.
+    *   Monitor provisioning jobs and billing events for any failures.
     *   **CRITICAL:** Manually verify first real Stripe usage records and invoices for accuracy.
     *   Rehearse incident response plan with a simulated outage.
     *   Collect feedback on user experience, documentation, and onboarding.
@@ -80,6 +80,7 @@ The launch is structured in three distinct phases. Progress to the next phase is
 *   [x] **Kubernetes:** Controller is deployed with RBAC and resource quotas configured.
 *   [x] **Firebase:** Firestore rules are locked down. Cloud Functions have been deployed and tested.
 *   [x] **Stripe:** Live and test mode API keys are in Secret Manager. Webhook endpoint is configured and secret is secured.
+*   [x] **CI/CD:** Automated pipeline for app and infra is in place (GitHub Actions).
 *   [x] **Monitoring:** Alerts are configured for provisioning job failures, high resource usage, and function errors.
 *   [x] **Backups:** Firestore point-in-time recovery (PITR) is enabled.
 
