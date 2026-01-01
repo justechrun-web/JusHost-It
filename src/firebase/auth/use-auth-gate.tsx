@@ -70,5 +70,3 @@ function useUserDoc() {
 
     return { userDoc, loading };
 }
-
-    
