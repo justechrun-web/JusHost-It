@@ -71,9 +71,9 @@ export function MainSidebar() {
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === item.href}
+                isActive={pathname.startsWith(item.href)}
                 className={cn(
-                  pathname === item.href && "bg-sidebar-accent"
+                  pathname.startsWith(item.href) && "bg-sidebar-accent"
                 )}
               >
                 <Link href={item.href}>

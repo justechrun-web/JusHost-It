@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -18,7 +19,7 @@ const adminTabs = [
   { name: 'Overview', href: '/admin' },
   { name: 'Sites', href: '/admin/sites' },
   { name: 'Users', href: '/admin/users' },
-  { name: 'Audit Logs', href: '/admin/audit' },
+  { name: 'Audit', href: '/admin/audit' },
   { name: 'Metrics', href: '/admin/metrics' },
 ];
 
@@ -33,7 +34,8 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   
-  const activeTab = adminTabs.find(tab => pathname.startsWith(tab.href))?.href || '/admin';
+  const activeTab = adminTabs.find(tab => pathname === tab.href || (tab.href !== '/admin' && pathname.startsWith(tab.href)))?.href || '/admin';
+
 
   React.useEffect(() => {
     if (!isUserLoading) {
@@ -47,7 +49,7 @@ export default function AdminLayout({
         setIsAdmin(isAdminClaim);
 
         if (!isAdminClaim) {
-          router.push('/');
+          router.push('/dashboard');
           setLoading(false);
           return;
         }
@@ -79,7 +81,7 @@ export default function AdminLayout({
     <div className="p-4 sm:p-6 md:p-8">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/">
+          <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
             <span className="sr-only">Back to Dashboard</span>
           </Link>
@@ -88,11 +90,11 @@ export default function AdminLayout({
           Admin Panel
         </h1>
       </div>
-      <Tabs value={activeTab} className="w-full">
+      <Tabs value={activeTab} className="w-full" onValueChange={(value) => router.push(value)}>
         <TabsList className="grid w-full grid-cols-5 mb-4">
             {adminTabs.map((tab) => (
-                <TabsTrigger value={tab.href} key={tab.href} asChild>
-                    <Link href={tab.href}>{tab.name}</Link>
+                <TabsTrigger value={tab.href} key={tab.href}>
+                    {tab.name}
                 </TabsTrigger>
             ))}
         </TabsList>

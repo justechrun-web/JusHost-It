@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFunctions } from '@/firebase';
@@ -5,6 +6,8 @@ import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 export function UserAction({
   user,
@@ -15,9 +18,11 @@ export function UserAction({
 }) {
   const functions = useFunctions();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const toggleRole = async () => {
     if (!user.id) return;
+    setLoading(true);
     const newRole = user.role === 'admin' ? 'user' : 'admin';
     const action = newRole === 'admin' ? 'promoteUser' : 'demoteUser';
     const userAdminAction = httpsCallable(functions, 'userAdminAction');
@@ -36,6 +41,8 @@ export function UserAction({
         description:
           error.message || 'There was a problem updating the user role.',
       });
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -46,9 +53,10 @@ export function UserAction({
       onClick={toggleRole}
       variant={user.role === 'admin' ? 'destructive' : 'default'}
       size="sm"
-      disabled={isCurrentUser}
+      disabled={isCurrentUser || loading}
       title={isCurrentUser ? "You can't change your own role." : ''}
     >
+      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
       {user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
     </Button>
   );

@@ -1,10 +1,14 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { collection, getDocs, getCountFromServer } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Users, Server, AlertTriangle } from 'lucide-react';
+import { SitesTable } from './components/sites-table';
+import { UsersTable } from './components/users-table';
+
 
 const StatCard = ({
   title,
@@ -44,16 +48,29 @@ export default function AdminDashboard() {
       if (!db) return;
       setLoading(true);
       try {
-        const usersPromise = getDocs(collection(db, 'users'));
-        const sitesPromise = getDocs(collection(db, 'sites'));
-        const [usersSnap, sitesSnap] = await Promise.all([
-          usersPromise,
-          sitesPromise,
+        const usersCol = collection(db, 'users');
+        const sitesCol = collection(db, 'sites');
+
+        const usersCountPromise = getCountFromServer(usersCol);
+        const sitesCountPromise = getCountFromServer(sitesCol);
+        
+        // This part is less efficient, but necessary for a specific status count.
+        // For larger datasets, this logic should move to a backend aggregation.
+        const sitesSnapPromise = getDocs(collection(db, 'sites'));
+
+        const [usersCountSnap, sitesCountSnap, sitesSnap] = await Promise.all([
+          usersCountPromise,
+          sitesCountPromise,
+          sitesSnapPromise
         ]);
         
         const suspendedCount = sitesSnap.docs.filter(doc => doc.data().status === 'Suspended').length;
 
-        setStats({ users: usersSnap.size, sites: sitesSnap.size, suspended: suspendedCount });
+        setStats({ 
+          users: usersCountSnap.data().count, 
+          sites: sitesCountSnap.data().count, 
+          suspended: suspendedCount 
+        });
       } catch (error) {
         console.error('Error loading admin stats:', error);
       } finally {
@@ -64,8 +81,8 @@ export default function AdminDashboard() {
   }, [db]);
 
   return (
-    <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className='space-y-8'>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           title="Total Users"
           value={stats.users}
@@ -84,6 +101,10 @@ export default function AdminDashboard() {
           icon={AlertTriangle}
           loading={loading}
         />
+      </div>
+      <div className='space-y-8'>
+        <SitesTable />
+        <UsersTable />
       </div>
     </div>
   );

@@ -55,19 +55,27 @@ export function AuditLogsTable() {
 
   return (
     <div className="border rounded-lg mt-4">
-      <div className="p-4 flex gap-4">
-        <Input
-          placeholder="Filter by Admin ID..."
-          value={adminFilter}
-          onChange={(e) => setAdminFilter(e.target.value)}
-          className="max-w-sm"
-        />
-        <Input
-          placeholder="Filter by Action..."
-          value={actionFilter}
-          onChange={(e) => setActionFilter(e.target.value)}
-          className="max-w-sm"
-        />
+       <div className="p-4 flex items-center justify-between">
+        <div>
+            <h3 className="text-xl font-bold tracking-tight">Audit Logs</h3>
+            <p className="text-muted-foreground">
+                A record of all administrative actions performed on the platform.
+            </p>
+        </div>
+        <div className="flex gap-4">
+            <Input
+            placeholder="Filter by Admin ID..."
+            value={adminFilter}
+            onChange={(e) => setAdminFilter(e.target.value)}
+            className="max-w-sm"
+            />
+            <Input
+            placeholder="Filter by Action..."
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value)}
+            className="max-w-sm"
+            />
+        </div>
       </div>
       <Table>
         <TableHeader>

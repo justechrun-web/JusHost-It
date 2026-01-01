@@ -63,118 +63,128 @@ export function ResourceMetrics() {
 
   const metricData = metrics && metrics.length > 0 ? metrics[0] : undefined;
   const chartData = useMemo(() => generateChartData(metricData), [metricData]);
-  const siteId = metricData?.id || 'default_site';
+  const siteId = metricData?.id || 'platform-total';
 
   return (
-    <div className="grid gap-4 mt-4 md:grid-cols-2 lg:grid-cols-3">
-      {isLoading ? (
-        <div className="col-span-full flex justify-center items-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    <div className='space-y-8'>
+        <div className="flex items-center justify-between">
+            <div>
+                <h3 className="text-xl font-bold tracking-tight">Resource Metrics</h3>
+                <p className="text-muted-foreground">
+                    Live and historical data on platform-wide resource consumption.
+                </p>
+            </div>
         </div>
-      ) : (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>{siteId}</CardTitle>
-              <CardDescription>Current resource usage</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-muted-foreground">CPU</span>
-                  <span className="text-2xl font-bold">
-                    {metricData?.cpu || 'N/A'}%
-                  </span>
+        <div className="grid gap-4 mt-4 md:grid-cols-2 lg:grid-cols-3">
+        {isLoading ? (
+            <div className="col-span-full flex justify-center items-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        ) : (
+            <>
+            <Card>
+                <CardHeader>
+                <CardTitle>{siteId}</CardTitle>
+                <CardDescription>Current resource usage</CardDescription>
+                </CardHeader>
+                <CardContent>
+                <div className="grid gap-4">
+                    <div className="flex items-baseline justify-between">
+                    <span className="text-muted-foreground">CPU</span>
+                    <span className="text-2xl font-bold">
+                        {metricData?.cpu || 'N/A'}%
+                    </span>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                    <span className="text-muted-foreground">Memory</span>
+                    <span className="text-2xl font-bold">
+                        {metricData?.memory || 'N/A'} MB
+                    </span>
+                    </div>
+                    <div className="flex items-baseline justify-between">
+                    <span className="text-muted-foreground">Disk</span>
+                    <span className="text-2xl font-bold">
+                        {metricData?.disk || 'N/A'} GB
+                    </span>
+                    </div>
                 </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-muted-foreground">Memory</span>
-                  <span className="text-2xl font-bold">
-                    {metricData?.memory || 'N/A'} MB
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-muted-foreground">Disk</span>
-                  <span className="text-2xl font-bold">
-                    {metricData?.disk || 'N/A'} GB
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Usage History (CPU %)</CardTitle>
-              <CardDescription>
-                CPU usage over the last 7 days.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={{}} className="h-[200px] w-full">
-                <AreaChart
-                  data={chartData}
-                  margin={{ left: -20, right: 20, top: 5, bottom: 5 }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis unit="%" />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent />}
-                  />
-                  <Area
-                    dataKey="cpu"
-                    type="natural"
-                    fill="var(--color-primary)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-primary)"
-                  />
-                </AreaChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Usage History (Memory MB)</CardTitle>
-              <CardDescription>
-                Memory usage over the last 7 days.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={{}} className="h-[200px] w-full">
-                <AreaChart
-                  data={chartData}
-                  margin={{ left: -20, right: 20, top: 5, bottom: 5 }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis unit="MB" />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent />}
-                  />
-                  <Area
-                    dataKey="memory"
-                    type="natural"
-                    fill="var(--color-accent)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-accent)"
-                  />
-                </AreaChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        </>
-      )}
+                </CardContent>
+            </Card>
+            <Card className="lg:col-span-2">
+                <CardHeader>
+                <CardTitle>Usage History (CPU %)</CardTitle>
+                <CardDescription>
+                    CPU usage over the last 7 days.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <ChartContainer config={{}} className="h-[200px] w-full">
+                    <AreaChart
+                    data={chartData}
+                    margin={{ left: -20, right: 20, top: 5, bottom: 5 }}
+                    >
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                    />
+                    <YAxis unit="%" />
+                    <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent />}
+                    />
+                    <Area
+                        dataKey="cpu"
+                        type="natural"
+                        fill="var(--color-primary)"
+                        fillOpacity={0.4}
+                        stroke="var(--color-primary)"
+                    />
+                    </AreaChart>
+                </ChartContainer>
+                </CardContent>
+            </Card>
+            <Card className="lg:col-span-2">
+                <CardHeader>
+                <CardTitle>Usage History (Memory MB)</CardTitle>
+                <CardDescription>
+                    Memory usage over the last 7 days.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <ChartContainer config={{}} className="h-[200px] w-full">
+                    <AreaChart
+                    data={chartData}
+                    margin={{ left: -20, right: 20, top: 5, bottom: 5 }}
+                    >
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                    />
+                    <YAxis unit="MB" />
+                    <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent />}
+                    />
+                    <Area
+                        dataKey="memory"
+                        type="natural"
+                        fill="var(--color-accent)"
+                        fillOpacity={0.4}
+                        stroke="var(--color-accent)"
+                    />
+                    </AreaChart>
+                </ChartContainer>
+                </CardContent>
+            </Card>
+            </>
+        )}
+        </div>
     </div>
   );
 }

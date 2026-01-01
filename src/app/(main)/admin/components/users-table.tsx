@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -10,23 +11,31 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { useCollection, useUser } from '@/firebase';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { UserAction } from './user-action';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
-type User = {
+
+type AppUser = {
   id: string;
   email: string;
-  role: 'user' | 'admin';
+  role?: 'user' | 'admin';
   createdAt: { seconds: number; nanoseconds: number } | string;
+  company?: string;
 };
 
 export function UsersTable() {
-  const { data: users, loading } = useCollection<User>('users');
+  const db = useFirestore();
+  const usersQuery = useMemoFirebase(
+    () => db ? query(collection(db, 'users'), orderBy('email'), limit(50)) : null,
+    [db]
+  );
+  const { data: users, isLoading } = useCollection<AppUser>(usersQuery);
   const { user: currentUser } = useUser();
 
-  const formatDate = (timestamp: User['createdAt']) => {
+  const formatDate = (timestamp: AppUser['createdAt']) => {
     if (!timestamp) return 'N/A';
     if (typeof timestamp === 'string') {
       return format(new Date(timestamp), 'PPP');
@@ -37,6 +46,12 @@ export function UsersTable() {
 
   return (
     <div className="border rounded-lg mt-4">
+        <div className="p-4">
+            <h3 className="text-xl font-bold tracking-tight">User Management</h3>
+            <p className="text-muted-foreground">
+                Promote or demote users to administrators.
+            </p>
+        </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -48,7 +63,7 @@ export function UsersTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {loading ? (
+          {isLoading ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center">
                 <div className="flex justify-center items-center p-8">
@@ -56,7 +71,7 @@ export function UsersTable() {
                 </div>
               </TableCell>
             </TableRow>
-          ) : (
+          ) : users && users.length > 0 ? (
             users.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.email}</TableCell>
@@ -64,7 +79,7 @@ export function UsersTable() {
                   <Badge
                     variant={user.role === 'admin' ? 'destructive' : 'secondary'}
                   >
-                    {user.role}
+                    {user.role || 'user'}
                   </Badge>
                 </TableCell>
                 <TableCell>{(user as any).company || 'N/A'}</TableCell>
@@ -74,6 +89,12 @@ export function UsersTable() {
                 </TableCell>
               </TableRow>
             ))
+          ): (
+             <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    No users found.
+                </TableCell>
+            </TableRow>
           )}
         </TableBody>
       </Table>
