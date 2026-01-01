@@ -157,6 +157,54 @@
         "description",
         "status"
       ]
+    },
+    "LoginEvent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LoginEvent",
+      "type": "object",
+      "description": "Records a user login event for security and auditing purposes.",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The ID of the user who logged in."
+        },
+        "ip": {
+          "type": "string",
+          "description": "The IP address from which the login occurred."
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "The user agent string of the client."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The server timestamp of the login event.",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "timestamp"]
+    },
+    "Organization": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Organization",
+        "type": "object",
+        "description": "Represents an organization or company within the platform.",
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "Unique identifier for the organization, typically the domain name."
+            },
+            "domain": {
+                "type": "string",
+                "description": "The primary email domain associated with the organization."
+            },
+            "createdAt": {
+                "type": "string",
+                "description": "Timestamp indicating when the organization was created.",
+                "format": "date-time"
+            }
+        },
+        "required": ["id", "domain", "createdAt"]
     }
   },
   "auth": {
@@ -245,6 +293,26 @@
         }
       },
       {
+        "path": "/users/{userId}/login_events/{eventId}",
+        "definition": {
+            "entityName": "LoginEvent",
+            "schema": {
+                "$ref": "#/backend/entities/LoginEvent"
+            },
+            "description": "Stores a user's login history. Read-only for the user.",
+             "params": [
+                {
+                    "name": "userId",
+                    "description": "The unique identifier for the user."
+                },
+                {
+                    "name": "eventId",
+                    "description": "The unique identifier for the login event."
+                }
+            ]
+        }
+      },
+      {
         "path": "/roles_admin/{userId}",
         "definition": {
           "entityName": "User",
@@ -259,8 +327,26 @@
             }
           ]
         }
+      },
+      {
+          "path": "/orgs/{orgId}",
+          "definition": {
+              "entityName": "Organization",
+              "schema": {
+                  "$ref": "#/backend/entities/Organization"
+              },
+              "description": "Stores organization information. Automatically created when a user signs up with a new email domain.",
+              "params": [
+                  {
+                      "name": "orgId",
+                      "description": "The unique identifier for the organization (domain name)."
+                  }
+              ]
+          }
       }
     ],
     "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability for the JusHostIt application. User data, site information, billing subscriptions, and support tickets are organized into collections, with clear ownership enforced through path-based access and denormalization where necessary. The structure supports the required QAPs (Rules are not Filters) by segregating data based on access requirements and utilizing path-based ownership for secure listing operations.\n\n1.  **Users Collection:** Stores user profiles. Path-based ownership ensures that only the user can access their own profile data.\n2.  **Sites Collection:** Stores website information. Each site document includes the `userId` field, enabling security rules to enforce that only the owner (user) of the site can read or modify it. The path `/users/{userId}/sites/{siteId}` enforces ownership and enables efficient listing of sites owned by a specific user. Also, this achieves Authorization Independence.\n3.  **BillingSubscriptions Collection:** Stores billing subscription information. Each subscription document includes the `userId` field, enabling security rules to enforce that only the owner (user) of the subscription can read or modify it. The path `/users/{userId}/billingSubscriptions/{billingSubscriptionId}` enforces ownership and enables efficient listing of subscriptions owned by a specific user. Also, this achieves Authorization Independence.\n4.  **SupportTickets Collection:** Stores support ticket information. Each ticket document includes the `userId` field, enabling security rules to enforce that only the owner (user) of the ticket can read or modify it. The path `/users/{userId}/supportTickets/{supportTicketId}` enforces ownership and enables efficient listing of tickets owned by a specific user. Also, this achieves Authorization Independence.\n5.  **RolesAdmin Collection:** Stores admin role information. This collection contains documents with the user's UID as the document ID. Existence of a document implies the user has admin privileges. This approach avoids custom claims, relying instead on database existence for authorization."
   }
 }
+
+    

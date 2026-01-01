@@ -1,36 +1,4 @@
 
-/**
- * Core Philosophy: This ruleset enforces a strict user-ownership model. All data is
- * considered private to the user who created it. Access control is based on matching the
- * authenticated user's ID (`request.auth.uid`) with the `userId` in the document path.
- * This ensures that users can only ever access their own information.
- *
- * Data Structure: The data is organized hierarchically. All user-specific data, including
- * sites, billing information, and support tickets, is stored in subcollections under a
- * top-level `/users/{userId}` document. This structure naturally isolates each user's
- * data, simplifying security and queries.
- *
- * Key Security Decisions:
- * - User Isolation: Users are strictly forbidden from reading or writing data belonging
- *   to other users. There is no concept of shared or public data in this model.
- * - No User Listing: It is impossible to list all documents in the `/users` collection,
- *   preventing enumeration of the user base.
- * - Restricted Writes on Sensitive Data: Billing information is read-only for the user.
- *   All modifications to billing records are expected to be performed by a trusted
- *   backend service (e.g., a Cloud Function reacting to Stripe webhooks), preventing
- *   users from tampering with their subscription status or customer ID.
- * - Admin Roles: While an `isAdmin` field exists in the data model, these rules do not
- *   grant admins special access. The core logic relies exclusively on user ownership.
- *   Admin override logic can be added to the helper functions if required in the future.
- *
- * Denormalization for Authorization: To ensure fast and secure access checks, every
- * document in a user's subcollection (e.g., a site or support ticket) contains a
- * denormalized `userId` field. This allows rules to verify ownership without performing
- * costly and slow `get()` calls on parent documents.
- *
- * Structural Segregation: This pattern is not required as there is no mixed public/private
- * data. The entire `/users/{userId}` data tree is treated as private to that user.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -39,77 +7,44 @@ service cloud.firestore {
     // Helper Functions
     // ------------------------------------------------------------------------
 
-    /**
-     * Returns true if the user is signed in.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Returns true if the signed-in user's UID matches the provided userId.
-     * This is the primary function for verifying document ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    /**
-     * Returns true if the user is an administrator.
-     * This checks for a custom claim on the user's auth token.
-     */
     function isAdmin() {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
-    /**
-     * Verifies ownership for an existing document. Used for update and delete operations.
-     */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
-    /**
-     * On create, ensures the new document's internal 'userId' or 'id' field
-     * matches the user ID from the path, enforcing data consistency.
-     */
     function isConsistentOwnerOnCreate(userId) {
-      // The User document itself uses 'id' for the owner link.
-      return request.resource.data.userId == userId || request.resource.data.id == userId;
+      return request.resource.data.userId == userId || request.resource.data.id == userId || request.resource.data.uid == userId;
     }
 
-    /**
-     * On update, ensures the 'userId' or 'id' field cannot be changed.
-     * This prevents re-assigning a document to a different user.
-     */
     function isOwnerFieldImmutable() {
-      // The User document itself uses 'id' for the owner link.
-      return resource.data.userId == request.resource.data.userId || resource.data.id == request.resource.data.id;
+      return resource.data.userId == request.resource.data.userId || resource.data.id == request.resource.data.id || resource.data.uid == request.resource.data.uid;
     }
 
     // ------------------------------------------------------------------------
     // Collection Rules
     // ------------------------------------------------------------------------
     
-    /**
-     * @description Admin access to the root sites collection.
-     * @path /sites/{siteId}
-     * @allow (get, list) Admins can read any site document.
-     */
     match /sites/{siteId} {
         allow get, list: if isAdmin();
     }
+    
+    match /orgs/{orgId} {
+      allow get: if isSignedIn();
+      allow list, create, update, delete: if isAdmin();
+    }
 
 
-    /**
-     * @description Manages a user's own profile document.
-     * @path /users/{userId}
-     * @allow (create) A new user creating their own user record upon signup. auth.uid must match {userId}.
-     * @allow (get) An authenticated user reading their own profile. auth.uid must match {userId}.
-     * @deny (list) Any user trying to list all user documents.
-     * @deny (get) An authenticated user trying to read another user's profile.
-     * @principle Restricts access to a user's own data tree and allows self-creation of their root document.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
@@ -117,15 +52,6 @@ service cloud.firestore {
       allow update: if isExistingOwner(userId) && isOwnerFieldImmutable();
       allow delete: if isExistingOwner(userId);
 
-       /**
-        * @description Manages websites owned by a user.
-        * @path /users/{userId}/sites/{siteId}
-        * @allow (create) A user creating a new site under their own account. auth.uid must match {userId}.
-        * @allow (list) A user listing all sites they own. auth.uid must match {userId}.
-        * @deny (get) A user trying to read site information belonging to another user.
-        * @deny (update) A user attempting to modify another user's site.
-        * @principle Enforces document ownership for all operations within a user-specific subcollection.
-        */
         match /sites/{siteId} {
           allow get: if isOwner(userId) || isAdmin();
           allow list: if isOwner(userId) || isAdmin();
@@ -134,39 +60,25 @@ service cloud.firestore {
           allow delete: if isExistingOwner(userId) || isAdmin();
         }
 
-        /**
-         * @description Manages billing information for a user. This data is read-only for the user.
-         * @path /users/{userId}/billing/{billingId}
-         * @allow (get) A user reading their own billing information. auth.uid must match {userId}.
-         * @deny (create) A user trying to create their own billing record directly.
-         * @deny (update) A user trying to change their subscription status. This must be done by a backend service.
-         * @deny (delete) A user trying to delete their billing history.
-         * @principle Protects sensitive financial data by making it read-only for the client, deferring all writes to a trusted backend.
-         */
-        match /billing/{billingId} {
-          allow get: if isOwner(userId) || isAdmin();
-          allow list: if isOwner(userId) || isAdmin();
-          allow create: if false;
-          allow update: if false;
-          allow delete: if false;
+        match /billingSubscriptions/{billingId} {
+          allow get, list: if isOwner(userId) || isAdmin();
+          allow create, update, delete: if false; // Managed by backend
         }
 
-        /**
-         * @description Manages support tickets submitted by a user.
-         * @path /users/{userId}/supportTickets/{ticketId}
-         * @allow (create) A user creating a new support ticket under their own account. auth.uid must match {userId}.
-         * @allow (list) A user listing all support tickets they have submitted. auth.uid must match {userId}.
-         * @deny (get) A user trying to read another user's support ticket.
-         * @deny (update) A user attempting to modify another user's ticket.
-         * @principle Enforces document ownership for all operations within a user-specific subcollection.
-         */
         match /supportTickets/{ticketId} {
-          allow get: if isOwner(userId) || isAdmin();
-          allow list: if isOwner(userId) || isAdmin();
+          allow get, list: if isOwner(userId) || isAdmin();
           allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
           allow update: if (isExistingOwner(userId) && isOwnerFieldImmutable()) || isAdmin();
           allow delete: if isExistingOwner(userId) || isAdmin();
         }
+
+        match /login_events/{eventId} {
+            allow get, list: if isOwner(userId) || isAdmin();
+            allow create: if isOwner(userId) && isConsistentOwnerOnCreate(userId);
+            allow update, delete: if false; // Events are immutable
+        }
     }
   }
 }
+
+    
