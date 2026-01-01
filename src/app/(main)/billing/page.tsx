@@ -33,12 +33,8 @@ type BillingSubscription = {
   invoices: Array<{ date: string; amount: string; url: string }>;
 };
 
-const requiresStepUp = (user: any) => {
-  if (!user?.metadata?.lastSignInTime) return true;
-  const lastLogin = user.metadata.lastSignInTime;
-  // 5 minutes
-  return Date.now() - new Date(lastLogin).getTime() > 5 * 60 * 1000;
-};
+// 5 minute timeout for re-authentication
+const REAUTH_TIMEOUT = 5 * 60 * 1000;
 
 export default function BillingPage() {
   const { user, isUserLoading } = useUser();
@@ -47,43 +43,70 @@ export default function BillingPage() {
 
   const billingRef = useMemoFirebase(() => {
     if (!user || !db) return null;
-    // NOTE: In a real app, you might have multiple subscriptions, but for now we assume one.
-    // The ID is the user's UID for simplicity.
     return doc(db, `users/${user.uid}/billingSubscriptions`, user.uid);
   }, [db, user]);
 
   const { data: billingInfo, isLoading: isBillingLoading } = useDoc<BillingSubscription>(billingRef);
 
+  const requiresStepUp = () => {
+    if (!user?.metadata?.lastSignInTime) return true;
+    const lastLogin = new Date(user.metadata.lastSignInTime).getTime();
+    return (Date.now() - lastLogin) > REAUTH_TIMEOUT;
+  };
+
   const handleManageBilling = async () => {
-      if (!user) return;
-      if (requiresStepUp(user)) {
-          toast({
-              title: "Security Check Required",
-              description: "For your security, please sign in again to manage your billing.",
-          });
-          try {
-              // This assumes the user signed in with Google. A real app would handle multiple providers.
-              const provider = new GoogleAuthProvider(); 
-              await reauthenticateWithPopup(user, provider);
-              toast({ title: "Re-authentication successful!", description: "You can now manage your billing."});
-              // In a real app, you would now call a backend function to get a Stripe portal link
-              console.log("Proceeding to Stripe portal...");
-          } catch(error: any) {
-               toast({
-                variant: 'destructive',
-                title: 'Re-authentication Failed',
-                description: error.message || "Could not verify your identity.",
-              });
-          }
-      } else {
-         // In a real app, you would now call a backend function to get a Stripe portal link
-         console.log("Proceeding to Stripe portal...");
-          toast({
-            title: "Redirecting to Stripe...",
-            description: "Opening your secure billing portal.",
-          });
+    if (!user) return;
+
+    const reauthenticate = async () => {
+      toast({
+        title: "Security Check Required",
+        description: "For your security, please sign in again to manage your billing.",
+      });
+      try {
+        const provider = new GoogleAuthProvider();
+        await reauthenticateWithPopup(user, provider);
+        toast({ title: "Re-authentication successful!", description: "You can now manage your billing." });
+        return true;
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Re-authentication Failed',
+          description: error.message || "Could not verify your identity.",
+        });
+        return false;
       }
-  }
+    };
+
+    if (requiresStepUp()) {
+      const reauthSuccess = await reauthenticate();
+      if (!reauthSuccess) return;
+    }
+
+    try {
+      const idToken = await user.getIdToken(true);
+      const res = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to create billing portal session.');
+      }
+
+      const { url } = await res.json();
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message,
+      });
+    }
+  };
 
   const isLoading = isUserLoading || isBillingLoading;
   
@@ -207,3 +230,5 @@ export default function BillingPage() {
     </div>
   );
 }
+
+    
