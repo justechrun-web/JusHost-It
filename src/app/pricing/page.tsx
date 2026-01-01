@@ -1,12 +1,17 @@
+'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, HardDrive } from 'lucide-react';
+import { Check, HardDrive, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth, useUser } from '@/firebase';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 const tiers = [
   {
     name: 'Starter',
+    id: 'starter',
     price: '$15',
     priceSuffix: '/ month',
     description: 'For personal projects and small sites.',
@@ -17,10 +22,10 @@ const tiers = [
       'Overage allowed'
     ],
     cta: 'Get Started',
-    href: '/signup'
   },
   {
     name: 'Pro',
+    id: 'pro',
     price: '$30',
     priceSuffix: '/ month',
     description: 'For growing businesses and professional developers.',
@@ -31,11 +36,11 @@ const tiers = [
       'Priority email support'
     ],
     cta: 'Choose Pro',
-    href: '/signup',
     featured: true
   },
   {
     name: 'Business',
+    id: 'business',
     price: '$50',
     priceSuffix: '/ month',
     description: 'For teams and applications with high-traffic.',
@@ -52,6 +57,53 @@ const tiers = [
 
 
 export default function PricingPage() {
+    const { user, isUserLoading } = useUser();
+    const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+    const { toast } = useToast();
+
+    async function handleSelect(planId: string) {
+        setLoadingPlan(planId);
+        
+        if (!user) {
+            toast({
+                title: 'Please sign in',
+                description: 'You need to be signed in to select a plan.',
+                variant: 'destructive',
+            });
+            window.location.href = `/login?redirect=/pricing`;
+            return;
+        }
+
+        try {
+            const idToken = await user.getIdToken();
+
+            const res = await fetch('/api/stripe/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan: planId, idToken }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Failed to create checkout session.');
+            }
+
+            const { url } = await res.json();
+            if (url) {
+                window.location.href = url;
+            }
+        } catch (error: any) {
+            console.error("Checkout failed", error);
+            toast({
+                title: 'Checkout Error',
+                description: error.message,
+                variant: 'destructive',
+            });
+            setLoadingPlan(null);
+        }
+    }
+
+
   return (
     <div className="bg-background text-foreground">
        <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
@@ -60,12 +112,22 @@ export default function PricingPage() {
           <span className="text-xl font-bold font-headline">JusHostIt</span>
         </Link>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Log In</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/signup">Get Started</Link>
-          </Button>
+            {isUserLoading ? (
+                 <Loader2 className="h-5 w-5 animate-spin" />
+            ) : user ? (
+                 <Button variant="ghost" asChild>
+                    <Link href="/dashboard">Dashboard</Link>
+                </Button>
+            ) : (
+                <>
+                <Button variant="ghost" asChild>
+                    <Link href="/login">Log In</Link>
+                </Button>
+                <Button asChild>
+                    <Link href="/signup">Get Started</Link>
+                </Button>
+                </>
+            )}
         </div>
       </header>
 
@@ -102,9 +164,23 @@ export default function PricingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter>
-                            <Button asChild className="w-full" variant={tier.featured ? 'default' : 'outline'}>
-                                <Link href={tier.href}>{tier.cta}</Link>
-                            </Button>
+                            {tier.href ? (
+                                <Button asChild className="w-full" variant={tier.featured ? 'default' : 'outline'}>
+                                    <Link href={tier.href}>{tier.cta}</Link>
+                                </Button>
+                            ) : (
+                                <Button 
+                                    className="w-full" 
+                                    variant={tier.featured ? 'default' : 'outline'}
+                                    onClick={() => handleSelect(tier.id)}
+                                    disabled={loadingPlan === tier.id || isUserLoading}
+                                >
+                                    {loadingPlan === tier.id ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : null}
+                                    {tier.cta}
+                                </Button>
+                            )}
                         </CardFooter>
                     </Card>
                 ))}
