@@ -1,4 +1,5 @@
 
+
 {
   "entities": {
     "User": {
@@ -82,6 +83,24 @@
             "type": "string",
             "description": "Billing status of the site, updated by Stripe webhooks.",
             "enum": ["active", "past_due", "canceled"]
+        },
+        "provisioning": {
+            "type": "object",
+            "description": "Infrastructure provisioning status.",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["not_started", "in_progress", "ready", "failed"]
+                },
+                "startedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "completedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
         },
         "createdAt": {
           "type": "string",
