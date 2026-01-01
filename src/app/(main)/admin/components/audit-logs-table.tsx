@@ -14,7 +14,7 @@ import { Loader2 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 type AuditLog = {
   id: string;
@@ -27,7 +27,7 @@ type AuditLog = {
 export function AuditLogsTable() {
   const db = useFirestore();
   const auditLogQuery = useMemoFirebase(
-    () => db ? query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc')) : null,
+    () => db ? query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(100)) : null,
     [db]
   );
   const { data: logs, isLoading } = useCollection<AuditLog>(auditLogQuery);

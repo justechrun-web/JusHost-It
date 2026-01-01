@@ -27,15 +27,16 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   
-  const activeTab = adminTabs.find(tab => pathname === tab.href)?.href || '/admin';
+  const activeTab = adminTabs.find(tab => pathname.startsWith(tab.href))?.href || '/admin';
 
   React.useEffect(() => {
-    if (!loading) {
+    if (!isUserLoading) {
       if (!user) {
         router.push('/login');
         return;
@@ -47,23 +48,31 @@ export default function AdminLayout({
 
         if (!isAdminClaim) {
           router.push('/');
+          setLoading(false);
           return;
         }
 
         const isMfaEnabled = multiFactor(user).enrolledFactors.length > 0;
         if (!isMfaEnabled) {
           router.push('/mfa-setup');
+        } else {
+          setLoading(false);
         }
       });
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
   
-  if (loading || !isAdmin) {
+  if (loading || isUserLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
+  if (!isAdmin) {
+    // This state is briefly hit before redirection, returning null prevents flicker.
+    return null;
   }
 
   return (
@@ -87,7 +96,7 @@ export default function AdminLayout({
                 </TabsTrigger>
             ))}
         </TabsList>
-        {children}
+        <div className="mt-6">{children}</div>
       </Tabs>
     </div>
   );

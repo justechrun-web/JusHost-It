@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Users, Server } from 'lucide-react';
+import { Loader2, Users, Server, AlertTriangle } from 'lucide-react';
 
 const StatCard = ({
   title,
@@ -13,7 +13,7 @@ const StatCard = ({
   loading,
 }: {
   title: string;
-  value: number;
+  value: number | string;
   icon: React.ElementType;
   loading: boolean;
 }) => (
@@ -36,12 +36,13 @@ const StatCard = ({
 
 export default function AdminDashboard() {
   const db = useFirestore();
-  const [stats, setStats] = useState({ users: 0, sites: 0 });
+  const [stats, setStats] = useState({ users: 0, sites: 0, suspended: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadStats() {
       if (!db) return;
+      setLoading(true);
       try {
         const usersPromise = getDocs(collection(db, 'users'));
         const sitesPromise = getDocs(collection(db, 'sites'));
@@ -49,7 +50,10 @@ export default function AdminDashboard() {
           usersPromise,
           sitesPromise,
         ]);
-        setStats({ users: usersSnap.size, sites: sitesSnap.size });
+        
+        const suspendedCount = sitesSnap.docs.filter(doc => doc.data().status === 'Suspended').length;
+
+        setStats({ users: usersSnap.size, sites: sitesSnap.size, suspended: suspendedCount });
       } catch (error) {
         console.error('Error loading admin stats:', error);
       } finally {
@@ -61,9 +65,6 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold font-headline tracking-tight mb-8">
-        Admin Overview
-      </h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Users"
@@ -72,9 +73,15 @@ export default function AdminDashboard() {
           loading={loading}
         />
         <StatCard
-          title="Active Sites"
+          title="Total Sites"
           value={stats.sites}
           icon={Server}
+          loading={loading}
+        />
+         <StatCard
+          title="Suspended Sites"
+          value={stats.suspended}
+          icon={AlertTriangle}
           loading={loading}
         />
       </div>

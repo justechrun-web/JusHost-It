@@ -37,7 +37,7 @@ export function ResourceMetrics() {
       db ? query(collection(db, 'site_metrics'), orderBy('timestamp', 'desc'), limit(1)) : null,
     [db]
   );
-  const { data: metrics, loading } = useCollection<SiteMetric>(metricsQuery);
+  const { data: metrics, isLoading } = useCollection<SiteMetric>(metricsQuery);
 
   // Let's create some fake historical data for charting purposes
   const generateChartData = (metric: SiteMetric | undefined) => {
@@ -62,12 +62,12 @@ export function ResourceMetrics() {
   };
 
   const metricData = metrics && metrics.length > 0 ? metrics[0] : undefined;
-  const chartData = generateChartData(metricData);
+  const chartData = useMemo(() => generateChartData(metricData), [metricData]);
   const siteId = metricData?.id || 'default_site';
 
   return (
     <div className="grid gap-4 mt-4 md:grid-cols-2 lg:grid-cols-3">
-      {loading ? (
+      {isLoading ? (
         <div className="col-span-full flex justify-center items-center p-8">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
