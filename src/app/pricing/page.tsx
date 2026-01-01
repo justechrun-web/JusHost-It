@@ -17,7 +17,7 @@ const tiers = [
       'Overage allowed'
     ],
     cta: 'Get Started',
-    href: '/signup?plan=basic'
+    href: '/signup'
   },
   {
     name: 'Pro',
@@ -31,7 +31,7 @@ const tiers = [
       'Priority email support'
     ],
     cta: 'Choose Pro',
-    href: '/signup?plan=pro',
+    href: '/signup',
     featured: true
   },
   {
@@ -46,7 +46,7 @@ const tiers = [
       'Invoice billing'
     ],
     cta: 'Contact Sales',
-    href: '/signup?plan=business'
+    href: '/sales'
   }
 ];
 

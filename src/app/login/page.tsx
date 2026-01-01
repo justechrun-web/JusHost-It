@@ -11,6 +11,7 @@ import {
   signInWithPopup,
   fetchSignInMethodsForEmail,
   linkWithCredential,
+  sendSignInLinkToEmail,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -45,7 +46,6 @@ export default function LoginPage() {
   const auth = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +57,15 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      await sendSignInLinkToEmail(auth, email, {
+        url: `${window.location.origin}/`,
+        handleCodeInApp: true,
+      });
+      window.localStorage.setItem('emailForSignIn', email);
+      toast({
+        title: 'Check your email',
+        description: `A sign-in link has been sent to ${email}.`,
+      });
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
@@ -87,21 +94,6 @@ export default function LoginPage() {
         
         try {
           const methods = await fetchSignInMethodsForEmail(auth, email);
-
-          if (methods.includes('password')) {
-            const password = prompt('You already have an account with this email. Please enter your password to link your Google Account.');
-            if (password) {
-              const userCred = await signInWithEmailAndPassword(auth, email, password);
-              await linkWithCredential(userCred.user, pendingCred!);
-              router.push('/');
-            } else {
-               toast({
-                variant: 'destructive',
-                title: 'Login Cancelled',
-                description: 'Password was not provided. Account linking cancelled.',
-              });
-            }
-          }
         } catch (linkError: any) {
             const friendlyError = mapAuthError(linkError.code);
             setError(friendlyError);
@@ -133,7 +125,7 @@ export default function LoginPage() {
             <HardDrive className="h-8 w-8 mx-auto text-primary" />
             <h1 className="text-3xl font-bold font-headline">JusHostIt</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
+              Enter your email to sign in or create an account.
             </p>
           </div>
           <form onSubmit={handleLogin} className="grid gap-4">
@@ -155,27 +147,9 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="ml-auto inline-block text-sm underline"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Login
+              Continue with Email
             </Button>
             <Button
               variant="outline"
@@ -207,10 +181,11 @@ export default function LoginPage() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
+            By continuing, you agree to our{' '}
+            <Link href="/terms" className="underline">
+              Terms of Service
             </Link>
+            .
           </div>
         </div>
       </div>

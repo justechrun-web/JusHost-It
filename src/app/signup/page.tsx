@@ -1,19 +1,14 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
-  createUserWithEmailAndPassword,
-  updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  fetchSignInMethodsForEmail,
-  signInWithEmailAndPassword,
-  linkWithCredential,
+  sendSignInLinkToEmail
 } from 'firebase/auth';
 import { useAuth, useFunctions } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -21,15 +16,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { z } from 'zod';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Form,
@@ -39,22 +27,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { httpsCallable } from 'firebase/functions';
-import { PasswordStrengthMeter } from '@/components/password-strength-meter';
-
 
 function mapAuthError(code: string): string {
   switch (code) {
     case 'auth/email-already-in-use':
       return 'This email address is already in use. Please log in.';
-    case 'auth/weak-password':
-      return 'The password is too weak. Please choose a stronger password.';
     case 'auth/popup-closed-by-user':
       return 'Sign-up process was cancelled.';
-    case 'auth/account-exists-with-different-credential':
-      return 'An account already exists with this email. Please sign in using your original method to link your accounts.';
-    case 'auth/operation-not-allowed':
-      return 'This sign-in method is not enabled. Please contact support.';
     case 'auth/invalid-email':
       return 'Please enter a valid email address.';
     default:
@@ -65,79 +44,46 @@ function mapAuthError(code: string): string {
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
-  plan: z.string({ required_error: "Please select a plan." }),
 });
 
 function SignupForm() {
   const router = useRouter();
   const auth = useAuth();
-  const functions = useFunctions();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const searchParams = useSearchParams();
-  const preselectedPlan = searchParams.get('plan') || 'basic';
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
       email: "",
-      password: "",
-      plan: preselectedPlan,
     },
     mode: 'onTouched'
   });
-  
-  const password = useWatch({ control: form.control, name: 'password' });
-
-  useEffect(() => {
-    // If the plan from URL is valid, set it in the form.
-    const plan = searchParams.get('plan');
-    if (plan && ['basic', 'pro', 'business'].includes(plan)) {
-      form.setValue('plan', plan);
-    }
-  }, [searchParams, form]);
-
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     setError(null);
-    
-    if (values.plan === 'business') {
-        router.push('mailto:sales@jushostit.com');
-        setLoading(false);
-        return;
-    }
 
     try {
-      // Step 1: Create user client-side to get a UID
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      await updateProfile(userCredential.user, { displayName: values.fullName });
-      
-      // Step 2: Call the backend function to create DB records and Stripe session
-      const initializeUserAndBilling = httpsCallable(functions, 'initializeUserAndBilling');
-      
-      const { data } = await initializeUserAndBilling({ 
-        plan: values.plan 
+      await sendSignInLinkToEmail(auth, values.email, {
+        url: `${window.location.origin}/`,
+        handleCodeInApp: true,
       });
-      const { checkoutUrl } = data as { checkoutUrl: string };
-
-      // Step 3: Redirect to Stripe
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl;
-      } else {
-        throw new Error("Could not retrieve a checkout session. Please contact support.");
-      }
+      window.localStorage.setItem('emailForSignIn', values.email);
+      window.localStorage.setItem('fullNameForSignIn', values.fullName);
+      
+      toast({
+        title: 'Check your email',
+        description: `A sign-in link has been sent to ${values.email}.`,
+      });
+      form.reset();
 
     } catch (err: any) {
-      // This will catch errors from both Firebase Auth and the Cloud Function
       const friendlyError = err.code ? mapAuthError(err.code) : (err.message || 'An unexpected error occurred.');
       setError(friendlyError);
-      // We don't reset the form here so the user can correct mistakes without re-entering everything
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
@@ -148,7 +94,6 @@ function SignupForm() {
     }
   }
 
-
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError(null);
@@ -158,46 +103,13 @@ function SignupForm() {
       await signInWithPopup(auth, provider);
       router.push('/');
     } catch (err: any) {
-        if (err.code === 'auth/account-exists-with-different-credential') {
-        const email = err.customData.email;
-        const pendingCred = GoogleAuthProvider.credentialFromError(err);
-        
-        try {
-          const methods = await fetchSignInMethodsForEmail(auth, email);
-
-          if (methods.includes('password')) {
-            const password = prompt('You already have an account with this email. Please enter your password to link your Google Account.');
-            if (password) {
-              const userCred = await signInWithEmailAndPassword(auth, email, password);
-              await linkWithCredential(userCred.user, pendingCred!);
-              router.push('/');
-            } else {
-               toast({
-                variant: 'destructive',
-                title: 'Login Cancelled',
-                description: 'Password was not provided. Account linking cancelled.',
-              });
-            }
-          }
-        } catch (linkError: any) {
-            const friendlyError = mapAuthError(linkError.code);
-            setError(friendlyError);
-            toast({
-                variant: 'destructive',
-                title: 'Account Linking Failed',
-                description: friendlyError,
-            });
-        }
-
-      } else {
-        const friendlyError = mapAuthError(err.code);
-        setError(friendlyError);
-        toast({
-          variant: 'destructive',
-          title: 'Google Sign-up Failed',
-          description: friendlyError,
-        });
-      }
+      const friendlyError = mapAuthError(err.code);
+      setError(friendlyError);
+      toast({
+        variant: 'destructive',
+        title: 'Google Sign-up Failed',
+        description: friendlyError,
+      });
     } finally {
       setGoogleLoading(false);
     }
@@ -249,45 +161,9 @@ function SignupForm() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Must be at least 8 characters" {...field} />
-                    </FormControl>
-                     <PasswordStrengthMeter password={password} />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="plan"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Hosting Plan</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a plan" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="basic">Basic Plan ($15/mo)</SelectItem>
-                        <SelectItem value="pro">Pro Plan ($30/mo)</SelectItem>
-                        <SelectItem value="business">Business Plan ($50/mo)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {form.getValues('plan') === 'business' ? 'Contact Sales' : 'Create Account & Proceed to Payment'}
+                Continue with Email
               </Button>
             </form>
           </Form>
@@ -341,7 +217,6 @@ export default function SignupPage() {
   const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
 
   return (
-    // Wrap the form in a Suspense boundary for useSearchParams
     <React.Suspense fallback={<div>Loading...</div>}>
       <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
         <div className="flex items-center justify-center py-12">
