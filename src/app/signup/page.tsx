@@ -8,13 +8,12 @@ import { useRouter } from 'next/navigation';
 import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
   createUserWithEmailAndPassword,
-  sendEmailVerification,
+  updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
   fetchSignInMethodsForEmail,
   signInWithEmailAndPassword,
   linkWithCredential,
-  updateProfile,
 } from 'firebase/auth';
 import { useAuth, useFunctions } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -101,23 +100,30 @@ export default function SignupPage() {
     setError(null);
 
     try {
+      // Step 1: Create user client-side to get a UID
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.fullName });
       
+      // Step 2: Call the backend function to create DB records and Stripe session
       const initializeUserAndBilling = httpsCallable(functions, 'initializeUserAndBilling');
       
       const { data } = await initializeUserAndBilling({ 
-        fullName: values.fullName,
         plan: values.plan 
       });
       const { checkoutUrl } = data as { checkoutUrl: string };
 
-      window.location.href = checkoutUrl;
+      // Step 3: Redirect to Stripe
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error("Could not retrieve a checkout session. Please contact support.");
+      }
 
     } catch (err: any) {
-      const friendlyError = mapAuthError(err.code);
+      // This will catch errors from both Firebase Auth and the Cloud Function
+      const friendlyError = err.code ? mapAuthError(err.code) : (err.message || 'An unexpected error occurred.');
       setError(friendlyError);
-      form.reset();
+      // We don't reset the form here so the user can correct mistakes without re-entering everything
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
