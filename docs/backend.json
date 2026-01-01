@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -121,6 +122,19 @@
           "type": "string",
           "description": "The next date the customer will be billed.",
           "format": "date-time"
+        },
+        "invoices": {
+            "type": "array",
+            "description": "A list of past invoices for the user.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "date": { "type": "string", "format": "date" },
+                    "amount": { "type": "string" },
+                    "url": { "type": "string", "format": "uri" }
+                },
+                "required": ["date", "amount", "url"]
+            }
         }
       },
       "required": [

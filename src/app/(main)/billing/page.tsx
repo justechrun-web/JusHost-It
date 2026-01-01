@@ -47,6 +47,8 @@ export default function BillingPage() {
 
   const billingRef = useMemoFirebase(() => {
     if (!user || !db) return null;
+    // NOTE: In a real app, you might have multiple subscriptions, but for now we assume one.
+    // The ID is the user's UID for simplicity.
     return doc(db, `users/${user.uid}/billingSubscriptions`, user.uid);
   }, [db, user]);
 
@@ -60,9 +62,11 @@ export default function BillingPage() {
               description: "For your security, please sign in again to manage your billing.",
           });
           try {
+              // This assumes the user signed in with Google. A real app would handle multiple providers.
               const provider = new GoogleAuthProvider(); 
               await reauthenticateWithPopup(user, provider);
               toast({ title: "Re-authentication successful!", description: "You can now manage your billing."});
+              // In a real app, you would now call a backend function to get a Stripe portal link
               console.log("Proceeding to Stripe portal...");
           } catch(error: any) {
                toast({
@@ -72,6 +76,7 @@ export default function BillingPage() {
               });
           }
       } else {
+         // In a real app, you would now call a backend function to get a Stripe portal link
          console.log("Proceeding to Stripe portal...");
           toast({
             title: "Redirecting to Stripe...",
