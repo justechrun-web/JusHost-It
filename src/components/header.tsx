@@ -33,7 +33,11 @@ export function Header() {
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      <div className="flex w-full items-center justify-end">
+      <div className="flex w-full items-center justify-end gap-4">
+         <Button variant="ghost" onClick={handleLogout} size="sm">
+            <LogOut className="mr-2 h-4 w-4" />
+            Log out
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
