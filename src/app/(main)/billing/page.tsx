@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -20,9 +19,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
+import { Loader2, Cpu, MemoryStick, HardDrive } from "lucide-react";
 import { reauthenticateWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { ResourceUsageChart } from "../components/resource-usage-chart";
 
 type BillingSubscription = {
   id: string;
@@ -33,6 +33,7 @@ type BillingSubscription = {
 };
 
 const requiresStepUp = (user: any) => {
+  if (!user?.metadata?.lastSignInTime) return true;
   const lastLogin = user.metadata.lastSignInTime;
   // 5 minutes
   return Date.now() - new Date(lastLogin).getTime() > 5 * 60 * 1000;
@@ -43,11 +44,8 @@ export default function BillingPage() {
   const db = useFirestore();
   const { toast } = useToast();
 
-  // Note: For simplicity, we assume one billing doc per user.
-  // In a real app, you might have multiple or a different way to identify the active subscription.
   const billingRef = useMemoFirebase(() => {
     if (!user || !db) return null;
-    // This assumes the doc ID is the same as the user ID for simplicity.
     return doc(db, `users/${user.uid}/billingSubscriptions`, user.uid);
   }, [db, user]);
 
@@ -61,11 +59,9 @@ export default function BillingPage() {
               description: "For your security, please sign in again to manage your billing.",
           });
           try {
-              // This example uses Google. A real implementation would handle different providers.
               const provider = new GoogleAuthProvider(); 
               await reauthenticateWithPopup(user, provider);
               toast({ title: "Re-authentication successful!", description: "You can now manage your billing."});
-              // In a real app, you would now proceed to the Stripe portal.
               console.log("Proceeding to Stripe portal...");
           } catch(error: any) {
                toast({
@@ -75,7 +71,6 @@ export default function BillingPage() {
               });
           }
       } else {
-         // In a real app, you would redirect to the Stripe customer portal here.
          console.log("Proceeding to Stripe portal...");
           toast({
             title: "Redirecting to Stripe...",
@@ -89,9 +84,9 @@ export default function BillingPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline tracking-tight">Billing</h1>
+        <h1 className="text-3xl font-bold font-headline tracking-tight">Billing & Usage</h1>
         <p className="text-muted-foreground">
-          Manage your subscription and view your payment history.
+          Manage your subscription, view usage, and see payment history.
         </p>
       </div>
 
@@ -105,11 +100,12 @@ export default function BillingPage() {
           <CardDescription className="mt-2">You do not have an active billing plan.</CardDescription>
         </Card>
       ) : (
-        <div className="grid gap-8 md:grid-cols-3">
-          <div className="md:col-span-1 space-y-4">
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-1 space-y-8">
             <Card>
               <CardHeader>
                 <CardTitle>Current Plan</CardTitle>
+                <CardDescription>Your active subscription details.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -130,9 +126,39 @@ export default function BillingPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Current Usage</CardTitle>
+                    <CardDescription>Your usage for the current billing period.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Cpu className="h-4 w-4" /><span>CPU</span></div>
+                        <span className="font-mono text-sm">1,203 seconds</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground"><MemoryStick className="h-4 w-4" /><span>Memory</span></div>
+                        <span className="font-mono text-sm">45.2 GB-hours</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground"><HardDrive className="h-4 w-4" /><span>Storage</span></div>
+                        <span className="font-mono text-sm">2.1 GB</span>
+                    </div>
+                </CardContent>
+            </Card>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2 grid gap-8">
+             <Card>
+              <CardHeader>
+                <CardTitle>Resource Usage History</CardTitle>
+                <CardDescription>Bandwidth and storage over the last 6 months.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResourceUsageChart />
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Invoice History</CardTitle>
@@ -175,5 +201,3 @@ export default function BillingPage() {
     </div>
   );
 }
-
-    
