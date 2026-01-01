@@ -13,12 +13,12 @@ const features = [
     description: 'Go from Git push to live in seconds. Our automated build and deploy pipeline handles the rest.',
   },
   {
-    icon: 'ShieldCheck',
+    icon: ShieldCheck,
     title: 'Enterprise-Grade Security',
     description: 'Built with a security-first mindset, including org isolation, audit logs, and SOC 2 readiness.',
   },
   {
-    icon: 'HardDrive',
+    icon: HardDrive,
     title: 'Transparent Usage-Based Pricing',
     description: 'No hidden fees. Pay only for the resources you use, with real-time monitoring and cost forecasting.',
   },

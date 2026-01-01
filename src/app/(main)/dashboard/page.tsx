@@ -47,9 +47,9 @@ export default function DashboardPage() {
 
   const statCards = [
     { title: 'Active Sites', value: userData?.sites || '0', icon: Server, loading: isUserLoading },
-    { title: 'Storage Used', value: `${userData?.storageUsed || '0'} GB`, icon: HardDrive, loading: isUser_loading },
+    { title: 'Storage Used', value: `${userData?.storageUsed || '0'} GB`, icon: HardDrive, loading: isUserLoading },
     { title: 'Bandwidth', value: `${userData?.bandwidthUsed || '0'} GB`, icon: Globe, loading: isUserLoading },
-    { title: 'Uptime', value: '99.98%', icon: Signal, loading: isUserLoading },
+    { title: 'Uptime', value: '99.98%', icon: Signal, loading: false },
   ];
 
   return (
