@@ -16,11 +16,18 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
 
   React.useEffect(() => {
-    if (!isUserLoading && !user) {
+    // If the user is not loading and there's no user, redirect to login.
+    // This allows unauthenticated users to access specific pages like /trust or /sla.
+    if (!isUserLoading && !user && !['/trust', '/sla'].includes(pathname)) {
       router.push('/login');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, pathname]);
 
+  // Public pages that don't require any auth or billing checks
+  if (['/trust', '/sla'].includes(pathname)) {
+    return <>{children}</>;
+  }
+  
   React.useEffect(() => {
     if (!isGateLoading && !allowed) {
       router.push('/billing-required');
