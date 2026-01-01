@@ -1,3 +1,4 @@
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Globe } from 'lucide-react';
 
