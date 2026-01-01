@@ -19,7 +19,6 @@ import {
 import { useAuth, useFunctions } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -31,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Form,
@@ -42,6 +41,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { httpsCallable } from 'firebase/functions';
+import { PasswordStrengthMeter } from '@/components/password-strength-meter';
 
 
 function mapAuthError(code: string): string {
@@ -66,7 +66,7 @@ function mapAuthError(code: string): string {
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
   plan: z.string({ required_error: "Please select a plan." }),
 });
 
@@ -90,27 +90,20 @@ export default function SignupPage() {
       password: "",
       plan: "basic",
     },
+    mode: 'onTouched'
   });
+  
+  const password = useWatch({ control: form.control, name: 'password' });
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     setError(null);
 
-    // This simulates the full production-grade flow:
-    // 1. Create Firebase Auth User
-    // 2. Call a Cloud Function to:
-    //    a. Create a user document in Firestore
-    //    b. Create a customer in Stripe
-    //    c. Return a Stripe Checkout URL
-    // 3. Redirect user to Stripe Checkout
-
     try {
-      // Step 1: Create Auth user
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       await updateProfile(userCredential.user, { displayName: values.fullName });
       
-      // Concept for Step 2: Call Cloud Function
-      // In a real app, this function would handle backend tasks.
       const initializeUserAndBilling = httpsCallable(functions, 'initializeUserAndBilling');
       
       // const { data } = await initializeUserAndBilling({ 
@@ -119,10 +112,8 @@ export default function SignupPage() {
       // });
       // const { checkoutUrl } = data as { checkoutUrl: string };
 
-      // Concept for Step 3: Redirect to Stripe
       // window.location.href = checkoutUrl;
       
-      // For this demo, we'll just show a success message and redirect to login.
       await sendEmailVerification(userCredential.user);
       toast({
         title: 'Verification Email Sent',
@@ -154,7 +145,6 @@ export default function SignupPage() {
 
     try {
       await signInWithPopup(auth, provider);
-      // In a real flow, you might redirect to a plan selection page if they are a new user.
       router.push('/');
     } catch (err: any) {
         if (err.code === 'auth/account-exists-with-different-credential') {
@@ -257,8 +247,9 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Must be at least 6 characters" {...field} />
+                      <Input type="password" placeholder="Must be at least 8 characters" {...field} />
                     </FormControl>
+                     <PasswordStrengthMeter password={password} />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -349,5 +340,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
-    
