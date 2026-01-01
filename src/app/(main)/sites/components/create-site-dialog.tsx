@@ -96,7 +96,7 @@ export function CreateSiteDialog() {
       setSitePurpose('');
       setSuggestions([]);
       setOpen(false);
-    } catch (error: any) {
+    } catch (error: any) => {
       console.error('Cloud Function error:', error);
       toast({
         variant: 'destructive',
