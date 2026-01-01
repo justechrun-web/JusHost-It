@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { UserAction } from './user-action';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
@@ -28,6 +29,7 @@ type AppUser = {
 
 export function UsersTable() {
   const db = useFirestore();
+  const router = useRouter();
   const usersQuery = useMemoFirebase(
     () => db ? query(collection(db, 'users'), orderBy('email'), limit(50)) : null,
     [db]
@@ -42,6 +44,10 @@ export function UsersTable() {
     }
     const date = new Date(timestamp.seconds * 1000);
     return format(date, 'PPP');
+  };
+
+  const handleRowClick = (userId: string) => {
+    router.push(`/admin/users/${userId}`);
   };
 
   return (
@@ -73,7 +79,7 @@ export function UsersTable() {
             </TableRow>
           ) : users && users.length > 0 ? (
             users.map((user) => (
-              <TableRow key={user.id}>
+              <TableRow key={user.id} onClick={() => handleRowClick(user.id)} className="cursor-pointer">
                 <TableCell className="font-medium">{user.email}</TableCell>
                 <TableCell>
                   <Badge
@@ -84,7 +90,7 @@ export function UsersTable() {
                 </TableCell>
                 <TableCell>{(user as any).company || 'N/A'}</TableCell>
                 <TableCell>{formatDate(user.createdAt)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <UserAction user={user} currentUser={currentUser} />
                 </TableCell>
               </TableRow>
