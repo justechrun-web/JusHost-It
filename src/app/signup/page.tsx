@@ -14,14 +14,35 @@ import {
   fetchSignInMethodsForEmail,
   signInWithEmailAndPassword,
   linkWithCredential,
+  updateProfile,
 } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { useAuth, useFunctions } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { httpsCallable } from 'firebase/functions';
+
 
 function mapAuthError(code: string): string {
   switch (code) {
@@ -42,38 +63,78 @@ function mapAuthError(code: string): string {
   }
 }
 
+const formSchema = z.object({
+  fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  plan: z.string({ required_error: "Please select a plan." }),
+});
+
+
 export default function SignupPage() {
   const router = useRouter();
   const auth = useAuth();
+  const functions = useFunctions();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      plan: "basic",
+    },
+  });
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     setError(null);
+
+    // This simulates the full production-grade flow:
+    // 1. Create Firebase Auth User
+    // 2. Call a Cloud Function to:
+    //    a. Create a user document in Firestore
+    //    b. Create a customer in Stripe
+    //    c. Return a Stripe Checkout URL
+    // 3. Redirect user to Stripe Checkout
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      // Step 1: Create Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      await updateProfile(userCredential.user, { displayName: values.fullName });
+      
+      // Concept for Step 2: Call Cloud Function
+      // In a real app, this function would handle backend tasks.
+      const initializeUserAndBilling = httpsCallable(functions, 'initializeUserAndBilling');
+      
+      // const { data } = await initializeUserAndBilling({ 
+      //   fullName: values.fullName,
+      //   plan: values.plan 
+      // });
+      // const { checkoutUrl } = data as { checkoutUrl: string };
+
+      // Concept for Step 3: Redirect to Stripe
+      // window.location.href = checkoutUrl;
+      
+      // For this demo, we'll just show a success message and redirect to login.
       await sendEmailVerification(userCredential.user);
       toast({
         title: 'Verification Email Sent',
         description:
-          'Please check your inbox to verify your email and complete signup.',
+          'Please check your inbox to verify your email. The next step would be payment.',
       });
       router.push('/login');
+
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
+      form.reset();
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
@@ -82,7 +143,8 @@ export default function SignupPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -92,6 +154,7 @@ export default function SignupPage() {
 
     try {
       await signInWithPopup(auth, provider);
+      // In a real flow, you might redirect to a plan selection page if they are a new user.
       router.push('/');
     } catch (err: any) {
         if (err.code === 'auth/account-exists-with-different-credential') {
@@ -142,7 +205,7 @@ export default function SignupPage() {
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
       <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
+        <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
             <HardDrive className="h-8 w-8 mx-auto text-primary" />
             <h1 className="text-3xl font-bold font-headline">
@@ -152,41 +215,91 @@ export default function SignupPage() {
               Enter your details to get started with JusHostIt.
             </p>
           </div>
-          <form onSubmit={handleSignup} className="grid gap-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Jane Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Must be at least 6 characters"
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="m@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Must be at least 6 characters" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="plan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hosting Plan</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a plan" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="basic">Basic Plan ($15/mo)</SelectItem>
+                        <SelectItem value="pro">Pro Plan ($30/mo)</SelectItem>
+                        <SelectItem value="business">Business Plan ($50/mo)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Account & Proceed to Payment
+              </Button>
+            </form>
+          </Form>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account
-            </Button>
-            <Button
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+           <Button
               variant="outline"
               className="w-full"
               type="button"
@@ -214,7 +327,6 @@ export default function SignupPage() {
               )}
               Sign up with Google
             </Button>
-          </form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/login" className="underline">
@@ -237,3 +349,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    
