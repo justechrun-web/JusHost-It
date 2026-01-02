@@ -1,15 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { adminAuth } from '@/lib/firebase/admin';
-
-async function getIsAdmin(uid: string): Promise<boolean> {
-    try {
-        const user = await adminAuth.getUser(uid);
-        return user.customClaims?.admin === true;
-    } catch (e) {
-        return false;
-    }
-}
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get("__session")?.value;
@@ -36,10 +26,18 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
-    // This part does not use the full admin SDK, it uses the lightweight token verification
-    // which should be Edge-compatible. However, if issues persist, we would move to a different JWT library.
-    // For now, we assume verifySessionCookie is the intended way.
-    const decodedToken = await adminAuth.verifySessionCookie(token, true);
+    const verifyUrl = new URL('/api/auth/verify-token', req.url);
+    const verifyRes = await fetch(verifyUrl, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!verifyRes.ok) {
+        throw new Error('Token verification failed');
+    }
+
+    const decodedToken = await verifyRes.json();
     
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set('X-User-ID', decodedToken.uid);
@@ -77,6 +75,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - and root-level static pages like /pricing, /login, etc.
      */
-    '/((?!_next/static|_next/image|favicon.ico|trust|sla|pricing|api/stripe/webhook).*)',
+    '/((?!_next/static|_next/image|favicon.ico|trust|sla|pricing|api/stripe/webhook|api/auth/verify-token).*)',
   ],
 };
