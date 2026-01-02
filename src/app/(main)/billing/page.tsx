@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,7 @@ import { Loader2, Cpu, MemoryStick, HardDrive } from "lucide-react";
 import { reauthenticateWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { ResourceUsageChart } from "../components/resource-usage-chart";
+import { useState } from "react";
 
 type BillingSubscription = {
   id: string;
@@ -40,6 +40,7 @@ export default function BillingPage() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
+  const [isPortalLoading, setIsPortalLoading] = useState(false);
 
   const billingRef = useMemoFirebase(() => {
     if (!user || !db) return null;
@@ -56,6 +57,7 @@ export default function BillingPage() {
 
   const handleManageBilling = async () => {
     if (!user) return;
+    setIsPortalLoading(true);
 
     const reauthenticate = async () => {
       toast({
@@ -79,15 +81,20 @@ export default function BillingPage() {
 
     if (requiresStepUp()) {
       const reauthSuccess = await reauthenticate();
-      if (!reauthSuccess) return;
+      if (!reauthSuccess) {
+        setIsPortalLoading(false);
+        return;
+      }
     }
 
     try {
       const idToken = await user.getIdToken(true);
       const res = await fetch('/api/stripe/portal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+        },
       });
 
       if (!res.ok) {
@@ -105,6 +112,8 @@ export default function BillingPage() {
         title: 'Error',
         description: error.message,
       });
+    } finally {
+        setIsPortalLoading(false);
     }
   };
 
@@ -127,6 +136,9 @@ export default function BillingPage() {
          <Card className="text-center p-8">
           <CardTitle>No Subscription Found</CardTitle>
           <CardDescription className="mt-2">You do not have an active billing plan.</CardDescription>
+          <Button asChild className="mt-4">
+            <Link href="/pricing">Choose a Plan</Link>
+          </Button>
         </Card>
       ) : (
         <div className="grid gap-8 lg:grid-cols-3">
@@ -150,7 +162,8 @@ export default function BillingPage() {
                     )}
                   </div>
                 </div>
-                <Button onClick={handleManageBilling} className="w-full bg-primary text-primary-foreground">
+                <Button onClick={handleManageBilling} className="w-full bg-primary text-primary-foreground" disabled={isPortalLoading}>
+                    {isPortalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Manage in Stripe Portal
                 </Button>
               </CardContent>
