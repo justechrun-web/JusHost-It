@@ -3,9 +3,29 @@
 
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
-import { db } from "@/lib/firebase-admin";
 import Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
+
+if (!getApps().length) {
+  try {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (error) {
+    console.error("Firebase admin initialization error", error);
+  }
+}
+
+const auth = getAuth();
+const db = getFirestore();
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -23,79 +43,52 @@ export async function POST(req: Request) {
     console.error(`❌ Webhook signature verification failed: ${err.message}`);
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
-
-  const session = event.data.object as any;
-
+  
   try {
-    switch (event.type) {
-      case "customer.subscription.created":
-      case "customer.subscription.updated": {
+    if (event.type.startsWith("customer.subscription")) {
         const sub = event.data.object as Stripe.Subscription;
         const uid = sub.metadata.uid;
-        if (!uid) {
-            console.error("Webhook Error: Missing uid in subscription metadata.", sub.id);
-            break;
-        }
-
-        await db.collection("users").doc(uid).set(
-          {
-            subscriptionStatus: sub.status,
-            plan: sub.items.data[0].price.id,
-            currentPeriodEnd: sub.current_period_end,
-          },
-          { merge: true }
-        );
-        console.log(`Updated subscription for user ${uid} to status: ${sub.status}`);
-        break;
-      }
-
-      case "customer.subscription.deleted": {
-        const sub = event.data.object as Stripe.Subscription;
-        const uid = sub.metadata.uid;
-        if (!uid) {
-            console.error("Webhook Error: Missing uid in subscription metadata.", sub.id);
-            break;
-        }
         
+        if (!uid) {
+            console.error("Webhook Error: Missing uid in subscription metadata.", sub.id);
+            return NextResponse.json({ received: true });
+        }
+
+        const priceId = sub.items.data[0].price.id;
+        const plan = PLAN_BY_PRICE_ID[priceId];
+
         await db.collection("users").doc(uid).set(
           {
-            subscriptionStatus: "canceled",
+            role: plan, // Set top-level role
+            billing: {
+              status: sub.status,
+              plan: plan, // "starter", "pro", etc.
+              subscriptionId: sub.id,
+              stripeCustomerId: sub.customer as string,
+              currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            },
           },
           { merge: true }
         );
-        console.log(`Canceled subscription for user ${uid}.`);
-        break;
-      }
-
-      case 'checkout.session.completed': {
+        console.log(`Updated subscription for user ${uid}. Status: ${sub.status}, Plan: ${plan}`);
+    } else if (event.type === 'checkout.session.completed') {
         const checkoutSession = event.data.object as Stripe.Checkout.Session;
         if (checkoutSession.mode === 'subscription') {
-            const subscriptionId = checkoutSession.subscription;
-            const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
-            
             const uid = checkoutSession.metadata?.uid;
             if (!uid) {
                 console.error("Webhook Error: Missing uid in checkout session metadata.", checkoutSession.id);
-                break;
+                return NextResponse.json({ received: true });
             }
 
-            await db.collection("users").doc(uid).set(
-              {
-                stripeCustomerId: checkoutSession.customer as string,
-                subscriptionStatus: subscription.status,
-                plan: subscription.items.data[0].price.id,
-                currentPeriodEnd: subscription.current_period_end,
-              },
-              { merge: true }
-            );
+             await db.collection("users").doc(uid).set({
+                billing: {
+                    stripeCustomerId: checkoutSession.customer as string
+                }
+             }, { merge: true });
              console.log(`User ${uid} completed checkout. Customer ID: ${checkoutSession.customer}`);
         }
-        break;
-      }
-      
-      default:
-        // console.log(`Unhandled webhook event type: ${event.type}`);
     }
+
   } catch (error) {
      console.error(`Firestore update failed for event ${event.type}:`, error);
      return new NextResponse("Webhook handler failed. See logs.", { status: 500 });

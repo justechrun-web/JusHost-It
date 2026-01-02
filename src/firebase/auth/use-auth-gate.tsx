@@ -3,34 +3,52 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from "firebase/firestore";
+
+type UserProfile = {
+    billing?: {
+        status: 'active' | 'trialing' | 'past_due' | 'canceled';
+    }
+}
 
 /**
- * A client-side hook to gate access based on authentication status.
- * It primarily checks if a user is logged in. The primary authorization
- * (i.e., checking for an active subscription) is handled by server-side middleware.
- * This hook acts as a secondary check on the client to provide a responsive UI
- * and prevent rendering components for logged-out users.
+ * A client-side hook to gate access based on billing status.
+ * It checks if the user's Firestore document indicates an active subscription.
+ * This is primarily for UI responsiveness; server-side middleware is the source of truth for enforcement.
  */
 export function useAuthGate() {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
+  const db = useFirestore();
+  
+  const userRef = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return doc(db, 'users', user.uid);
+  }, [user, db]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userRef);
+
   const [allowed, setAllowed] = useState(false);
+  const isLoading = isAuthLoading || isProfileLoading;
   
   useEffect(() => {
-    // While the initial user authentication state is loading, we are not "allowed".
-    if (isUserLoading) {
+    if (isLoading) {
       setAllowed(false);
       return;
     }
     
-    // Once loading is complete, access is allowed if a user object exists.
-    if (user) {
-        setAllowed(true);
+    if (user && userProfile) {
+        const status = userProfile.billing?.status;
+        if (status === 'active' || status === 'trialing') {
+            setAllowed(true);
+        } else {
+            setAllowed(false);
+        }
     } else {
         setAllowed(false);
     }
     
-  }, [user, isUserLoading]);
+  }, [user, userProfile, isLoading]);
 
-  // The overall loading state is determined by the user loading state.
-  return { allowed, loading: isUserLoading };
+  return { allowed, loading: isLoading };
 }

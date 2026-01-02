@@ -3,7 +3,26 @@
 
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { auth, db } from "@/lib/firebase-admin";
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+
+if (!getApps().length) {
+  try {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (error) {
+    console.error("Firebase admin initialization error", error);
+  }
+}
+
+const auth = getAuth();
+const db = getFirestore();
 
 export async function POST(req: Request) {
     try {
@@ -14,7 +33,7 @@ export async function POST(req: Request) {
         
         const { uid } = await auth.verifyIdToken(token);
         const user = await db.collection("users").doc(uid).get();
-        const customerId = user.data()?.stripeCustomerId;
+        const customerId = user.data()?.billing?.stripeCustomerId;
 
         if (!customerId) {
             return new NextResponse("Stripe customer not found", { status: 404 });

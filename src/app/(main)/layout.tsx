@@ -6,29 +6,25 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { MainSidebar } from "@/components/main-sidebar";
 import { Header } from "@/components/header";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuthGate } from "@/firebase";
+import { useUser } from "@/firebase";
 import { Loader2 } from "lucide-react";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { allowed, loading } = useAuthGate();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   React.useEffect(() => {
-    if (loading) {
+    if (isUserLoading) {
       return;
     }
 
-    if (!allowed) {
-      if (pathname.startsWith('/admin')) {
-        router.push('/login');
-      } else {
-        router.push('/billing-required');
-      }
+    if (!user) {
+      router.push('/login');
     }
-  }, [allowed, loading, router, pathname]);
+  }, [user, isUserLoading, router, pathname]);
 
-  if (loading) {
+  if (isUserLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -36,8 +32,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  // If still loading or not allowed, render nothing to prevent component flicker.
-  if (!allowed) {
+  if (!user) {
     return null;
   }
   

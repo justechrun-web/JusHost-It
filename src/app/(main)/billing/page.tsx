@@ -25,12 +25,20 @@ import { useToast } from "@/hooks/use-toast";
 import { ResourceUsageChart } from "../components/resource-usage-chart";
 import { useState } from "react";
 import Link from "next/link";
+import { FEATURES } from "@/lib/features";
 
-type BillingSubscription = {
+type BillingInfo = {
   id: string;
-  plan: string;
-  subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'trialing';
-  currentPeriodEnd: number;
+  billing: {
+    plan: 'starter' | 'pro' | 'business';
+    status: 'active' | 'canceled' | 'past_due' | 'trialing';
+    currentPeriodEnd: { seconds: number };
+  };
+  usage: {
+    sites: number;
+    bandwidthGb: number;
+    storageGb: number;
+  };
   invoices: Array<{ date: string; amount: string; url: string }>;
 };
 
@@ -40,12 +48,15 @@ export default function BillingPage() {
   const { toast } = useToast();
   const [isPortalLoading, setIsPortalLoading] = useState(false);
 
-  const billingRef = useMemoFirebase(() => {
+  const userRef = useMemoFirebase(() => {
     if (!user || !db) return null;
     return doc(db, `users/${user.uid}`);
   }, [db, user]);
 
-  const { data: billingInfo, isLoading: isBillingLoading } = useDoc<BillingSubscription>(billingRef);
+  const { data: userData, isLoading: isBillingLoading } = useDoc<BillingInfo>(userRef);
+  const { billing, usage } = userData || {};
+  const planFeatures = billing?.plan ? FEATURES[billing.plan] : null;
+
 
   const handleManageBilling = async () => {
     if (!user) return;
@@ -83,7 +94,7 @@ export default function BillingPage() {
 
   const isLoading = isUserLoading || isBillingLoading;
   
-  const getStatusBadgeVariant = (status?: BillingSubscription['subscriptionStatus']) => {
+  const getStatusBadgeVariant = (status?: BillingInfo['billing']['status']) => {
     switch (status) {
       case 'active':
       case 'trialing':
@@ -95,13 +106,10 @@ export default function BillingPage() {
         return 'secondary';
     }
   };
-
-  const planName = billingInfo?.plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO ? 'Pro' : 
-                   billingInfo?.plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER ? 'Starter' : 'N/A';
   
   const getPeriodEndDate = () => {
-    if(!billingInfo?.currentPeriodEnd) return '';
-    return new Date(billingInfo.currentPeriodEnd * 1000).toLocaleDateString();
+    if(!billing?.currentPeriodEnd) return '';
+    return new Date(billing.currentPeriodEnd.seconds * 1000).toLocaleDateString();
   }
 
   return (
@@ -117,7 +125,7 @@ export default function BillingPage() {
         <div className="flex justify-center items-center p-16">
           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
-      ) : !billingInfo || !billingInfo.subscriptionStatus ? (
+      ) : !billing || !billing.status ? (
          <Card className="text-center p-8">
           <CardTitle>No Subscription Found</CardTitle>
           <CardDescription className="mt-2">You do not have an active subscription plan.</CardDescription>
@@ -135,14 +143,14 @@ export default function BillingPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-2xl font-semibold capitalize">{planName} Plan</p>
+                  <p className="text-2xl font-semibold capitalize">{billing.plan} Plan</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(billingInfo.subscriptionStatus)} className="capitalize">
-                      {billingInfo.subscriptionStatus}
+                    <Badge variant={getStatusBadgeVariant(billing.status)} className="capitalize">
+                      {billing.status}
                     </Badge>
-                    {billingInfo.currentPeriodEnd && (
+                    {billing.currentPeriodEnd && (
                        <span className="text-sm text-muted-foreground">
-                        {billingInfo.subscriptionStatus === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
+                        {billing.status === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
                        </span>
                     )}
                   </div>
@@ -160,17 +168,17 @@ export default function BillingPage() {
                     <CardDescription>Your usage for the current billing period.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground"><Cpu className="h-4 w-4" /><span>CPU</span></div>
-                        <span className="font-mono text-sm">1,203 seconds</span>
+                     <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground"><HardDrive className="h-4 w-4" /><span>Sites</span></div>
+                        <span className="font-mono text-sm">{usage?.sites || 0} / {planFeatures?.sites || '-'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground"><MemoryStick className="h-4 w-4" /><span>Memory</span></div>
-                        <span className="font-mono text-sm">45.2 GB-hours</span>
+                        <div className="flex items-center gap-2 text-muted-foreground"><Cpu className="h-4 w-4" /><span>Bandwidth</span></div>
+                        <span className="font-mono text-sm">{usage?.bandwidthGb || 0} GB / {planFeatures?.bandwidthGb || '-'} GB</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground"><HardDrive className="h-4 w-4" /><span>Storage</span></div>
-                        <span className="font-mono text-sm">2.1 GB</span>
+                        <div className="flex items-center gap-2 text-muted-foreground"><MemoryStick className="h-4 w-4" /><span>Analytics</span></div>
+                        <span className="font-mono text-sm">{planFeatures?.analytics ? 'Enabled' : 'Disabled'}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -201,8 +209,8 @@ export default function BillingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {billingInfo.invoices && billingInfo.invoices.length > 0 ? (
-                      billingInfo.invoices.map((invoice, index) => (
+                    {userData.invoices && userData.invoices.length > 0 ? (
+                      userData.invoices.map((invoice, index) => (
                         <TableRow key={index}>
                           <TableCell className="font-medium">{invoice.date}</TableCell>
                           <TableCell>{invoice.amount}</TableCell>

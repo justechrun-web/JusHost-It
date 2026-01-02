@@ -3,7 +3,26 @@
 
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { auth, db } from "@/lib/firebase-admin";
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+
+if (!getApps().length) {
+  try {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (error) {
+    console.error("Firebase admin initialization error", error);
+  }
+}
+
+const auth = getAuth();
+const db = getFirestore();
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     const userDoc = await db.collection('users').doc(uid).get();
-    let stripeCustomerId = userDoc.data()?.stripeCustomerId;
+    let stripeCustomerId = userDoc.data()?.billing?.stripeCustomerId;
 
     if (!stripeCustomerId) {
         const customer = await stripe.customers.create({
@@ -28,7 +47,9 @@ export async function POST(req: Request) {
             metadata: { uid },
         });
         stripeCustomerId = customer.id;
-        await db.collection('users').doc(uid).set({ stripeCustomerId }, { merge: true });
+        await db.collection('users').doc(uid).set({ 
+            billing: { stripeCustomerId } 
+        }, { merge: true });
     }
 
     const session = await stripe.checkout.sessions.create({
