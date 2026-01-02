@@ -46,6 +46,10 @@
             "type": "string",
             "description": "The current status of the user's subscription, managed by Stripe webhooks.",
             "enum": ["trialing", "active", "past_due", "canceled", "incomplete"]
+        },
+        "monthlySpend": {
+          "type": "number",
+          "description": "The current spend for the month, updated by the usage aggregator."
         }
       },
       "required": [
