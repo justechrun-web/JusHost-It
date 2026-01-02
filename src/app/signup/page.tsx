@@ -4,7 +4,7 @@
 import React, { Suspense, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
   GoogleAuthProvider,
@@ -48,6 +48,7 @@ const formSchema = z.object({
 
 function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const auth = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -65,10 +66,13 @@ function SignupForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     setError(null);
+    const plan = searchParams.get('plan');
+    const redirectUrl = `${window.location.origin}/dashboard${plan ? `?plan=${plan}` : ''}`;
+
 
     try {
       await sendSignInLinkToEmail(auth, values.email, {
-        url: `${window.location.origin}/`,
+        url: redirectUrl,
         handleCodeInApp: true,
       });
       window.localStorage.setItem('emailForSignIn', values.email);
@@ -99,7 +103,8 @@ function SignupForm() {
 
     try {
       await signInWithPopup(auth, provider);
-      router.push('/');
+      const plan = searchParams.get('plan');
+      router.push(`/dashboard${plan ? `?plan=${plan}` : ''}`);
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
