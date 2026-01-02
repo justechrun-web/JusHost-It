@@ -82,7 +82,7 @@ export default function UserDetailPage() {
         </div>
         <div className="space-y-8">
             <UserBillingCard user={user} />
-            <UserDangerZone orgId={user.id} />
+            {user && <UserDangerZone orgId={user.id} />}
         </div>
       </div>
     </div>

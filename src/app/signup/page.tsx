@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { Suspense, useState, useEffect } from 'react';
@@ -179,7 +178,8 @@ function SignupForm() {
                   data-icon="google"
                   role="img"
                   xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 488 512"
+                  viewBox="0
+ 0 488 512"
                 >
                   <path
                     fill="currentColor"

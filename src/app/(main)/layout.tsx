@@ -11,28 +11,24 @@ import { Loader2 } from "lucide-react";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, isUserLoading } = useUser();
-  const { allowed, loading: isGateLoading } = useAuthGate();
+  const { allowed, loading } = useAuthGate();
   const router = useRouter();
 
   React.useEffect(() => {
-    // If auth is done loading and there's no user, they must log in.
-    if (!isUserLoading && !user) {
-      router.push('/login');
+    if (loading) {
+      return;
     }
-  }, [user, isUserLoading, router]);
 
-  React.useEffect(() => {
-    // If the billing gate is done loading and access is not allowed,
-    // redirect to the billing required page.
-    if (!isGateLoading && !allowed) {
-      router.push('/billing-required');
+    if (!allowed) {
+      if (pathname.startsWith('/admin')) {
+        router.push('/login');
+      } else {
+        router.push('/billing-required');
+      }
     }
-  }, [allowed, isGateLoading, router]);
+  }, [allowed, loading, router, pathname]);
 
-  const isLoading = isUserLoading || isGateLoading;
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -41,8 +37,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }
 
   // If still loading or not allowed, render nothing to prevent component flicker.
-  if (!user || !allowed) {
-    return null; 
+  if (!allowed) {
+    return null;
   }
   
   // The admin layout handles its own structure.

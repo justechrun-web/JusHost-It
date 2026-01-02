@@ -32,7 +32,7 @@ type Site = {
 };
 
 export default function SitesPage() {
-  const { user, loading: userLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
 
@@ -44,7 +44,7 @@ export default function SitesPage() {
     );
   }, [db, user]);
 
-  const { data: sites, loading: sitesLoading } = useCollection<Site>(sitesQuery);
+  const { data: sites, isLoading: sitesLoading } = useCollection<Site>(sitesQuery);
 
   const formatDate = (timestamp: Site['createdAt']) => {
     if (!timestamp) return 'N/A';
@@ -66,7 +66,7 @@ export default function SitesPage() {
     }
   };
   
-  const isLoading = userLoading || sitesLoading;
+  const isLoading = isUserLoading || sitesLoading;
 
   const handleRowClick = (siteId: string) => {
     router.push(`/sites/${siteId}`);

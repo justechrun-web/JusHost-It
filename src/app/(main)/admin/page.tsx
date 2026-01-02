@@ -43,20 +43,22 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ users: 0, sites: 0, suspended: 0 });
   const [loading, setLoading] = useState(true);
 
+  const usersCol = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
+  const sitesCol = useMemoFirebase(() => db ? collection(db, 'sites') : null, [db]);
+
+
   useEffect(() => {
     async function loadStats() {
-      if (!db) return;
+      if (!db || !usersCol || !sitesCol) return;
       setLoading(true);
       try {
-        const usersCol = collection(db, 'users');
-        const sitesCol = collection(db, 'sites');
 
         const usersCountPromise = getCountFromServer(usersCol);
         const sitesCountPromise = getCountFromServer(sitesCol);
         
         // This part is less efficient, but necessary for a specific status count.
         // For larger datasets, this logic should move to a backend aggregation.
-        const sitesSnapPromise = getDocs(collection(db, 'sites'));
+        const sitesSnapPromise = getDocs(sitesCol);
 
         const [usersCountSnap, sitesCountSnap, sitesSnap] = await Promise.all([
           usersCountPromise,
@@ -78,7 +80,7 @@ export default function AdminDashboard() {
       }
     }
     loadStats();
-  }, [db]);
+  }, [db, usersCol, sitesCol]);
 
   return (
     <div className='space-y-8'>
