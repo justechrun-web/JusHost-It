@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -50,8 +49,8 @@ export function InviteMemberDialog({ orgId, children }: InviteMemberDialogProps)
     setIsLoading(true);
     
     try {
-        const inviteMember = httpsCallable(functions, 'inviteMember');
-        await inviteMember({ orgId, email, role });
+        const inviteUser = httpsCallable(functions, 'inviteUser');
+        await inviteUser({ orgId, email, role });
         
         toast({
             title: 'Invitation Sent',

@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -17,11 +16,8 @@ import { AdminBillingForm } from './components/admin-billing-form';
 type UserData = {
   id: string;
   email: string;
-  role: string;
-  subscription?: {
-    status: string;
-    plan: string;
-  };
+  plan: string;
+  subscriptionStatus: string;
 };
 
 export default function AdminBilling() {
@@ -58,8 +54,8 @@ export default function AdminBilling() {
                     <strong className="font-mono text-xs">{u.id}</strong>
                   </TableCell>
                   <TableCell>{u.email}</TableCell>
-                  <TableCell>{u.subscription?.plan || u.role}</TableCell>
-                  <TableCell>{u.subscription?.status || 'N/A'}</TableCell>
+                  <TableCell>{u.plan || 'N/A'}</TableCell>
+                  <TableCell>{u.subscriptionStatus || 'N/A'}</TableCell>
                   <TableCell>
                     <AdminBillingForm user={u} adminId={user?.uid || ''} />
                   </TableCell>

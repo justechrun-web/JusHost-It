@@ -1,4 +1,3 @@
-
 'use server';
 
 import { NextResponse } from "next/server";
@@ -56,4 +55,3 @@ export async function GET(req: Request) {
         return new NextResponse("Internal Server Error", { status: 500 });
     }
 }
-

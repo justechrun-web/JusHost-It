@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -52,7 +51,7 @@ export default function BillingPage() {
   }, [db, user]);
 
   const { data: userData, isLoading: isBillingLoading } = useDoc<UserData>(userRef);
-  const planFeatures = userData?.plan ? FEATURES[userData.plan as keyof typeof FEATURES] : null;
+  const planFeatures = userData?.plan ? FEATURES[userData.plan as keyof typeof FEATURES] : FEATURES['starter'];
 
 
   useEffect(() => {
@@ -244,7 +243,7 @@ export default function BillingPage() {
                           <TableCell>${(invoice.amount_paid / 100).toFixed(2)}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="outline" size="sm" asChild>
-                              <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer">View Invoice</a>
+                              <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer">Download PDF</a>
                             </Button>
                           </TableCell>
                         </TableRow>

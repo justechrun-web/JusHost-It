@@ -1,11 +1,8 @@
-
 'use client';
-
-import { useUser } from '@/firebase';
 
 export function AdminBillingForm({ user, adminId }: { user: any; adminId: string }) {
     
-  const currentPlan = user.subscription?.plan || user.role;
+  const currentPlan = user.plan || 'starter';
 
   return (
     <form action={`/api/admin/upgrade`} method="POST" className="flex gap-2 items-center">

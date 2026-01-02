@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -73,7 +72,7 @@ export function ResourceMetrics() {
                 <CardTitle>Monthly Recurring Revenue (MRR)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                <div className="text-4xl font-bold">${metrics?.mrr.toLocaleString() || '0'}</div>
+                <div className="text-4xl font-bold">${metrics?.mrr?.toLocaleString() || '0'}</div>
                 </CardContent>
             </Card>
             <Card>
@@ -81,7 +80,7 @@ export function ResourceMetrics() {
                 <CardTitle>Active Subscriptions</CardTitle>
                 </CardHeader>
                 <CardContent>
-                <div className="text-4xl font-bold">{metrics?.activeSubs.toLocaleString() || '0'}</div>
+                <div className="text-4xl font-bold">{metrics?.activeSubs?.toLocaleString() || '0'}</div>
                 </CardContent>
             </Card>
             <Card>

@@ -1,4 +1,3 @@
-
 import Stripe from "stripe"
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -25,7 +24,7 @@ async function logAdminAction({ adminId, action, targetUserId, before, after }: 
   await adminDb.collection("auditLogs").add({
     adminId,
     action,
-    targetUserId,
+    targetId: targetUserId,
     before,
     after,
     timestamp: FieldValue.serverTimestamp(),
@@ -45,9 +44,15 @@ export async function POST(req: Request) {
     }
 
     const userRef = adminDb.doc(`users/${uid}`);
-    const user = (await userRef.get()).data()
-    if (!user || !user.subscription?.id) {
-        return new NextResponse("User or subscription not found", { status: 404 });
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+        return new NextResponse("User not found", { status: 404 });
+    }
+    const user = userDoc.data()!;
+    const subscriptionId = user.subscriptionId;
+
+    if (!subscriptionId) {
+        return new NextResponse("User does not have a subscription to update.", { status: 400 });
     }
 
     const priceId = process.env[`NEXT_PUBLIC_STRIPE_PRICE_${newPlan.toUpperCase()}`];
@@ -55,21 +60,18 @@ export async function POST(req: Request) {
         return new NextResponse(`Price ID for plan '${newPlan}' not found in environment variables.`, { status: 500 });
     }
 
-    const currentSubscription = await stripe.subscriptions.retrieve(user.subscription.id);
-    const oldPlan = user.role;
+    const currentSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const oldPlan = user.plan;
     
-    await stripe.subscriptions.update(user.subscription.id, {
+    await stripe.subscriptions.update(subscriptionId, {
         items: [{
         id: currentSubscription.items.data[0].id,
         price: priceId,
         }],
         proration_behavior: "create_prorations",
-    })
-
-    await userRef.update({ 
-        role: newPlan, 
-        'subscription.plan': newPlan 
     });
+
+    await userRef.update({ plan: newPlan });
 
     await logAdminAction({
         adminId: adminId,
@@ -79,7 +81,10 @@ export async function POST(req: Request) {
         after: { plan: newPlan }
     });
     
-    return NextResponse.redirect(new URL('/admin/billing', req.url), { status: 303 });
+    // Redirect back to the admin billing page
+    const redirectUrl = new URL('/admin/billing', req.url);
+    return NextResponse.redirect(redirectUrl.toString(), { status: 303 });
+
 
   } catch (error: any) {
     console.error("Admin upgrade error:", error);

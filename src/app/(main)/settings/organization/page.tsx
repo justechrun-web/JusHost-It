@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -30,33 +29,37 @@ import {
 } from '@/components/ui/card';
 
 type OrgMember = {
-  id: string; // This will be the user's UID
+  id: string;
   email: string;
   role: 'owner' | 'admin' | 'member' | 'viewer';
 };
+
+type Invite = {
+    id: string;
+    email: string;
+    role: 'admin' | 'member' | 'viewer';
+    status: 'pending' | 'accepted' | 'declined';
+}
 
 export default function OrganizationSettingsPage() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
 
-  // In a real multi-org setup, you'd get the orgId from the user's session/claims.
-  // For this example, we assume the orgId is the same as the user's UID (for the org creator).
   const orgId = user?.uid;
 
   const membersQuery = useMemoFirebase(() => {
     if (!orgId) return null;
-    // NOTE: This assumes a flat structure for org members for scalability.
     return query(collection(db, 'orgMembers'), where('orgId', '==', orgId));
   }, [db, orgId]);
 
   const { data: members, isLoading: isMembersLoading } = useCollection<OrgMember>(membersQuery);
 
-  const { data: invitations, isLoading: isInvitesLoading } = useCollection<any>(
-    useMemoFirebase(() => {
-      if (!orgId) return null;
-      return query(collection(db, 'orgInvitations'), where('orgId', '==', orgId));
-    }, [db, orgId])
-  );
+  const invitesQuery = useMemoFirebase(() => {
+    if (!orgId) return null;
+    return query(collection(db, 'orgInvitations'), where('orgId', '==', orgId), where('status', '==', 'pending'));
+  }, [db, orgId]);
+
+  const { data: invitations, isLoading: isInvitesLoading } = useCollection<Invite>(invitesQuery);
 
   const allMembers = [
     ...(members || []),
@@ -92,12 +95,14 @@ export default function OrganizationSettingsPage() {
                 Manage who can access your organization and their permissions.
             </CardDescription>
         </div>
-        <InviteMemberDialog orgId={orgId!}>
-            <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Invite Member
-            </Button>
-        </InviteMemberDialog>
+        {orgId && 
+          <InviteMemberDialog orgId={orgId}>
+              <Button>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Invite Member
+              </Button>
+          </InviteMemberDialog>
+        }
       </CardHeader>
       <CardContent>
         <Table>
@@ -131,19 +136,21 @@ export default function OrganizationSettingsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem disabled={member.role === 'owner'}>
-                          <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                          <span className="text-destructive">Remove Member</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {(member as any).status !== 'invited' && (
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem disabled={member.role === 'owner'}>
+                            <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                            <span className="text-destructive">Remove Member</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
