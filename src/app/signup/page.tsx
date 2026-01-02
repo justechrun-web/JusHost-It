@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { Suspense, useState } from 'react';
@@ -45,6 +44,18 @@ function mapAuthError(code: string): string {
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
 });
+
+async function startTrial(idToken: string, plan: string | null) {
+  await fetch('/api/billing/trial', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ plan }),
+  });
+}
+
 
 function SignupForm() {
   const router = useRouter();
@@ -102,8 +113,13 @@ function SignupForm() {
     const provider = new GoogleAuthProvider();
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const idToken = await user.getIdToken();
       const plan = searchParams.get('plan');
+      
+      await startTrial(idToken, plan);
+
       router.push(`/dashboard${plan ? `?checkout_plan=${plan}` : ''}`);
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
