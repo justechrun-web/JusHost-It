@@ -36,13 +36,17 @@ export default function SitesPage() {
   const db = useFirestore();
   const router = useRouter();
 
+  // In a real app with multiple orgs, you'd get this from the user's session/claims.
+  // For now, we assume the orgId is the user's UID (if they created the org).
+  const orgId = user?.uid;
+
   const sitesQuery = useMemoFirebase(() => {
-    if (!user || !db) return null;
+    if (!orgId || !db) return null;
     return query(
-      collection(db, `users/${user.uid}/sites`),
+      collection(db, `orgs/${orgId}/sites`),
       orderBy('createdAt', 'desc')
     );
-  }, [db, user]);
+  }, [db, orgId]);
 
   const { data: sites, isLoading: sitesLoading } = useCollection<Site>(sitesQuery);
 

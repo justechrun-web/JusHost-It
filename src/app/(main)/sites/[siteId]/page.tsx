@@ -75,10 +75,13 @@ export default function SiteDetailPage() {
 
   const siteId = Array.isArray(params.siteId) ? params.siteId[0] : params.siteId;
   
+  // In a real multi-org app, you'd get the orgId from claims or another context.
+  const orgId = user?.uid;
+
   const siteRef = useMemoFirebase(() => {
-    if (!user || !db || !siteId) return null;
-    return doc(db, `users/${user.uid}/sites`, siteId);
-  }, [db, user, siteId]);
+    if (!orgId || !db || !siteId) return null;
+    return doc(db, `orgs/${orgId}/sites`, siteId);
+  }, [db, orgId, siteId]);
 
   const {
     data: site,
