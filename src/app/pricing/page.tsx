@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,7 @@ const tiers = [
   {
     name: 'Starter',
     id: 'starter',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER,
     price: '$15',
     priceSuffix: '/ month',
     description: 'For personal projects and small sites.',
@@ -29,7 +28,7 @@ const tiers = [
   {
     name: 'Pro',
     id: 'pro',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO,
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO,
     price: '$30',
     priceSuffix: '/ month',
     description: 'For growing businesses and professional developers.',
@@ -45,6 +44,7 @@ const tiers = [
   {
     name: 'Business',
     id: 'business',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS,
     price: '$50',
     priceSuffix: '/ month',
     description: 'For teams and applications with high-traffic.',
@@ -67,6 +67,11 @@ export default function PricingPage() {
     const router = useRouter();
 
     async function handleSelect(plan: typeof tiers[0]) {
+        if (plan.href) {
+            router.push(plan.href);
+            return;
+        }
+        
         if (!plan.priceId) {
             toast({
                 title: 'Configuration Error',
@@ -177,23 +182,17 @@ export default function PricingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter>
-                            {tier.href ? (
-                                <Button asChild className="w-full" variant={tier.featured ? 'default' : 'outline'}>
-                                    <Link href={tier.href}>{tier.cta}</Link>
-                                </Button>
-                            ) : (
-                                <Button 
-                                    className="w-full" 
-                                    variant={tier.featured ? 'default' : 'outline'}
-                                    onClick={() => handleSelect(tier)}
-                                    disabled={loadingPlan === tier.id || isUserLoading}
-                                >
-                                    {loadingPlan === tier.id ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : null}
-                                    {tier.cta}
-                                </Button>
-                            )}
+                            <Button 
+                                className="w-full" 
+                                variant={tier.featured ? 'default' : 'outline'}
+                                onClick={() => handleSelect(tier)}
+                                disabled={loadingPlan === tier.id || isUserLoading}
+                            >
+                                {loadingPlan === tier.id ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null}
+                                {tier.cta}
+                            </Button>
                         </CardFooter>
                     </Card>
                 ))}
