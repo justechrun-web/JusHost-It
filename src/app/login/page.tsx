@@ -58,7 +58,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await sendSignInLinkToEmail(auth, email, {
-        url: `${window.location.origin}/`,
+        url: `${window.location.origin}/dashboard`,
         handleCodeInApp: true,
       });
       window.localStorage.setItem('emailForSignIn', email);
@@ -125,7 +125,7 @@ export default function LoginPage() {
             <HardDrive className="h-8 w-8 mx-auto text-primary" />
             <h1 className="text-3xl font-bold font-headline">JusHostIt</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email to sign in or create an account.
+              Enter your email to sign in to your account.
             </p>
           </div>
           <form onSubmit={handleLogin} className="grid gap-4">
@@ -177,15 +177,14 @@ export default function LoginPage() {
                   ></path>
                 </svg>
               )}
-              Login with Google
+              Sign in with Google
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            By continuing, you agree to our{' '}
-            <Link href="/terms" className="underline">
-              Terms of Service
+           <div className="mt-4 text-center text-sm">
+            Don't have an account?{' '}
+            <Link href="/signup" className="underline">
+              Sign up
             </Link>
-            .
           </div>
         </div>
       </div>

@@ -67,7 +67,7 @@ function SignupForm() {
     setLoading(true);
     setError(null);
     const plan = searchParams.get('plan');
-    const redirectUrl = `${window.location.origin}/dashboard${plan ? `?plan=${plan}` : ''}`;
+    const redirectUrl = `${window.location.origin}/dashboard${plan ? `?checkout_plan=${plan}` : ''}`;
 
 
     try {
@@ -104,7 +104,7 @@ function SignupForm() {
     try {
       await signInWithPopup(auth, provider);
       const plan = searchParams.get('plan');
-      router.push(`/dashboard${plan ? `?plan=${plan}` : ''}`);
+      router.push(`/dashboard${plan ? `?checkout_plan=${plan}` : ''}`);
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);

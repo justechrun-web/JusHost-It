@@ -52,7 +52,7 @@ const tiers = [
       'Invoice billing'
     ],
     cta: 'Contact Sales',
-    href: 'mailto:sales@jushostit.com'
+    href: '/sales'
   }
 ];
 
@@ -68,11 +68,10 @@ export default function PricingPage() {
         
         if (!user) {
             toast({
-                title: 'Please sign in',
-                description: 'You need to be signed in to select a plan.',
-                variant: 'destructive',
+                title: 'Please sign in first',
+                description: 'You need to create an account to select a plan.',
             });
-            router.push(`/login?redirect=/pricing&plan=${planId}`);
+            router.push(`/signup?plan=${planId}`);
             return;
         }
 
@@ -81,8 +80,11 @@ export default function PricingPage() {
 
             const res = await fetch('/api/stripe/checkout', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ plan: planId, idToken }),
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({ plan: planId }),
             });
 
             if (!res.ok) {
