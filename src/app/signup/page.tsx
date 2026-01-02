@@ -1,9 +1,10 @@
+
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
   GoogleAuthProvider,
@@ -66,7 +67,6 @@ function SignupForm() {
     setError(null);
 
     try {
-      // Magic link authentication flow
       await sendSignInLinkToEmail(auth, values.email, {
         url: `${window.location.origin}/`,
         handleCodeInApp: true,
@@ -178,8 +178,7 @@ function SignupForm() {
                   data-icon="google"
                   role="img"
                   xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0
- 0 488 512"
+                  viewBox="0 0 488 512"
                 >
                   <path
                     fill="currentColor"
@@ -198,7 +197,6 @@ function SignupForm() {
         </div>
     );
 }
-
 
 function SignupPageComponent() {
   const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');

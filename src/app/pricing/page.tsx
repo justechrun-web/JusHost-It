@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ const tiers = [
       'Invoice billing'
     ],
     cta: 'Contact Sales',
-    href: '/sales'
+    href: 'mailto:sales@jushostit.com'
   }
 ];
 
@@ -72,7 +73,6 @@ export default function PricingPage() {
                 description: 'You need to be signed in to select a plan.',
                 variant: 'destructive',
             });
-            // Redirect to login, but pass the intended plan so signup can redirect back here.
             router.push(`/login?redirect=/pricing&plan=${planId}`);
             return;
         }
@@ -189,22 +189,6 @@ export default function PricingPage() {
                     </Card>
                 ))}
             </div>
-
-            <Card className="mt-16 text-center">
-              <CardHeader>
-                <CardTitle>Enterprise</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Need custom solutions? We offer contract pricing, dedicated clusters, and premium SLAs for large-scale deployments.
-                </p>
-              </CardContent>
-              <CardFooter className="justify-center">
-                 <Button asChild>
-                    <Link href="mailto:enterprise@jushostit.com">Contact Enterprise Sales</Link>
-                 </Button>
-              </CardFooter>
-            </Card>
         </div>
       </main>
     </div>
