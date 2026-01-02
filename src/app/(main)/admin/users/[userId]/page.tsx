@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -15,12 +16,9 @@ type AppUser = {
   id: string;
   email: string;
   displayName: string;
-  role?: 'user' | 'admin' | 'starter' | 'pro' | 'business';
-  company?: string;
-  subscription?: {
-    plan: string;
-    status: string;
-  }
+  role?: 'free' | 'paid' | 'admin';
+  plan?: 'starter' | 'pro' | 'business';
+  subscriptionStatus?: 'trialing' | 'active' | 'past_due' | 'canceled';
   monthlySpend?: number;
   hardCap?: boolean;
 };
@@ -60,8 +58,8 @@ export default function UserDetailPage() {
   // Flatten user and subscription info for easier prop passing to legacy components
   const displayUser = {
     ...user,
-    plan: user.subscription?.plan,
-    subscriptionStatus: user.subscription?.status,
+    plan: user.plan,
+    subscriptionStatus: user.subscriptionStatus,
     monthlySpend: user.monthlySpend,
     hardCap: user.hardCap,
   };

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -27,11 +28,9 @@ import Link from "next/link";
 import { FEATURES } from "@/lib/features";
 
 type UserData = {
-  subscription: {
-    plan: 'starter' | 'pro' | 'business';
-    status: 'active' | 'canceled' | 'past_due' | 'trialing';
-    currentPeriodEnd: { seconds: number };
-  };
+  plan: 'starter' | 'pro' | 'business' | 'free';
+  subscriptionStatus: 'trialing' | 'active' | 'past_due' | 'canceled';
+  currentPeriodEnd: { seconds: number };
   usage: {
     sites: number;
     bandwidthGb: number;
@@ -53,8 +52,7 @@ export default function BillingPage() {
   }, [db, user]);
 
   const { data: userData, isLoading: isBillingLoading } = useDoc<UserData>(userRef);
-  const { subscription, usage } = userData || {};
-  const planFeatures = subscription?.plan ? FEATURES[subscription.plan] : null;
+  const planFeatures = userData?.plan ? FEATURES[userData.plan as keyof typeof FEATURES] : null;
 
 
   useEffect(() => {
@@ -117,7 +115,7 @@ export default function BillingPage() {
 
   const isLoading = isUserLoading || isBillingLoading;
   
-  const getStatusBadgeVariant = (status?: UserData['subscription']['status']) => {
+  const getStatusBadgeVariant = (status?: UserData['subscriptionStatus']) => {
     switch (status) {
       case 'active':
       case 'trialing':
@@ -131,8 +129,8 @@ export default function BillingPage() {
   };
   
   const getPeriodEndDate = () => {
-    if(!subscription?.currentPeriodEnd) return '';
-    const date = new Date(subscription.currentPeriodEnd);
+    if(!userData?.currentPeriodEnd) return '';
+    const date = new Date(userData.currentPeriodEnd.seconds * 1000);
     return date.toLocaleDateString();
   }
 
@@ -149,7 +147,7 @@ export default function BillingPage() {
         <div className="flex justify-center items-center p-16">
           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
-      ) : !subscription || !subscription.status ? (
+      ) : !userData || !userData.subscriptionStatus ? (
          <Card className="text-center p-8">
           <CardTitle>No Subscription Found</CardTitle>
           <CardDescription className="mt-2">You do not have an active subscription plan.</CardDescription>
@@ -167,14 +165,14 @@ export default function BillingPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-2xl font-semibold capitalize">{subscription.plan} Plan</p>
+                  <p className="text-2xl font-semibold capitalize">{userData.plan} Plan</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(subscription.status)} className="capitalize">
-                      {subscription.status}
+                    <Badge variant={getStatusBadgeVariant(userData.subscriptionStatus)} className="capitalize">
+                      {userData.subscriptionStatus}
                     </Badge>
-                    {subscription.currentPeriodEnd && (
+                    {userData.currentPeriodEnd && (
                        <span className="text-sm text-muted-foreground">
-                        {subscription.status === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
+                        {userData.subscriptionStatus === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
                        </span>
                     )}
                   </div>
@@ -194,11 +192,11 @@ export default function BillingPage() {
                 <CardContent className="space-y-4">
                      <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground"><HardDrive className="h-4 w-4" /><span>Sites</span></div>
-                        <span className="font-mono text-sm">{usage?.sites || 0} / {planFeatures?.sites || '-'}</span>
+                        <span className="font-mono text-sm">{userData.usage?.sites || 0} / {planFeatures?.sites || '-'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground"><Cpu className="h-4 w-4" /><span>Bandwidth</span></div>
-                        <span className="font-mono text-sm">{usage?.bandwidthGb || 0} GB / {planFeatures?.bandwidthGb || '-'} GB</span>
+                        <span className="font-mono text-sm">{userData.usage?.bandwidthGb || 0} GB / {planFeatures?.bandwidthGb || '-'} GB</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground"><MemoryStick className="h-4 w-4" /><span>Analytics</span></div>

@@ -1,14 +1,12 @@
+
 'use server';
 
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
+import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
 
-// Initialize Firebase Admin SDK if not already initialized
 if (!getApps().length) {
   try {
     initializeApp({
@@ -25,108 +23,115 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+});
+
+function mapPriceIdToPlan(priceId: string) {
+  const plans = {
+    [process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER!]: 'starter',
+    [process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO!]: 'pro',
+    [process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS!]: 'business',
+  };
+  return plans[priceId as keyof typeof plans] || 'free';
+}
+
 export async function POST(req: Request) {
-  const body = await req.text();
   const sig = headers().get("stripe-signature")!;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+  const body = await req.arrayBuffer();
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(
+      Buffer.from(body),
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
   } catch (err: any) {
-    console.error(`❌ Webhook signature verification failed: ${err.message}`);
-    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
-  
+
   const session = event.data.object;
 
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const checkoutSession = session as Stripe.Checkout.Session;
-        const uid = checkoutSession.metadata?.firebaseUID;
-        if (!uid) {
-            console.error("Webhook Error: Missing firebaseUID in checkout session metadata.", checkoutSession.id);
-            break;
-        }
-
-        const subscription = await stripe.subscriptions.retrieve(
-            checkoutSession.subscription as string
-        );
-
-        await db.doc(`users/${uid}`).set({
-            stripeCustomerId: session.customer,
-            role: PLAN_BY_PRICE_ID[subscription.items.data[0].price.id],
-            subscription: {
-                id: subscription.id,
-                status: subscription.status,
-                plan: PLAN_BY_PRICE_ID[subscription.items.data[0].price.id],
-                priceId: subscription.items.data[0].price.id,
-                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-            },
-        }, { merge: true });
-
-        console.log(`User ${uid} completed checkout. Role set to ${PLAN_BY_PRICE_ID[subscription.items.data[0].price.id]}`);
-        break;
+    if (event.type === 'checkout.session.completed') {
+      const checkoutSession = session as Stripe.Checkout.Session;
+      const uid = checkoutSession.metadata?.firebaseUID;
+      if (!uid) {
+        console.error("Webhook Error: Missing firebaseUID in checkout session metadata.", checkoutSession.id);
+        return NextResponse.json({ error: "Missing user identifier in webhook metadata" }, { status: 400 });
       }
 
-      case 'customer.subscription.updated': {
-        const sub = session as Stripe.Subscription;
-        const priceId = sub.items.data[0].price.id;
-        const plan = PLAN_BY_PRICE_ID[priceId];
-        const userSnap = await db.collection("users").where("stripeCustomerId", "==", sub.customer).limit(1).get();
-        if (userSnap.empty) {
-            console.error("Webhook Error: User with Stripe customer ID not found.", sub.customer);
-            break;
-        }
-        const userDoc = userSnap.docs[0];
+      if (!checkoutSession.subscription) {
+        console.error("Webhook Error: Checkout session did not create a subscription.", checkoutSession.id);
+        return NextResponse.json({ error: "Subscription data missing in checkout session" }, { status: 400 });
+      }
+      
+      const subscription = await stripe.subscriptions.retrieve(
+        checkoutSession.subscription as string
+      );
+      
+      const priceId = subscription.items.data[0].price.id;
+      const plan = mapPriceIdToPlan(priceId);
+
+      await db.doc(`users/${uid}`).set({
+        stripeCustomerId: subscription.customer as string,
+        role: 'paid',
+        plan: plan,
+        subscriptionStatus: subscription.status,
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      }, { merge: true });
+      
+      console.log(`User ${uid} subscribed to ${plan} plan.`);
+    } else if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated"
+    ) {
+      const sub = event.data.object as Stripe.Subscription;
+      const customerId = sub.customer as string;
+      const priceId = sub.items.data[0].price.id;
+      const plan = mapPriceIdToPlan(priceId);
+
+      const snap = await db
+        .collection("users")
+        .where("stripeCustomerId", "==", customerId)
+        .limit(1)
+        .get();
+
+      if (!snap.empty) {
+        const userDoc = snap.docs[0];
         await userDoc.ref.update({
-            role: plan,
-            'subscription.status': sub.status,
-            'subscription.plan': plan,
-            'subscription.priceId': priceId,
-            'subscription.currentPeriodEnd': new Date(sub.current_period_end * 1000),
+          plan,
+          role: "paid",
+          subscriptionStatus: sub.status,
+          currentPeriodEnd: new Date(sub.current_period_end * 1000),
         });
-        console.log(`Subscription updated for user ${userDoc.id}. New plan: ${plan}, Status: ${sub.status}`);
-        break;
+        console.log(`Subscription for user ${userDoc.id} updated to ${plan}. Status: ${sub.status}`);
       }
+    } else if (event.type === "customer.subscription.deleted") {
+      const sub = event.data.object as Stripe.Subscription;
+      const customerId = sub.customer as string;
+      const snap = await db
+        .collection("users")
+        .where("stripeCustomerId", "==", customerId)
+        .limit(1)
+        .get();
 
-      case 'customer.subscription.deleted': {
-        const sub = session as Stripe.Subscription;
-        const userSnap = await db.collection("users").where("subscription.id", "==", sub.id).limit(1).get();
-        if(userSnap.empty) {
-            console.error("Webhook Error: User with subscription ID not found.", sub.id);
-            break;
-        }
-
-        userSnap.forEach(doc => {
-            doc.ref.update({
-                role: "free",
-                subscription: null,
-            });
+      if (!snap.empty) {
+        const userDoc = snap.docs[0];
+        await userDoc.ref.update({
+          plan: "free",
+          role: "free",
+          subscriptionStatus: "canceled",
         });
-        console.log(`Subscription deleted for user ${userSnap.docs[0].id}. Role set to free.`);
-        break;
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = session as Stripe.Invoice;
-        const customerId = invoice.customer as string;
-        const userQuery = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
-
-        if (!userQuery.empty) {
-            const userDoc = userQuery.docs[0];
-            await userDoc.ref.update({ 'subscription.status': 'past_due' });
-            console.log(`User ${userDoc.id} has a failed payment. Set status to past_due.`);
-        }
-        break;
+        console.log(`Subscription for user ${userDoc.id} canceled. Role set to free.`);
       }
     }
-
   } catch (error) {
-     console.error(`Firestore update failed for event ${event.type}:`, error);
-     return new NextResponse("Webhook handler failed. See logs.", { status: 500 });
+    console.error(`Webhook handler for ${event.type} failed:`, error);
+    return new NextResponse("Webhook handler failed. See logs.", { status: 500 });
   }
 
   return NextResponse.json({ received: true });

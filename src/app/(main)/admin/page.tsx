@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -54,8 +55,6 @@ export default function AdminDashboard() {
         const usersCountPromise = getCountFromServer(usersCol);
         const sitesCountPromise = getCountFromServer(sitesCol);
         
-        // This part is less efficient, but necessary for a specific status count.
-        // For larger datasets, this logic should move to a backend aggregation.
         const suspendedSitesQuery = query(sitesCol, where('status', '==', 'Suspended'));
         const suspendedCountPromise = getCountFromServer(suspendedSitesQuery);
 

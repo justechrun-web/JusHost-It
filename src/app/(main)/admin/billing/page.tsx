@@ -10,8 +10,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { AdminBillingForm } from './components/admin-billing-form';
 
 type UserData = {
   id: string;
@@ -19,6 +20,7 @@ type UserData = {
   role: string;
   subscription?: {
     status: string;
+    plan: string;
   };
 };
 
@@ -56,21 +58,10 @@ export default function AdminBilling() {
                     <strong className="font-mono text-xs">{u.id}</strong>
                   </TableCell>
                   <TableCell>{u.email}</TableCell>
-                  <TableCell>{u.role}</TableCell>
+                  <TableCell>{u.subscription?.plan || u.role}</TableCell>
                   <TableCell>{u.subscription?.status || 'N/A'}</TableCell>
                   <TableCell>
-                    <form action={`/api/admin/upgrade`} method="POST" className="flex gap-2 items-center">
-                      <input type="hidden" name="uid" value={u.id} />
-                      <input type="hidden" name="adminId" value={user?.uid || ''} />
-                      <select name="plan" defaultValue={u.role} className="border rounded px-2 py-1 text-sm bg-background">
-                        <option value="starter">Starter</option>
-                        <option value="pro">Pro</option>
-                        <option value="business">Business</option>
-                      </select>
-                      <button className="bg-primary text-primary-foreground px-3 py-1 rounded text-sm hover:bg-primary/90">
-                        Change Plan
-                      </button>
-                    </form>
+                    <AdminBillingForm user={u} adminId={user?.uid || ''} />
                   </TableCell>
                 </TableRow>
               ))
