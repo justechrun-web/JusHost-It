@@ -4,13 +4,11 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { HardDrive, Loader2 } from 'lucide-react';
+import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
-  signInWithEmailAndPassword,
-  GoogleAuthProvider,
   signInWithPopup,
+  GoogleAuthProvider,
   fetchSignInMethodsForEmail,
-  linkWithCredential,
   sendSignInLinkToEmail,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
@@ -20,7 +18,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 
 function mapAuthError(code: string): string {
   switch (code) {
@@ -30,13 +27,13 @@ function mapAuthError(code: string): string {
     case 'auth/popup-closed-by-user':
       return 'Sign-in process was cancelled.';
     case 'auth/account-exists-with-different-credential':
-      return 'An account already exists with this email. Please sign in using your original method to link your accounts.';
+      return 'An account already exists with this email. Please sign in using your original method.';
     case 'auth/operation-not-allowed':
       return 'This sign-in method is not enabled. Please contact support.';
     case 'auth/invalid-email':
       return 'Please enter a valid email address.';
     default:
-      return 'An unexpected error occurred during authentication. Please try again.';
+      return 'An unexpected error occurred. Please try again.';
   }
 }
 
@@ -86,23 +83,19 @@ export default function LoginPage() {
 
     try {
       await signInWithPopup(auth, provider);
-      router.push('/');
+      router.push('/dashboard');
     } catch (err: any) {
       if (err.code === 'auth/account-exists-with-different-credential') {
-        const email = err.customData.email;
-        const pendingCred = GoogleAuthProvider.credentialFromError(err);
-        
-        try {
-          const methods = await fetchSignInMethodsForEmail(auth, email);
-        } catch (linkError: any) {
-            const friendlyError = mapAuthError(linkError.code);
-            setError(friendlyError);
-            toast({
-                variant: 'destructive',
-                title: 'Account Linking Failed',
-                description: friendlyError,
-            });
-        }
+         const email = err.customData.email;
+         const methods = await fetchSignInMethodsForEmail(auth, email);
+         const message = `An account already exists with this email using the ${methods[0]} provider. Please sign in with that method.`;
+         setError(message);
+         toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: message,
+        });
+
       } else {
         const friendlyError = mapAuthError(err.code);
         setError(friendlyError);
@@ -132,7 +125,7 @@ export default function LoginPage() {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
+                <AlertTitle>Login Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -151,6 +144,14 @@ export default function LoginPage() {
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Continue with Email
             </Button>
+            <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                </div>
+            </div>
             <Button
               variant="outline"
               className="w-full"
