@@ -34,24 +34,22 @@ export async function middleware(req: NextRequest) {
     }
     
     const userData = userDoc.data()!;
-    const userRole = userData.role;
-    const billingStatus = userData.subscriptionStatus;
+    let claims = (await adminAuth.getUser(uid)).customClaims;
+    const isClaimedAdmin = claims?.admin === true;
+
 
     // Admins have access to everything.
-    if (userRole === "admin") {
-      const idTokenResult = await adminAuth.getUser(uid);
-      if(!idTokenResult.customClaims?.admin) {
-        await adminAuth.setCustomUserClaims(uid, { admin: true });
-      }
+    if (isClaimedAdmin) {
       return NextResponse.next();
     }
-
+    
     // If it's an admin path and user is not an admin, redirect.
     if (isAdminPath) {
        return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
     // For all other protected paths, check for active billing.
+    const billingStatus = userData.subscriptionStatus;
     if (billingStatus !== "active" && billingStatus !== "trialing") {
       return NextResponse.redirect(new URL("/billing-required", req.url));
     }
