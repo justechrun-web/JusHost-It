@@ -56,10 +56,14 @@ export async function middleware(req: NextRequest) {
     
     const userData = userDoc.data()!;
     const userRole = userData.role;
-    const billingStatus = userData.subscription?.status;
+    const billingStatus = userData.subscriptionStatus;
 
     // Admins have access to everything.
     if (userRole === "admin") {
+      const idTokenResult = await auth.getUser(uid);
+      if(!idTokenResult.customClaims?.admin) {
+        await auth.setCustomUserClaims(uid, { admin: true });
+      }
       return NextResponse.next();
     }
 

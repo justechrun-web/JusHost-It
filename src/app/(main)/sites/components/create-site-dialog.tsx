@@ -25,16 +25,42 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { httpsCallable } from 'firebase/functions';
 import { useFunctions, useUser } from '@/firebase';
+import { suggestDomains } from '@/ai/flows/domain-suggestion-flow';
 
 export function CreateSiteDialog() {
   const [open, setOpen] = useState(false);
   const [sitePurpose, setSitePurpose] = useState('');
   const [domain, setDomain] = useState('');
   const [plan, setPlan] = useState('basic');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionRunning, setSuggestionRunning] = useState(false);
   const { toast } = useToast();
   const [createRunning, setCreateRunning] = useState(false);
   const functions = useFunctions();
   const { user } = useUser();
+
+  const handleSuggest = async () => {
+    if (!sitePurpose) {
+      toast({
+        variant: 'destructive',
+        title: 'Please describe your site first.',
+      });
+      return;
+    }
+    setSuggestionRunning(true);
+    try {
+      const result = await suggestDomains({ purpose: sitePurpose });
+      setSuggestions(result.suggestions);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Could not generate suggestions.',
+      });
+    } finally {
+      setSuggestionRunning(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,9 +74,6 @@ export function CreateSiteDialog() {
     setCreateRunning(true);
 
     try {
-      // This Cloud Function is the secure entrypoint to the provisioning pipeline.
-      // It will authenticate the user, check their plan limits, and then
-      // trigger the Kubernetes resource creation you've designed.
       const createSite = httpsCallable(functions, 'createSite');
       await createSite({ domain, plan });
 
@@ -91,6 +114,49 @@ export function CreateSiteDialog() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-6">
+            <div className="grid gap-2">
+              <Label htmlFor="purpose">
+                What is the purpose of your site?
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="purpose"
+                  placeholder="e.g., A portfolio for my design work"
+                  value={sitePurpose}
+                  onChange={(e) => setSitePurpose(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleSuggest}
+                  disabled={suggestionRunning}
+                >
+                  {suggestionRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            {suggestions.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((s) => (
+                  <Badge
+                    key={s}
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setDomain(s);
+                      setSuggestions([]);
+                    }}
+                  >
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="domain">Domain Name</Label>
               <Input
