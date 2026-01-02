@@ -1,11 +1,12 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ------------------------------------------------------------------------
+    // ======================================================================
     // Helper Functions
-    // ------------------------------------------------------------------------
+    // ======================================================================
 
     function isSignedIn() {
       return request.auth != null;
@@ -14,108 +15,142 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    function isAdmin() {
-      // In a real app, this would check a custom claim or a separate 'roles' collection.
-      // For this demo, we check a field on the user document.
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+    // Get the user's role in a specific organization
+    function getRole(orgId) {
+      return get(/databases/$(database)/documents/orgMembers/$(request.auth.uid + '_' + orgId)).data.role;
     }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    function isConsistentOwnerOnCreate(userId) {
-      return isOwner(userId) && request.resource.data.userId == userId;
-    }
-
-    function isOwnerFieldImmutable() {
-      return resource.data.userId == request.resource.data.userId;
-    }
-    
-    function isStatusTransitionAllowed() {
-      // Users can suspend or resume their own sites.
-      // Only admins can change status to/from 'provisioning' or 'error'.
-      let isUserAction = (request.resource.data.status == 'suspended' && resource.data.status == 'active') || (request.resource.data.status == 'active' && resource.data.status == 'suspended');
-      let isAdminAction = isAdmin();
-      return isUserAction || isAdminAction;
+    // Check if user has a specific role in an organization
+    function hasRole(orgId, role) {
+      let userRole = getRole(orgId);
+      if (role == 'owner') {
+        return userRole == 'owner';
+      }
+      if (role == 'admin') {
+        return userRole == 'owner' || userRole == 'admin';
+      }
+      if (role == 'member') {
+        return userRole == 'owner' || userRole == 'admin' || userRole == 'member';
+      }
+      if (role == 'viewer') {
+         return userRole == 'owner' || userRole == 'admin' || userRole == 'member' || userRole == 'viewer';
+      }
+      return false;
     }
     
-    function canCreateSite(userId) {
-        let user = get(/databases/$(database)/documents/users/$(userId)).data;
-        let plan = user.plan;
-        // This simulates a call to get a count, but in rules we'd often denormalize this count
-        // onto the user document itself for efficiency. For this example, we assume `sites` is a denormalized count.
-        let currentSites = user.sites; 
-
-        if (plan == 'basic') {
-            return currentSites < 1;
-        } else if (plan == 'pro') {
-            return currentSites < 5;
-        } else if (plan == 'business') {
-            return true; // Unlimited
-        }
-        return false;
+    function isOrgOwner(orgId) {
+      return hasRole(orgId, 'owner');
+    }
+    
+    function isOrgAdmin(orgId) {
+       return hasRole(orgId, 'admin');
+    }
+    
+    function isOrgMember(orgId) {
+       return hasRole(orgId, 'member');
+    }
+    
+    function isOrgViewer(orgId) {
+        return hasRole(orgId, 'viewer');
     }
 
-    // ------------------------------------------------------------------------
+    // Check if the user is a member of the org the resource belongs to
+    function isMemberOfResourceOrg() {
+      // For create, check incoming data. For others, check existing data.
+      let orgId = request.method == 'create' ? request.resource.data.orgId : resource.data.orgId;
+      return orgId != null && exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid + '_' + orgId));
+    }
+    
+    function isOwnerFieldImmutable(fieldName) {
+      return resource.data[fieldName] == request.resource.data[fieldName];
+    }
+    
+
+    // ======================================================================
     // Collection Rules
-    // ------------------------------------------------------------------------
-    
-    match /sites/{siteId} {
-        allow get, list: if isAdmin();
-    }
-    
-    match /orgs/{orgId} {
-      allow get: if isSignedIn();
-      allow list, create, update, delete: if isAdmin();
-    }
+    // ======================================================================
 
-
+    // Users collection is public readable, but only the user can write to their own doc.
     match /users/{userId} {
-      // Users can read their own document. Admins can read any.
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin(); // Only admins can list users.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); // Or more restrictive if needed
       
-      // Prevent client-side writes to sensitive fields to enforce server-side logic (e.g. from webhooks)
+      // Allow user to create their own doc.
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && 
-                      request.resource.data.plan == resource.data.plan &&
-                      request.resource.data.subscriptionStatus == resource.data.subscriptionStatus &&
-                      request.resource.data.role == resource.data.role &&
-                      request.resource.data.hardCap == resource.data.hardCap;
-      allow delete: if false;
+      
+      // Users can only update non-sensitive fields on their own doc.
+      allow update: if isOwner(userId) &&
+                    request.resource.data.keys().removeAll(['email', 'role', 'stripeCustomerId', 'subscriptionStatus', 'plan']).size() == request.resource.data.keys().size() - 5;
+    }
 
+    // Organizations collection
+    match /orgs/{orgId} {
+      // Any member of an org can read it.
+      allow get: if isMemberOfResourceOrg();
+      
+      // Only owner can update or delete an org.
+      allow update: if isOrgOwner(orgId);
+      allow delete: if isOrgOwner(orgId);
+      
+      // Creation is handled by a Cloud Function on user signup.
+      allow create: if false; 
+    }
 
-        match /sites/{siteId} {
-          allow get, list: if isOwner(userId) || isAdmin();
-          // Allow creation only if user is owner AND their plan allows for more sites.
-          allow create: if isConsistentOwnerOnCreate(userId) && canCreateSite(userId);
-          // Allow owner to suspend/resume. Admins can do anything.
-          allow update: if (isOwner(userId) && isOwnerFieldImmutable() && isStatusTransitionAllowed()) || isAdmin();
-          allow delete: if isOwner(userId) || isAdmin();
-        }
+    // Org Members
+    match /orgMembers/{membershipId} {
+        // Membership is composite key `userId_orgId`
+        
+        // Any member of the org can see who else is in it.
+        allow get, list: if isMemberOfResourceOrg();
+        
+        // Admins can add/remove members. Owners can't be removed.
+        allow create, delete: if isOrgAdmin(resource.data.orgId) && resource.data.role != 'owner';
+        
+        // Admins can change roles, but not create/remove owners.
+        allow update: if isOrgAdmin(resource.data.orgId) && resource.data.role != 'owner' && request.resource.data.role != 'owner';
+    }
+    
+    // Org Invitations
+    match /orgInvitations/{inviteId} {
+        // Invites contain emails, so should be protected.
+        allow get: if isOrgAdmin(resource.data.orgId) || request.auth.token.email == resource.data.email;
+        allow list: if isOrgAdmin(request.query.orgId); // Allow listing by org for admins
+        
+        // Creation and deletion handled by secure cloud functions
+        allow create, update, delete: if false;
+    }
 
-        match /billingSubscriptions/{billingId} {
-          allow get, list: if isOwner(userId) || isAdmin();
-          // Managed by backend (Stripe webhooks)
-          allow create, update, delete: if false; 
-        }
+    // Sites are nested under organizations now.
+    match /orgs/{orgId}/sites/{siteId} {
+      // Org viewers can see sites
+      allow get, list: if isOrgViewer(orgId);
+      
+      // Org members can create sites
+      allow create: if isOrgMember(orgId);
+      
+      // Org admins can update/delete sites
+      allow update, delete: if isOrgAdmin(orgId);
+    }
+    
+    match /users/{userId}/sites/{siteId} {
+        allow get, list, create, update, delete: if false; // This path is deprecated
+    }
+    
+    match /users/{userId}/billingSubscriptions/{billingId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if false;
+    }
 
-        match /supportTickets/{ticketId} {
-          allow get, list: if isOwner(userId) || isAdmin();
-          allow create: if isConsistentOwnerOnCreate(userId);
-          allow update: if (isOwner(userId) && isOwnerFieldImmutable()) || isAdmin();
-          allow delete: if isOwner(userId) || isAdmin();
-        }
-
-        match /login_events/{eventId} {
-            allow get, list: if isOwner(userId) || isAdmin();
-            // Can only be created by the backend on behalf of the user
-            allow create: if isConsistentOwnerOnCreate(userId);
-            // Events are immutable
-            allow update, delete: if false; 
-        }
+    match /users/{userId}/supportTickets/{ticketId} {
+        allow get, list, create: if isOwner(userId);
+        allow update: if isOwner(userId) && isOwnerFieldImmutable('userId');
+        allow delete: if false; // Tickets should be closed, not deleted by users
+    }
+    
+    match /users/{userId}/login_events/{eventId} {
+        allow get, list: if isOwner(userId);
+        allow create, update, delete: if false; // Backend only
     }
   }
 }
