@@ -1,24 +1,6 @@
-import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
-
-// Initialize Firebase Admin SDK
-let app: App;
-if (!getApps().length) {
-  app = initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-} else {
-  app = getApps()[0];
-}
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { stripe } from "@/lib/stripe/server";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
 
 export async function POST(req: Request) {
     try {
@@ -27,8 +9,8 @@ export async function POST(req: Request) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
         
-        const { uid } = await auth.verifyIdToken(token);
-        const userDoc = await db.collection("users").doc(uid).get();
+        const { uid } = await adminAuth.verifyIdToken(token);
+        const userDoc = await adminDb.collection("users").doc(uid).get();
 
         if (!userDoc.exists) {
             return new NextResponse("User not found", { status: 404 });

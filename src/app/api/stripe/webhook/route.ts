@@ -1,27 +1,8 @@
-import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-
-// Initialize Firebase Admin SDK
-let app: App;
-if (!getApps().length) {
-  app = initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-} else {
-  app = getApps()[0];
-}
-const db = getFirestore(app);
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
-});
+import { adminDb } from "@/lib/firebase/admin";
+import { stripe } from "@/lib/stripe/server";
 
 function mapPriceIdToPlan(priceId: string) {
   const plans = {
@@ -72,7 +53,7 @@ export async function POST(req: Request) {
       const priceId = subscription.items.data[0].price.id;
       const plan = mapPriceIdToPlan(priceId);
 
-      await db.doc(`users/${uid}`).set({
+      await adminDb.doc(`users/${uid}`).set({
         stripeCustomerId: subscription.customer as string,
         role: 'paid',
         plan: plan,
@@ -90,7 +71,7 @@ export async function POST(req: Request) {
       const priceId = sub.items.data[0].price.id;
       const plan = mapPriceIdToPlan(priceId);
 
-      const snap = await db
+      const snap = await adminDb
         .collection("users")
         .where("stripeCustomerId", "==", customerId)
         .limit(1)
@@ -109,7 +90,7 @@ export async function POST(req: Request) {
     } else if (event.type === "customer.subscription.deleted") {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
-      const snap = await db
+      const snap = await adminDb
         .collection("users")
         .where("stripeCustomerId", "==", customerId)
         .limit(1)

@@ -1,24 +1,6 @@
-import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-// Initialize Firebase Admin SDK
-let app: App;
-if (!getApps().length) {
-  app = initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-} else {
-  app = getApps()[0];
-}
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { adminAuth, adminDb } from '@/lib/firebase/admin';
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get("__session")?.value;
@@ -44,8 +26,8 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
-    const { uid } = await auth.verifySessionCookie(token, true);
-    const userDoc = await db.collection("users").doc(uid).get();
+    const { uid } = await adminAuth.verifySessionCookie(token, true);
+    const userDoc = await adminDb.collection("users").doc(uid).get();
     
     if (!userDoc.exists) {
         throw new Error("User not found in Firestore.");
@@ -57,9 +39,9 @@ export async function middleware(req: NextRequest) {
 
     // Admins have access to everything.
     if (userRole === "admin") {
-      const idTokenResult = await auth.getUser(uid);
+      const idTokenResult = await adminAuth.getUser(uid);
       if(!idTokenResult.customClaims?.admin) {
-        await auth.setCustomUserClaims(uid, { admin: true });
+        await adminAuth.setCustomUserClaims(uid, { admin: true });
       }
       return NextResponse.next();
     }

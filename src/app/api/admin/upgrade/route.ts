@@ -1,28 +1,10 @@
-import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from "next/server";
-import Stripe from "stripe"
-
-// Initialize Firebase Admin SDK
-let app: App;
-if (!getApps().length) {
-  app = initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-} else {
-  app = getApps()[0];
-}
-const db = getFirestore(app);
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from '@/lib/stripe/server';
+import { adminDb } from '@/lib/firebase/admin';
 
 async function logAdminAction({ adminId, action, targetUserId, before, after }: { adminId: string, action: string, targetUserId: string, before: any, after: any }) {
-  await db.collection("auditLogs").add({
+  await adminDb.collection("auditLogs").add({
     adminId,
     action,
     targetId: targetUserId,
@@ -44,7 +26,7 @@ export async function POST(req: Request) {
         return new NextResponse("Missing user ID, plan, or admin ID", { status: 400 });
     }
 
-    const userRef = db.doc(`users/${uid}`);
+    const userRef = adminDb.doc(`users/${uid}`);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
         return new NextResponse("User not found", { status: 404 });
