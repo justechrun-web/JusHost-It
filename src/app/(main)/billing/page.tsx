@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc } from "firebase/firestore";
 import { Loader2, Cpu, MemoryStick, HardDrive } from "lucide-react";
-import { reauthenticateWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { ResourceUsageChart } from "../components/resource-usage-chart";
 import { useState } from "react";
@@ -31,12 +29,9 @@ type BillingSubscription = {
   id: string;
   plan: string;
   status: 'active' | 'canceled' | 'past_due' | 'trialing';
-  nextBillingDate: { seconds: number };
+  currentPeriodEnd: number;
   invoices: Array<{ date: string; amount: string; url: string }>;
 };
-
-// 5 minute timeout for re-authentication
-const REAUTH_TIMEOUT = 5 * 60 * 1000;
 
 export default function BillingPage() {
   const { user, isUserLoading } = useUser();
@@ -46,50 +41,14 @@ export default function BillingPage() {
 
   const billingRef = useMemoFirebase(() => {
     if (!user || !db) return null;
-    // NOTE: The billing subscription ID is the same as the user UID for simplicity.
-    // In a multi-tenant system, this might be a separate ID.
-    return doc(db, `users/${user.uid}/billingSubscriptions`, user.uid);
+    return doc(db, `users/${user.uid}`);
   }, [db, user]);
 
   const { data: billingInfo, isLoading: isBillingLoading } = useDoc<BillingSubscription>(billingRef);
 
-  const requiresStepUp = () => {
-    if (!user?.metadata?.lastSignInTime) return true;
-    const lastLogin = new Date(user.metadata.lastSignInTime).getTime();
-    return (Date.now() - lastLogin) > REAUTH_TIMEOUT;
-  };
-
   const handleManageBilling = async () => {
     if (!user) return;
     setIsPortalLoading(true);
-
-    const reauthenticate = async () => {
-      toast({
-        title: "Security Check Required",
-        description: "For your security, please sign in again to manage your billing.",
-      });
-      try {
-        const provider = new GoogleAuthProvider();
-        await reauthenticateWithPopup(user, provider);
-        toast({ title: "Re-authentication successful!", description: "You can now manage your billing." });
-        return true;
-      } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Re-authentication Failed',
-          description: error.message || "Could not verify your identity.",
-        });
-        return false;
-      }
-    };
-
-    if (requiresStepUp()) {
-      const reauthSuccess = await reauthenticate();
-      if (!reauthSuccess) {
-        setIsPortalLoading(false);
-        return;
-      }
-    }
 
     try {
       const idToken = await user.getIdToken(true);
@@ -136,6 +95,9 @@ export default function BillingPage() {
     }
   };
 
+  const planName = billingInfo?.plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO ? 'Pro' : 
+                   billingInfo?.plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER ? 'Starter' : 'N/A';
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -149,10 +111,10 @@ export default function BillingPage() {
         <div className="flex justify-center items-center p-16">
           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
-      ) : !billingInfo ? (
+      ) : !billingInfo || !billingInfo.status ? (
          <Card className="text-center p-8">
           <CardTitle>No Subscription Found</CardTitle>
-          <CardDescription className="mt-2">You do not have an active billing plan.</CardDescription>
+          <CardDescription className="mt-2">You do not have an active subscription plan.</CardDescription>
           <Button asChild className="mt-4">
             <Link href="/pricing">Choose a Plan</Link>
           </Button>
@@ -167,14 +129,14 @@ export default function BillingPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-2xl font-semibold capitalize">{billingInfo.plan} Plan</p>
+                  <p className="text-2xl font-semibold capitalize">{planName} Plan</p>
                   <div className="flex items-center gap-2">
                     <Badge variant={getStatusBadgeVariant(billingInfo.status)} className="capitalize">
                       {billingInfo.status}
                     </Badge>
-                    {billingInfo.nextBillingDate && (
+                    {billingInfo.currentPeriodEnd && (
                        <span className="text-sm text-muted-foreground">
-                        Renews on {new Date(billingInfo.nextBillingDate.seconds * 1000).toLocaleDateString()}
+                        {billingInfo.status === 'trialing' ? 'Trial ends' : 'Renews'} on {new Date(billingInfo.currentPeriodEnd).toLocaleDateString()}
                        </span>
                     )}
                   </div>
@@ -260,5 +222,3 @@ export default function BillingPage() {
     </div>
   );
 }
-
-    

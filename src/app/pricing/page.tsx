@@ -13,6 +13,7 @@ const tiers = [
   {
     name: 'Starter',
     id: 'starter',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER,
     price: '$15',
     priceSuffix: '/ month',
     description: 'For personal projects and small sites.',
@@ -20,13 +21,14 @@ const tiers = [
       '1 Active Site',
       'Soft usage caps',
       'Community support',
-      'Overage allowed'
+      '7-day free trial'
     ],
-    cta: 'Choose Plan',
+    cta: 'Start Free Trial',
   },
   {
     name: 'Pro',
     id: 'pro',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO,
     price: '$30',
     priceSuffix: '/ month',
     description: 'For growing businesses and professional developers.',
@@ -34,9 +36,9 @@ const tiers = [
       '5 Active Sites',
       'Higher usage quotas',
       'Usage alerts',
-      'Priority email support'
+      '7-day free trial'
     ],
-    cta: 'Choose Plan',
+    cta: 'Start Free Trial',
     featured: true
   },
   {
@@ -63,24 +65,33 @@ export default function PricingPage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    async function handleSelect(planId: string) {
-        setLoadingPlan(planId);
+    async function handleSelect(plan: typeof tiers[0]) {
+        if (!plan.priceId) {
+            toast({
+                title: 'Configuration Error',
+                description: `The price ID for the ${plan.name} plan is not set up.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setLoadingPlan(plan.id);
         
         if (!user) {
-            router.push(`/signup?plan=${planId}`);
+            router.push(`/signup?plan=${plan.id}`);
             return;
         }
 
         try {
-            const idToken = await user.getIdToken();
+            const token = await user.getIdToken();
 
             const res = await fetch('/api/stripe/checkout', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
+                    'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({ plan: planId }),
+                body: JSON.stringify({ priceId: plan.priceId }),
             });
 
             if (!res.ok) {
@@ -173,7 +184,7 @@ export default function PricingPage() {
                                 <Button 
                                     className="w-full" 
                                     variant={tier.featured ? 'default' : 'outline'}
-                                    onClick={() => handleSelect(tier.id)}
+                                    onClick={() => handleSelect(tier)}
                                     disabled={loadingPlan === tier.id || isUserLoading}
                                 >
                                     {loadingPlan === tier.id ? (

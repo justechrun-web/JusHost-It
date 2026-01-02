@@ -1,65 +1,38 @@
 
 'use server';
 
-import Stripe from "stripe";
-import { NextResponse } from "next/server";
-import { getAuth } from "firebase-admin/auth";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { NextRequest, NextResponse } from "next/server";
+import { stripe } from "@/lib/stripe";
+import { auth, db } from "@/lib/firebase-admin";
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, "\n"),
-    }),
-  });
-}
+export async function POST(req: NextRequest) {
+  const token = req.headers.get("authorization")?.split("Bearer ")[1];
+  if (!token) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-});
-
-const db = getFirestore();
-
-export async function POST(req: Request) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json({ error: "Missing authorization token" }, { status: 401 });
-    }
-    const idToken = authHeader.split('Bearer ')[1];
+    const decoded = await auth.verifyIdToken(token);
+    const userId = decoded.uid;
 
-    // 🔐 Verify identity
-    const decoded = await getAuth().verifyIdToken(idToken);
-    const uid = decoded.uid;
+    const userDoc = await db.collection("users").doc(userId).get();
+    const stripeCustomerId = userDoc.data()?.stripeCustomerId;
 
-    // 🔎 Lookup user billing record
-    const userSnap = await db.doc(`users/${uid}`).get();
-    if (!userSnap.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const { stripeCustomerId } = userSnap.data()!;
     if (!stripeCustomerId) {
-      return NextResponse.json({ error: "Stripe customer ID not found for this user." }, { status: 400 });
+      // This can happen if a user signs up but never starts a checkout session
+      // You can either create a customer here or direct them to pricing.
+      return NextResponse.json({ error: "Stripe customer not found." }, { status: 404 });
     }
 
-    // 🔗 Create portal session
-    const session = await stripe.billingPortal.sessions.create({
+    const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: portalSession.url });
 
   } catch (error: any) {
-    console.error("Stripe Portal Error:", error);
-    const message = error.message || "Failed to create billing portal session.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Error creating billing portal session:", error);
+    return NextResponse.json({ error: "Failed to create billing portal session." }, { status: 500 });
   }
 }
-
-    

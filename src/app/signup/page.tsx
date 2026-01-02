@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -8,7 +8,9 @@ import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  sendSignInLinkToEmail
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -45,25 +47,6 @@ const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
 });
 
-async function startTrial(idToken: string, plan: string | null) {
-  // In a real implementation, you would call your backend here.
-  // This is a placeholder for the API call you described.
-  console.log('Starting trial for plan:', plan);
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network request
-  // Example API call:
-  /*
-  await fetch('/api/billing/trial', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ plan }),
-  });
-  */
-}
-
-
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,11 +64,35 @@ function SignupForm() {
     mode: 'onTouched'
   });
 
+  // Handle email link sign-in on component mount
+  useEffect(() => {
+    const email = window.localStorage.getItem('emailForSignIn');
+    if (isSignInWithEmailLink(auth, window.location.href) && email) {
+      signInWithEmailLink(auth, email, window.location.href)
+        .then(() => {
+          window.localStorage.removeItem('emailForSignIn');
+          // User is signed in.
+          // Now, check if a plan was part of the original signup flow.
+          const plan = searchParams.get('plan');
+          if (plan) {
+            // Redirect to pricing to complete the checkout.
+            router.push(`/pricing?plan=${plan}`);
+          } else {
+            // Or to the dashboard if no plan was specified.
+            router.push('/dashboard');
+          }
+        })
+        .catch((err) => {
+          setError(mapAuthError(err.code));
+        });
+    }
+  }, [auth, router, searchParams]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     setError(null);
     const plan = searchParams.get('plan');
-    const redirectUrl = `${window.location.origin}/dashboard${plan ? `?trial_plan=${plan}` : ''}`;
+    const redirectUrl = `${window.location.origin}/signup${plan ? `?plan=${plan}` : ''}`;
 
 
     try {
@@ -97,7 +104,7 @@ function SignupForm() {
       
       toast({
         title: 'Check your email',
-        description: `A sign-in link has been sent to ${values.email}. This will start your free trial.`,
+        description: `A sign-in link has been sent to ${values.email}. Click it to complete your registration.`,
       });
       form.reset();
 
@@ -120,18 +127,9 @@ function SignupForm() {
     const provider = new GoogleAuthProvider();
 
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const idToken = await user.getIdToken();
-      const plan = searchParams.get('plan') || 'starter';
-      
-      await startTrial(idToken, plan);
-      toast({
-          title: "Welcome!",
-          description: "Your free trial has started."
-      })
-
-      router.push(`/dashboard`);
+      await signInWithPopup(auth, provider);
+      // After Google sign-in, redirect to pricing to select a plan and start trial.
+      router.push('/pricing');
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
@@ -153,7 +151,7 @@ function SignupForm() {
               Create an Account
             </h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email to start your free trial. No credit card required.
+              Enter your email to get started. No credit card required for the first 7 days.
             </p>
           </div>
           <Form {...form}>

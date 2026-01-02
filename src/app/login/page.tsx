@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,8 @@ import {
   GoogleAuthProvider,
   fetchSignInMethodsForEmail,
   sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -49,13 +51,36 @@ export default function LoginPage() {
 
   const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
 
+  // Handle the email link sign-in on page load
+  useEffect(() => {
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      let emailFromStorage = window.localStorage.getItem('emailForSignIn');
+      if (!emailFromStorage) {
+        // If the email is not in storage, prompt the user for it.
+        emailFromStorage = window.prompt('Please provide your email for confirmation');
+      }
+      
+      if (emailFromStorage) {
+        signInWithEmailLink(auth, emailFromStorage, window.location.href)
+          .then((result) => {
+            window.localStorage.removeItem('emailForSignIn');
+            router.push('/dashboard');
+          })
+          .catch((err) => {
+            setError(mapAuthError(err.code));
+          });
+      }
+    }
+  }, [auth, router]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
+      // For login, we're still sending a magic link. This is a passwordless flow.
       await sendSignInLinkToEmail(auth, email, {
-        url: `${window.location.origin}/dashboard`,
+        url: `${window.location.origin}/dashboard`, // Direct to dashboard on successful sign-in
         handleCodeInApp: true,
       });
       window.localStorage.setItem('emailForSignIn', email);
