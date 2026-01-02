@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,11 @@ export default function BillingPage() {
 
   const planName = billingInfo?.plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO ? 'Pro' : 
                    billingInfo?.plan === process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_STARTER ? 'Starter' : 'N/A';
+  
+  const getPeriodEndDate = () => {
+    if(!billingInfo?.currentPeriodEnd) return '';
+    return new Date(billingInfo.currentPeriodEnd * 1000).toLocaleDateString();
+  }
 
   return (
     <div className="space-y-8">
@@ -136,7 +142,7 @@ export default function BillingPage() {
                     </Badge>
                     {billingInfo.currentPeriodEnd && (
                        <span className="text-sm text-muted-foreground">
-                        {billingInfo.status === 'trialing' ? 'Trial ends' : 'Renews'} on {new Date(billingInfo.currentPeriodEnd).toLocaleDateString()}
+                        {billingInfo.status === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
                        </span>
                     )}
                   </div>
