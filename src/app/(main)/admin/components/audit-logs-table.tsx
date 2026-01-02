@@ -27,7 +27,7 @@ type AuditLog = {
 export function AuditLogsTable() {
   const db = useFirestore();
   const auditLogQuery = useMemoFirebase(
-    () => db ? query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(100)) : null,
+    () => db ? query(collection(db, 'auditLogs'), orderBy('timestamp', 'desc'), limit(100)) : null,
     [db]
   );
   const { data: logs, isLoading } = useCollection<AuditLog>(auditLogQuery);

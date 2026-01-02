@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -50,16 +51,8 @@ export default function AdminLayout({
 
         if (!isAdminClaim) {
           router.push('/dashboard');
-          setLoading(false);
-          return;
         }
-
-        const isMfaEnabled = multiFactor(user).enrolledFactors.length > 0;
-        if (!isMfaEnabled) {
-          router.push('/mfa-setup');
-        } else {
-          setLoading(false);
-        }
+        setLoading(false);
       });
     }
   }, [user, isUserLoading, router]);

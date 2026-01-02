@@ -1,6 +1,7 @@
+
 import Stripe from "stripe"
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from "next/server";
 
 if (!getApps().length) {
@@ -20,27 +21,42 @@ if (!getApps().length) {
 const adminDb = getFirestore();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+async function logAdminAction({ adminId, action, targetUserId, before, after }: { adminId: string, action: string, targetUserId: string, before: any, after: any }) {
+  await adminDb.collection("auditLogs").add({
+    adminId,
+    action,
+    targetUserId,
+    before,
+    after,
+    timestamp: FieldValue.serverTimestamp(),
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const form = await req.formData()
     const uid = form.get("uid") as string
-    const plan = form.get("plan") as string
+    const newPlan = form.get("plan") as string
+    const adminId = form.get("adminId") as string;
 
-    if (!uid || !plan) {
-        return new NextResponse("Missing user ID or plan", { status: 400 });
+
+    if (!uid || !newPlan || !adminId) {
+        return new NextResponse("Missing user ID, plan, or admin ID", { status: 400 });
     }
 
-    const user = (await adminDb.doc(`users/${uid}`).get()).data()
+    const userRef = adminDb.doc(`users/${uid}`);
+    const user = (await userRef.get()).data()
     if (!user || !user.subscription?.id) {
         return new NextResponse("User or subscription not found", { status: 404 });
     }
 
-    const priceId = process.env[`NEXT_PUBLIC_STRIPE_PRICE_${plan.toUpperCase()}`];
+    const priceId = process.env[`NEXT_PUBLIC_STRIPE_PRICE_${newPlan.toUpperCase()}`];
     if (!priceId) {
-        return new NextResponse(`Price ID for plan '${plan}' not found in environment variables.`, { status: 500 });
+        return new NextResponse(`Price ID for plan '${newPlan}' not found in environment variables.`, { status: 500 });
     }
 
     const currentSubscription = await stripe.subscriptions.retrieve(user.subscription.id);
+    const oldPlan = user.role;
     
     await stripe.subscriptions.update(user.subscription.id, {
         items: [{
@@ -50,9 +66,19 @@ export async function POST(req: Request) {
         proration_behavior: "create_prorations",
     })
 
-    await adminDb.doc(`users/${uid}`).update({ role: plan, 'subscription.plan': plan })
+    await userRef.update({ 
+        role: newPlan, 
+        'subscription.plan': newPlan 
+    });
+
+    await logAdminAction({
+        adminId: adminId,
+        action: 'ADMIN_PLAN_CHANGE',
+        targetUserId: uid,
+        before: { plan: oldPlan },
+        after: { plan: newPlan }
+    });
     
-    // Redirect back to the admin billing page
     return NextResponse.redirect(new URL('/admin/billing', req.url), { status: 303 });
 
   } catch (error: any) {
