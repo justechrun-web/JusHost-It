@@ -1,12 +1,14 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, HardDrive, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth, useUser } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 const tiers = [
   {
@@ -60,6 +62,7 @@ export default function PricingPage() {
     const { user, isUserLoading } = useUser();
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const { toast } = useToast();
+    const router = useRouter();
 
     async function handleSelect(planId: string) {
         setLoadingPlan(planId);
@@ -70,7 +73,8 @@ export default function PricingPage() {
                 description: 'You need to be signed in to select a plan.',
                 variant: 'destructive',
             });
-            window.location.href = `/login?redirect=/pricing`;
+            // Redirect to login, but pass the intended plan so signup can redirect back here.
+            router.push(`/login?redirect=/pricing&plan=${planId}`);
             return;
         }
 
@@ -99,7 +103,8 @@ export default function PricingPage() {
                 description: error.message,
                 variant: 'destructive',
             });
-            setLoadingPlan(null);
+        } finally {
+             setLoadingPlan(null);
         }
     }
 

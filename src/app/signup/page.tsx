@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -11,7 +11,7 @@ import {
   signInWithPopup,
   sendSignInLinkToEmail
 } from 'firebase/auth';
-import { useAuth, useFunctions } from '@/firebase';
+import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -43,7 +43,6 @@ function mapAuthError(code: string): string {
 }
 
 const formSchema = z.object({
-  fullName: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
 });
 
@@ -58,7 +57,6 @@ function SignupForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
       email: "",
     },
     mode: 'onTouched'
@@ -69,12 +67,12 @@ function SignupForm() {
     setError(null);
 
     try {
+      // Magic link authentication flow
       await sendSignInLinkToEmail(auth, values.email, {
         url: `${window.location.origin}/`,
         handleCodeInApp: true,
       });
       window.localStorage.setItem('emailForSignIn', values.email);
-      window.localStorage.setItem('fullNameForSignIn', values.fullName);
       
       toast({
         title: 'Check your email',
@@ -124,7 +122,7 @@ function SignupForm() {
               Create an Account
             </h1>
             <p className="text-balance text-muted-foreground">
-              Enter your details to get started with JusHostIt.
+              Enter your email to sign in or create an account.
             </p>
           </div>
           <Form {...form}>
@@ -136,19 +134,6 @@ function SignupForm() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Jane Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="email"
@@ -214,11 +199,11 @@ function SignupForm() {
     );
 }
 
-export default function SignupPage() {
+
+function SignupPageComponent() {
   const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
 
   return (
-    <React.Suspense fallback={<div>Loading...</div>}>
       <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
         <div className="flex items-center justify-center py-12">
             <SignupForm />
@@ -235,6 +220,13 @@ export default function SignupPage() {
           )}
         </div>
       </div>
-    </React.Suspense>
   );
+}
+
+export default function SignupPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <SignupPageComponent />
+        </Suspense>
+    )
 }

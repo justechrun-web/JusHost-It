@@ -1,3 +1,4 @@
+
 'use server';
 
 import Stripe from 'stripe';
@@ -11,7 +12,7 @@ if (!getApps().length) {
     credential: cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
     }),
   });
 }
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // 🔐 Verify user
+  // 🔐 Verify user identity with the Firebase ID token
   let decoded;
   try {
     decoded = await getAuth().verifyIdToken(idToken);
@@ -54,8 +55,10 @@ export async function POST(req: Request) {
       mode: 'subscription',
       customer_email: decoded.email,
       line_items: [{price: priceMap[plan], quantity: 1}],
+      // The UID and plan are passed in metadata, which is secure.
+      // The webhook will use this to provision the correct user's account.
       metadata: {uid, plan},
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
     });
 
