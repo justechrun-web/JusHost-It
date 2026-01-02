@@ -3,21 +3,13 @@
 
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-import { db }from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase-admin";
+import Stripe from "stripe";
 
-/**
- * This is the API route that Stripe will call to send webhook events.
- * It's crucial for keeping your application's state in sync with Stripe.
- */
 export async function POST(req: Request) {
   const body = await req.text();
   const sig = headers().get("stripe-signature")!;
-
-  if (!sig) {
-    return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
-  }
 
   let event: Stripe.Event;
 
@@ -29,71 +21,85 @@ export async function POST(req: Request) {
     );
   } catch (err: any) {
     console.error(`❌ Webhook signature verification failed: ${err.message}`);
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
   const session = event.data.object as any;
-  
-  // Use metadata from subscription for ongoing events, or from checkout session for initial setup.
-  const userId = session.metadata?.userId || (event.type === 'checkout.session.completed' ? session.metadata?.uid : null);
-  
-  if (!userId) {
-    console.error("Webhook Error: Missing userId in metadata.", session.id);
-    return NextResponse.json({ received: true }); // Acknowledge event but do nothing
-  }
-
 
   try {
     switch (event.type) {
-        case "customer.subscription.created":
-        case "customer.subscription.updated": {
-            const userRef = db.collection("users").doc(userId);
-            const subscriptionData = {
-                subscriptionStatus: session.status, // e.g., "trialing", "active", "past_due"
-                plan: session.items.data[0].price.id,
-                currentPeriodEnd: session.current_period_end, // Store as Unix timestamp
-            };
-            await userRef.set(subscriptionData, { merge: true });
-            console.log(`Updated subscription for user ${userId} to status: ${session.status}`);
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        const uid = sub.metadata.uid;
+        if (!uid) {
+            console.error("Webhook Error: Missing uid in subscription metadata.", sub.id);
             break;
         }
 
-        case "customer.subscription.deleted": {
-            const userRef = db.collection("users").doc(userId);
-            await userRef.set({
-                subscriptionStatus: "canceled",
-            }, { merge: true });
+        await db.collection("users").doc(uid).set(
+          {
+            subscriptionStatus: sub.status,
+            plan: sub.items.data[0].price.id,
+            currentPeriodEnd: sub.current_period_end,
+          },
+          { merge: true }
+        );
+        console.log(`Updated subscription for user ${uid} to status: ${sub.status}`);
+        break;
+      }
 
-            console.log(`Canceled subscription for user ${userId}.`);
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        const uid = sub.metadata.uid;
+        if (!uid) {
+            console.error("Webhook Error: Missing uid in subscription metadata.", sub.id);
             break;
         }
+        
+        await db.collection("users").doc(uid).set(
+          {
+            subscriptionStatus: "canceled",
+          },
+          { merge: true }
+        );
+        console.log(`Canceled subscription for user ${uid}.`);
+        break;
+      }
 
-        case 'checkout.session.completed': {
-            const checkoutUserId = session.metadata?.uid;
-            if (!checkoutUserId) {
-                console.error("Webhook Error: Could not determine user ID from checkout session.", session.id);
+      case 'checkout.session.completed': {
+        const checkoutSession = event.data.object as Stripe.Checkout.Session;
+        if (checkoutSession.mode === 'subscription') {
+            const subscriptionId = checkoutSession.subscription;
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
+            
+            const uid = checkoutSession.metadata?.uid;
+            if (!uid) {
+                console.error("Webhook Error: Missing uid in checkout session metadata.", checkoutSession.id);
                 break;
             }
-            const userRef = db.collection("users").doc(checkoutUserId);
 
-            // This creates the customer in Firestore if they don't exist yet,
-            // which can happen with email-based sign-ins.
-            await userRef.set({
-                stripeCustomerId: session.customer as string,
-            }, { merge: true });
-            
-            console.log(`User ${checkoutUserId} completed checkout. Customer ID: ${session.customer}`);
-            break;
+            await db.collection("users").doc(uid).set(
+              {
+                stripeCustomerId: checkoutSession.customer as string,
+                subscriptionStatus: subscription.status,
+                plan: subscription.items.data[0].price.id,
+                currentPeriodEnd: subscription.current_period_end,
+              },
+              { merge: true }
+            );
+             console.log(`User ${uid} completed checkout. Customer ID: ${checkoutSession.customer}`);
         }
-
-        default:
-            console.log(`Unhandled webhook event type: ${event.type}`);
+        break;
+      }
+      
+      default:
+        // console.log(`Unhandled webhook event type: ${event.type}`);
     }
   } catch (error) {
      console.error(`Firestore update failed for event ${event.type}:`, error);
-     return NextResponse.json({ error: "Firestore update failed." }, { status: 500 });
+     return new NextResponse("Webhook handler failed. See logs.", { status: 500 });
   }
-
 
   return NextResponse.json({ received: true });
 }

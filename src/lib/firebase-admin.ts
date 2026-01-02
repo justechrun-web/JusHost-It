@@ -16,5 +16,5 @@ if (!getApps().length) {
   }
 }
 
-export const adminAuth = getAuth();
+export const auth = getAuth();
 export const db = getFirestore();

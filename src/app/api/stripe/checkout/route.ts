@@ -1,39 +1,34 @@
 
 'use server';
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { auth, db } from "@/lib/firebase-admin";
 
-export async function POST(req: NextRequest) {
-  const token = req.headers.get("authorization")?.split("Bearer ")[1];
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function POST(req: Request) {
   try {
-    const decoded = await auth.verifyIdToken(token);
-    const userId = decoded.uid;
-    const email = decoded.email!;
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!token) {
+        return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const { uid, email } = await auth.verifyIdToken(token);
     const { priceId } = await req.json();
 
     if (!priceId) {
-        return NextResponse.json({ error: "Price ID is required" }, { status: 400 });
+        return new NextResponse("Price ID is required", { status: 400 });
     }
 
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
+    const userDoc = await db.collection('users').doc(uid).get();
     let stripeCustomerId = userDoc.data()?.stripeCustomerId;
 
-    // Create a new Stripe customer if one doesn't exist
     if (!stripeCustomerId) {
         const customer = await stripe.customers.create({
             email,
-            name: decoded.name,
-            metadata: { userId },
+            metadata: { uid },
         });
         stripeCustomerId = customer.id;
-        await userRef.set({ stripeCustomerId }, { merge: true });
+        await db.collection('users').doc(uid).set({ stripeCustomerId }, { merge: true });
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -45,12 +40,11 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      // Enable a 7-day free trial for the subscription
       subscription_data: {
         trial_period_days: 7,
-        metadata: { userId },
+        metadata: { uid },
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
     });
 
@@ -58,6 +52,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("Error creating checkout session:", error);
-    return NextResponse.json({ error: "Failed to create checkout session." }, { status: 500 });
+    return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

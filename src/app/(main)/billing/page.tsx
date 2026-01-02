@@ -29,7 +29,7 @@ import Link from "next/link";
 type BillingSubscription = {
   id: string;
   plan: string;
-  status: 'active' | 'canceled' | 'past_due' | 'trialing';
+  subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'trialing';
   currentPeriodEnd: number;
   invoices: Array<{ date: string; amount: string; url: string }>;
 };
@@ -83,7 +83,7 @@ export default function BillingPage() {
 
   const isLoading = isUserLoading || isBillingLoading;
   
-  const getStatusBadgeVariant = (status: BillingSubscription['status']) => {
+  const getStatusBadgeVariant = (status?: BillingSubscription['subscriptionStatus']) => {
     switch (status) {
       case 'active':
       case 'trialing':
@@ -117,7 +117,7 @@ export default function BillingPage() {
         <div className="flex justify-center items-center p-16">
           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
-      ) : !billingInfo || !billingInfo.status ? (
+      ) : !billingInfo || !billingInfo.subscriptionStatus ? (
          <Card className="text-center p-8">
           <CardTitle>No Subscription Found</CardTitle>
           <CardDescription className="mt-2">You do not have an active subscription plan.</CardDescription>
@@ -137,12 +137,12 @@ export default function BillingPage() {
                 <div className="space-y-2">
                   <p className="text-2xl font-semibold capitalize">{planName} Plan</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(billingInfo.status)} className="capitalize">
-                      {billingInfo.status}
+                    <Badge variant={getStatusBadgeVariant(billingInfo.subscriptionStatus)} className="capitalize">
+                      {billingInfo.subscriptionStatus}
                     </Badge>
                     {billingInfo.currentPeriodEnd && (
                        <span className="text-sm text-muted-foreground">
-                        {billingInfo.status === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
+                        {billingInfo.subscriptionStatus === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
                        </span>
                     )}
                   </div>

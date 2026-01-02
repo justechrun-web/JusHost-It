@@ -1,37 +1,34 @@
 
 'use server';
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { auth, db } from "@/lib/firebase-admin";
 
-export async function POST(req: NextRequest) {
-  const token = req.headers.get("authorization")?.split("Bearer ")[1];
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function POST(req: Request) {
+    try {
+        const token = req.headers.get("Authorization")?.replace("Bearer ", "");
+        if (!token) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+        
+        const { uid } = await auth.verifyIdToken(token);
+        const user = await db.collection("users").doc(uid).get();
+        const customerId = user.data()?.stripeCustomerId;
 
-  try {
-    const decoded = await auth.verifyIdToken(token);
-    const userId = decoded.uid;
+        if (!customerId) {
+            return new NextResponse("Stripe customer not found", { status: 404 });
+        }
 
-    const userDoc = await db.collection("users").doc(userId).get();
-    const stripeCustomerId = userDoc.data()?.stripeCustomerId;
+        const session = await stripe.billingPortal.sessions.create({
+            customer: customerId,
+            return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+        });
 
-    if (!stripeCustomerId) {
-      // This can happen if a user signs up but never starts a checkout session
-      return NextResponse.json({ error: "Stripe customer not found. Please select a plan to start." }, { status: 404 });
+        return NextResponse.json({ url: session.url });
+
+    } catch (error: any) {
+        console.error("Error creating billing portal session:", error);
+        return new NextResponse("Internal Server Error", { status: 500 });
     }
-
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: stripeCustomerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
-    });
-
-    return NextResponse.json({ url: portalSession.url });
-
-  } catch (error: any) {
-    console.error("Error creating billing portal session:", error);
-    return NextResponse.json({ error: "Failed to create billing portal session." }, { status: 500 });
-  }
 }
