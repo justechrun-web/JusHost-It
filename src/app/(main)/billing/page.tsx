@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -23,12 +22,12 @@ import { doc } from "firebase/firestore";
 import { Loader2, Cpu, MemoryStick, HardDrive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ResourceUsageChart } from "../components/resource-usage-chart";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FEATURES } from "@/lib/features";
 
 type UserData = {
-  billing: {
+  subscription: {
     plan: 'starter' | 'pro' | 'business';
     status: 'active' | 'canceled' | 'past_due' | 'trialing';
     currentPeriodEnd: { seconds: number };
@@ -46,6 +45,8 @@ export default function BillingPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [isPortalLoading, setIsPortalLoading] = useState(false);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
 
   const userRef = useMemoFirebase(() => {
     if (!user || !db) return null;
@@ -53,8 +54,30 @@ export default function BillingPage() {
   }, [db, user]);
 
   const { data: userData, isLoading: isBillingLoading } = useDoc<UserData>(userRef);
-  const { billing, usage } = userData || {};
-  const planFeatures = billing?.plan ? FEATURES[billing.plan] : null;
+  const { subscription, usage } = userData || {};
+  const planFeatures = subscription?.plan ? FEATURES[subscription.plan] : null;
+
+
+  useEffect(() => {
+    async function fetchInvoices() {
+        if (!user) return;
+        setInvoicesLoading(true);
+        try {
+            const token = await user.getIdToken(true);
+            const res = await fetch('/api/stripe/invoices', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch invoices');
+            const data = await res.json();
+            setInvoices(data.invoices);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setInvoicesLoading(false);
+        }
+    }
+    fetchInvoices();
+  }, [user]);
 
 
   const handleManageBilling = async () => {
@@ -93,7 +116,7 @@ export default function BillingPage() {
 
   const isLoading = isUserLoading || isBillingLoading;
   
-  const getStatusBadgeVariant = (status?: UserData['billing']['status']) => {
+  const getStatusBadgeVariant = (status?: UserData['subscription']['status']) => {
     switch (status) {
       case 'active':
       case 'trialing':
@@ -107,8 +130,8 @@ export default function BillingPage() {
   };
   
   const getPeriodEndDate = () => {
-    if(!billing?.currentPeriodEnd) return '';
-    return new Date(billing.currentPeriodEnd.seconds * 1000).toLocaleDateString();
+    if(!subscription?.currentPeriodEnd) return '';
+    return new Date(subscription.currentPeriodEnd.seconds * 1000).toLocaleDateString();
   }
 
   return (
@@ -124,7 +147,7 @@ export default function BillingPage() {
         <div className="flex justify-center items-center p-16">
           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
-      ) : !billing || !billing.status ? (
+      ) : !subscription || !subscription.status ? (
          <Card className="text-center p-8">
           <CardTitle>No Subscription Found</CardTitle>
           <CardDescription className="mt-2">You do not have an active subscription plan.</CardDescription>
@@ -142,14 +165,14 @@ export default function BillingPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-2xl font-semibold capitalize">{billing.plan} Plan</p>
+                  <p className="text-2xl font-semibold capitalize">{subscription.plan} Plan</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(billing.status)} className="capitalize">
-                      {billing.status}
+                    <Badge variant={getStatusBadgeVariant(subscription.status)} className="capitalize">
+                      {subscription.status}
                     </Badge>
-                    {billing.currentPeriodEnd && (
+                    {subscription.currentPeriodEnd && (
                        <span className="text-sm text-muted-foreground">
-                        {billing.status === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
+                        {subscription.status === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
                        </span>
                     )}
                   </div>
@@ -208,14 +231,20 @@ export default function BillingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {userData?.invoices && userData.invoices.length > 0 ? (
-                      userData.invoices.map((invoice, index) => (
+                    {invoicesLoading ? (
+                        <TableRow>
+                            <TableCell colSpan={3} className="text-center h-24">
+                                <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                            </TableCell>
+                        </TableRow>
+                    ) : invoices && invoices.length > 0 ? (
+                      invoices.map((invoice, index) => (
                         <TableRow key={index}>
-                          <TableCell className="font-medium">{invoice.date}</TableCell>
-                          <TableCell>{invoice.amount}</TableCell>
+                          <TableCell className="font-medium">{new Date(invoice.created * 1000).toLocaleDateString()}</TableCell>
+                          <TableCell>${(invoice.amount_paid / 100).toFixed(2)}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="outline" size="sm" asChild>
-                              <a href={invoice.url} target="_blank" rel="noopener noreferrer">View Invoice</a>
+                              <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer">View Invoice</a>
                             </Button>
                           </TableCell>
                         </TableRow>

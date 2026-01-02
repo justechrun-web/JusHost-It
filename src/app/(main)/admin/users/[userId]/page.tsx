@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -18,12 +17,12 @@ type AppUser = {
   displayName: string;
   role?: 'user' | 'admin' | 'starter' | 'pro' | 'business';
   company?: string;
-  billing?: {
+  subscription?: {
     plan: string;
     status: string;
-    monthlySpend: number;
-    hardCap: boolean;
   }
+  monthlySpend?: number;
+  hardCap?: boolean;
 };
 
 export default function UserDetailPage() {
@@ -58,13 +57,13 @@ export default function UserDetailPage() {
     );
   }
 
-  // Flatten user and billing info for easier prop passing to legacy components
+  // Flatten user and subscription info for easier prop passing to legacy components
   const displayUser = {
     ...user,
-    plan: user.billing?.plan,
-    subscriptionStatus: user.billing?.status,
-    monthlySpend: user.billing?.monthlySpend,
-    hardCap: user.billing?.hardCap,
+    plan: user.subscription?.plan,
+    subscriptionStatus: user.subscription?.status,
+    monthlySpend: user.monthlySpend,
+    hardCap: user.hardCap,
   };
 
 

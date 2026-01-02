@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -19,6 +18,7 @@ const adminTabs = [
   { name: 'Overview', href: '/admin' },
   { name: 'Sites', href: '/admin/sites' },
   { name: 'Users', href: '/admin/users' },
+  { name: 'Billing', href: '/admin/billing' },
   { name: 'Audit', href: '/admin/audit' },
   { name: 'Metrics', href: '/admin/metrics' },
 ];
@@ -91,7 +91,7 @@ export default function AdminLayout({
         </h1>
       </div>
       <Tabs value={activeTab} className="w-full" onValueChange={(value) => router.push(value)}>
-        <TabsList className="grid w-full grid-cols-5 mb-4">
+        <TabsList className="grid w-full grid-cols-6 mb-4">
             {adminTabs.map((tab) => (
                 <TabsTrigger value={tab.href} key={tab.href}>
                     {tab.name}

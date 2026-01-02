@@ -1,4 +1,3 @@
-
 'use server';
 
 import { NextResponse } from "next/server";
@@ -40,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     const userDoc = await db.collection('users').doc(uid).get();
-    let stripeCustomerId = userDoc.data()?.billing?.stripeCustomerId;
+    let stripeCustomerId = userDoc.data()?.stripeCustomerId;
 
     if (!stripeCustomerId) {
         const customer = await stripe.customers.create({
@@ -49,7 +48,7 @@ export async function POST(req: Request) {
         });
         stripeCustomerId = customer.id;
         await db.collection('users').doc(uid).set({ 
-            billing: { stripeCustomerId } 
+            stripeCustomerId
         }, { merge: true });
     }
 

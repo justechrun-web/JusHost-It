@@ -56,7 +56,7 @@ export async function middleware(req: NextRequest) {
     
     const userData = userDoc.data()!;
     const userRole = userData.role;
-    const billingStatus = userData.billing?.status;
+    const billingStatus = userData.subscription?.status;
 
     // Admins have access to everything.
     if (userRole === "admin") {

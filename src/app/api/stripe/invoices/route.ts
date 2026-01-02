@@ -1,3 +1,4 @@
+
 'use server';
 
 import { NextResponse } from "next/server";
@@ -6,7 +7,6 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin SDK if not already initialized
 if (!getApps().length) {
   try {
     initializeApp({
@@ -24,7 +24,7 @@ if (!getApps().length) {
 const auth = getAuth();
 const db = getFirestore();
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
     try {
         const token = req.headers.get("Authorization")?.replace("Bearer ", "");
         if (!token) {
@@ -41,18 +41,19 @@ export async function POST(req: Request) {
         const customerId = userDoc.data()?.stripeCustomerId;
 
         if (!customerId) {
-            return new NextResponse("Stripe customer not found for user", { status: 404 });
+            return NextResponse.json({ invoices: [] });
         }
 
-        const session = await stripe.billingPortal.sessions.create({
+        const invoices = await stripe.invoices.list({
             customer: customerId,
-            return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+            limit: 20,
         });
 
-        return NextResponse.json({ url: session.url });
+        return NextResponse.json({ invoices: invoices.data });
 
     } catch (error: any) {
-        console.error("Error creating billing portal session:", error);
+        console.error("Error fetching invoices:", error);
         return new NextResponse("Internal Server Error", { status: 500 });
     }
 }
+

@@ -1,4 +1,3 @@
-
 'use server';
 
 import { headers } from "next/headers";
@@ -6,7 +5,6 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
 
@@ -25,7 +23,6 @@ if (!getApps().length) {
   }
 }
 
-const auth = getAuth();
 const db = getFirestore();
 
 export async function POST(req: Request) {
@@ -45,74 +42,85 @@ export async function POST(req: Request) {
   const session = event.data.object;
 
   try {
-    if (event.type === 'checkout.session.completed') {
+    switch (event.type) {
+      case 'checkout.session.completed': {
         const checkoutSession = session as Stripe.Checkout.Session;
         const uid = checkoutSession.metadata?.firebaseUID;
-
         if (!uid) {
             console.error("Webhook Error: Missing firebaseUID in checkout session metadata.", checkoutSession.id);
-            return NextResponse.json({ received: true });
+            break;
         }
 
-        // Customer object is not expanded here, so we only get the ID.
-        // We set the customer ID during checkout session creation now.
-        const customerId = checkoutSession.customer as string;
+        const subscription = await stripe.subscriptions.retrieve(
+            checkoutSession.subscription as string
+        );
 
-        await db.collection("users").doc(uid).set({
-            billing: {
-                stripeCustomerId: customerId
-            }
-        }, { merge: true });
-        console.log(`User ${uid} checkout session completed. Stripe Customer ID: ${customerId}`);
-
-
-    } else if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-        const sub = session as Stripe.Subscription;
-        const uid = sub.metadata.firebaseUID;
-        
-        if (!uid) {
-            console.error("Webhook Error: Missing firebaseUID in subscription metadata.", sub.id);
-            return NextResponse.json({ received: true });
-        }
-
-        const priceId = sub.items.data[0]?.price.id;
-        // For deleted events, price might not be relevant, but status is.
-        const plan = priceId ? PLAN_BY_PRICE_ID[priceId] : null;
-
-        const userUpdateData: any = {
-            billing: {
-              status: sub.status,
-              subscriptionId: sub.id,
-              stripeCustomerId: sub.customer as string,
+        await db.doc(`users/${uid}`).set({
+            stripeCustomerId: session.customer,
+            role: PLAN_BY_PRICE_ID[subscription.items.data[0].price.id],
+            subscription: {
+                id: subscription.id,
+                status: subscription.status,
+                priceId: subscription.items.data[0].price.id,
+                currentPeriodEnd: subscription.current_period_end * 1000,
             },
-        };
-        
-        if (plan) {
-            userUpdateData.role = plan;
-            userUpdateData.billing.plan = plan;
+        }, { merge: true });
+
+        console.log(`User ${uid} completed checkout. Role set to ${PLAN_BY_PRICE_ID[subscription.items.data[0].price.id]}`);
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const sub = session as Stripe.Subscription;
+        const priceId = sub.items.data[0].price.id;
+        const plan = PLAN_BY_PRICE_ID[priceId];
+        const userSnap = await db.collection("users").where("stripeCustomerId", "==", sub.customer).limit(1).get();
+        if (userSnap.empty) {
+            console.error("Webhook Error: User with Stripe customer ID not found.", sub.customer);
+            break;
+        }
+        const userDoc = userSnap.docs[0];
+        await userDoc.ref.update({
+            role: plan,
+            'subscription.status': sub.status,
+            'subscription.plan': plan,
+            'subscription.priceId': priceId,
+            'subscription.currentPeriodEnd': sub.current_period_end * 1000,
+        });
+        console.log(`Subscription updated for user ${userDoc.id}. New plan: ${plan}, Status: ${sub.status}`);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const sub = session as Stripe.Subscription;
+        const userSnap = await db.collection("users").where("subscription.id", "==", sub.id).limit(1).get();
+        if(userSnap.empty) {
+            console.error("Webhook Error: User with subscription ID not found.", sub.id);
+            break;
         }
 
-        if (sub.status === 'active' || sub.status === 'trialing') {
-            userUpdateData.billing.currentPeriodEnd = new Date(sub.current_period_end * 1000);
-        } else {
-            // For canceled, past_due, etc., we can clear the role or set to a base level
-             userUpdateData.role = 'free'; // or whatever your base role is
-        }
-        
-        await db.collection("users").doc(uid).set(userUpdateData, { merge: true });
-        console.log(`Updated subscription for user ${uid}. Status: ${sub.status}, Plan: ${plan || 'N/A'}`);
-    } else if (event.type === 'invoice.payment_failed') {
+        userSnap.forEach(doc => {
+            doc.ref.update({
+                role: "free",
+                subscription: null,
+            });
+        });
+        console.log(`Subscription deleted for user ${userSnap.docs[0].id}. Role set to free.`);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
         const invoice = session as Stripe.Invoice;
         const customerId = invoice.customer as string;
-        const userQuery = await db.collection('users').where('billing.stripeCustomerId', '==', customerId).limit(1).get();
+        const userQuery = await db.collection('users').where('stripeCustomerId', '==', customerId).limit(1).get();
 
         if (!userQuery.empty) {
             const userDoc = userQuery.docs[0];
-            await userDoc.ref.set({
-                billing: { status: 'past_due' }
-            }, { merge: true });
+            await userDoc.ref.update({ 'subscription.status': 'past_due' });
             console.log(`User ${userDoc.id} has a failed payment. Set status to past_due.`);
         }
+        break;
+      }
     }
 
   } catch (error) {

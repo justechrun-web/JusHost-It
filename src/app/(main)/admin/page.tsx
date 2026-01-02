@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, getCountFromServer } from 'firebase/firestore';
+import { collection, getDocs, getCountFromServer, where, query } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Users, Server, AlertTriangle } from 'lucide-react';
@@ -43,7 +42,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ users: 0, sites: 0, suspended: 0 });
   const [loading, setLoading] = useState(true);
 
-  const usersCol = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
+  const usersCol = useMemoFirebase(() => db ? query(collection(db, 'users'), where('role', '!=', 'admin')) : null, [db]);
   const sitesCol = useMemoFirebase(() => db ? collection(db, 'sites') : null, [db]);
 
 
