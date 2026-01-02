@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/firebase-admin";
+import { cookies } from "next/headers";
 
 /**
  * This is the API route that Stripe will call to send webhook events.
@@ -33,10 +34,12 @@ export async function POST(req: Request) {
   }
 
   const session = event.data.object as any;
-  const userId = session.metadata?.userId;
-
-  if (!userId && event.type !== 'checkout.session.completed') {
-    console.error("Webhook Error: Missing userId in metadata for non-checkout event.", session.id);
+  
+  // Use metadata from subscription for ongoing events, or from checkout session for initial setup.
+  const userId = session.metadata?.userId || (event.type === 'checkout.session.completed' ? session.metadata?.uid : null);
+  
+  if (!userId) {
+    console.error("Webhook Error: Missing userId in metadata.", session.id);
     return NextResponse.json({ received: true }); // Acknowledge event but do nothing
   }
 
@@ -45,38 +48,53 @@ export async function POST(req: Request) {
     switch (event.type) {
         case "customer.subscription.created":
         case "customer.subscription.updated": {
-            const userSubscriptionRef = db.collection("users").doc(userId);
-            await userSubscriptionRef.set({
-                subscriptionStatus: session.status, // "trialing", "active", "past_due"
+            const userRef = db.collection("users").doc(userId);
+            const subscriptionData = {
+                subscriptionStatus: session.status, // e.g., "trialing", "active", "past_due"
                 plan: session.items.data[0].price.id,
                 currentPeriodEnd: session.current_period_end, // Store as Unix timestamp
-            }, { merge: true });
+            };
+            await userRef.set(subscriptionData, { merge: true });
+            
+            // Set a secure cookie with the subscription status
+            cookies().set('auth-status', session.status, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+            });
+
             console.log(`Updated subscription for user ${userId} to status: ${session.status}`);
             break;
         }
 
         case "customer.subscription.deleted": {
-            const userSubscriptionRef = db.collection("users").doc(userId);
-            await userSubscriptionRef.set({
+            const userRef = db.collection("users").doc(userId);
+            await userRef.set({
                 subscriptionStatus: "canceled",
             }, { merge: true });
+
+            // Clear the cookie on cancellation
+            cookies().delete('auth-status');
+            
             console.log(`Canceled subscription for user ${userId}.`);
             break;
         }
 
         case 'checkout.session.completed': {
-            const checkoutUserId = session.metadata?.userId || (session.customer_details?.email ? (await db.collection('users').where('email', '==', session.customer_details.email).get()).docs[0]?.id : null);
-             if (!checkoutUserId) {
+            const checkoutUserId = session.metadata?.uid;
+            if (!checkoutUserId) {
                 console.error("Webhook Error: Could not determine user ID from checkout session.", session.id);
                 break;
             }
-            const userSubscriptionRef = db.collection("users").doc(checkoutUserId);
+            const userRef = db.collection("users").doc(checkoutUserId);
 
-            await userSubscriptionRef.set({
+            // This creates the customer in Firestore if they don't exist yet,
+            // which can happen with email-based sign-ins.
+            await userRef.set({
                 stripeCustomerId: session.customer as string,
-                // The subscription is created in the 'trialing' state, this will be updated
-                // by the 'customer.subscription.created' event which fires almost immediately after.
             }, { merge: true });
+            
             console.log(`User ${checkoutUserId} completed checkout. Customer ID: ${session.customer}`);
             break;
         }
@@ -92,3 +110,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ received: true });
 }
+

@@ -2,71 +2,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { useUser } from '@/firebase';
 
+/**
+ * A client-side hook to gate access based on authentication status.
+ * It primarily checks if a user is logged in. The primary authorization
+ * (i.e., checking for an active subscription) is handled by server-side middleware.
+ * This hook acts as a secondary check on the client to provide a responsive UI
+ * and prevent rendering components for logged-out users.
+ */
 export function useAuthGate() {
   const { user, isUserLoading } = useUser();
-  const { userDoc, loading: isUserDocLoading } = useUserDoc();
-  
   const [allowed, setAllowed] = useState(false);
   
   useEffect(() => {
-    if (isUserDocLoading || isUserLoading) {
+    // While the initial user authentication state is loading, we are not "allowed".
+    if (isUserLoading) {
+      setAllowed(false);
       return;
     }
     
-    if (!user) {
-        setAllowed(false);
-        return;
-    }
-
-    if (userDoc) {
-      const { subscriptionStatus } = userDoc;
-      // Allow access if subscription is active or in trial
-      setAllowed(subscriptionStatus === 'active' || subscriptionStatus === 'trialing');
+    // Once loading is complete, access is allowed if a user object exists.
+    if (user) {
+        setAllowed(true);
     } else {
-      // If there's no user document, they shouldn't have access
-      setAllowed(false);
+        setAllowed(false);
     }
     
-  }, [user, userDoc, isUserLoading, isUserDocLoading]);
+  }, [user, isUserLoading]);
 
-  return { allowed, loading: isUserLoading || isUserDocLoading };
-}
-
-function useUserDoc() {
-    const { user } = useUser();
-    const db = useFirestore();
-
-    const userDocRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return doc(db, 'users', user.uid);
-    }, [user, db]);
-
-    const [userDoc, setUserDoc] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!userDocRef) {
-            setLoading(false);
-            return;
-        }
-
-        const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
-            if (snapshot.exists()) {
-                setUserDoc(snapshot.data());
-            } else {
-                setUserDoc(null);
-            }
-            setLoading(false);
-        }, () => {
-            setUserDoc(null);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [userDocRef]);
-
-    return { userDoc, loading };
+  // The overall loading state is determined by the user loading state.
+  return { allowed, loading: isUserLoading };
 }

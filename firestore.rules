@@ -66,22 +66,40 @@ service cloud.firestore {
       return resource.data[fieldName] == request.resource.data[fieldName];
     }
     
+    function areBillingFieldsUnchanged() {
+      let billingFields = ['stripeCustomerId', 'subscriptionStatus', 'plan', 'currentPeriodEnd'];
+      let incomingData = request.resource.data;
+      // On create, none of these fields should be set by the client.
+      if (request.method == 'create') {
+        return incomingData.keys().hasAll(billingFields) == false;
+      }
+      // On update, these fields must not be changed by the client.
+      if (request.method == 'update') {
+         return !incomingData.keys().hasAny(billingFields) ||
+               (incomingData.keys().hasAny(billingFields) &&
+                billingFields.every(field => resource.data[field] == incomingData[field]));
+      }
+      return true;
+    }
 
     // ======================================================================
     // Collection Rules
     // ======================================================================
 
-    // Users collection is public readable, but only the user can write to their own doc.
+    // Users can read their own doc. Creation happens on signup.
+    // Updates are allowed but billing fields are protected.
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Or more restrictive if needed
+      allow get: if isOwner(userId);
+      allow list: if false; // Users should not be able to list other users.
       
-      // Allow user to create their own doc.
-      allow create: if isOwner(userId);
+      // Allow user to create their own doc on signup.
+      // Protect billing fields from being set on creation.
+      allow create: if isOwner(userId) && areBillingFieldsUnchanged();
       
-      // Users can only update non-sensitive fields on their own doc.
-      allow update: if isOwner(userId) &&
-                    request.resource.data.keys().removeAll(['email', 'role', 'stripeCustomerId', 'subscriptionStatus', 'plan']).size() == request.resource.data.keys().size() - 5;
+      // Users can update their own doc, but cannot change protected billing fields.
+      allow update: if isOwner(userId) && areBillingFieldsUnchanged();
+
+      allow delete: if isOwner(userId); // Allow users to delete their account
     }
 
     // Organizations collection
@@ -136,10 +154,11 @@ service cloud.firestore {
     match /users/{userId}/sites/{siteId} {
         allow get, list, create, update, delete: if false; // This path is deprecated
     }
-    
+
+    // Billing subscriptions are now part of the user document and managed by webhooks.
+    // This collection is deprecated.
     match /users/{userId}/billingSubscriptions/{billingId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if false;
+        allow read, write: if false;
     }
 
     match /users/{userId}/supportTickets/{ticketId} {
