@@ -12,15 +12,21 @@ const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
   privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-}
+};
 
 if (!getApps().length) {
-  app = initializeApp({
-    credential: cert(serviceAccount),
-  });
+  if (!serviceAccount.privateKey) {
+    console.warn("Firebase Admin SDK private key is not set. Skipping initialization.");
+    // @ts-ignore
+    app = {};
+  } else {
+    app = initializeApp({
+      credential: cert(serviceAccount),
+    });
+  }
 } else {
   app = getApps()[0];
 }
 
-export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app);
+export const adminAuth = app.name ? getAuth(app) : ({} as any);
+export const adminDb = app.name ? getFirestore(app) : ({} as any);

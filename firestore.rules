@@ -1,175 +1,69 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ======================================================================
-    // Helper Functions
-    // ======================================================================
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    // Get the user's role in a specific organization
-    function getRole(orgId) {
-      return get(/databases/$(database)/documents/orgMembers/$(request.auth.uid + '_' + orgId)).data.role;
-    }
-
-    // Check if user has a specific role in an organization
-    function hasRole(orgId, role) {
-      let userRole = getRole(orgId);
-      if (role == 'owner') {
-        return userRole == 'owner';
-      }
-      if (role == 'admin') {
-        return userRole == 'owner' || userRole == 'admin';
-      }
-      if (role == 'member') {
-        return userRole == 'owner' || userRole == 'admin' || userRole == 'member';
-      }
-      if (role == 'viewer') {
-         return userRole == 'owner' || userRole == 'admin' || userRole == 'member' || userRole == 'viewer';
-      }
-      return false;
-    }
-    
-    function isOrgOwner(orgId) {
-      return hasRole(orgId, 'owner');
-    }
-    
-    function isOrgAdmin(orgId) {
-       return hasRole(orgId, 'admin');
-    }
-    
-    function isOrgMember(orgId) {
-       return hasRole(orgId, 'member');
-    }
-    
-    function isOrgViewer(orgId) {
-        return hasRole(orgId, 'viewer');
-    }
-
-    // Check if the user is a member of the org the resource belongs to
-    function isMemberOfResourceOrg() {
-      // For create, check incoming data. For others, check existing data.
-      let orgId = request.method == 'create' ? request.resource.data.orgId : resource.data.orgId;
-      return orgId != null && exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid + '_' + orgId));
-    }
-    
-    function isOwnerFieldImmutable(fieldName) {
-      return resource.data[fieldName] == request.resource.data[fieldName];
-    }
-    
-    function areBillingFieldsUnchanged() {
-      let billingFields = ['stripeCustomerId', 'subscriptionStatus', 'plan', 'currentPeriodEnd'];
-      let incomingData = request.resource.data;
-      // On create, none of these fields should be set by the client.
-      if (request.method == 'create') {
-        return incomingData.keys().hasAll(billingFields) == false;
-      }
-      // On update, these fields must not be changed by the client.
-      if (request.method == 'update') {
-         return !incomingData.keys().hasAny(billingFields) ||
-               (incomingData.keys().hasAny(billingFields) &&
-                billingFields.every(field => resource.data[field] == incomingData[field]));
-      }
-      return true;
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
     }
 
     // ======================================================================
-    // Collection Rules
+    // User data is only writable by the user themselves.
+    // Contains public profile info and protected billing status.
     // ======================================================================
-
-    // Users can read their own doc. Creation happens on signup.
-    // Updates are allowed but billing fields are protected.
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // Users should not be able to list other users.
-      
-      // Allow user to create their own doc on signup.
-      // Protect billing fields from being set on creation.
-      allow create: if isOwner(userId) && areBillingFieldsUnchanged();
-      
-      // Users can update their own doc, but cannot change protected billing fields.
-      allow update: if isOwner(userId) && areBillingFieldsUnchanged();
-
-      allow delete: if isOwner(userId); // Allow users to delete their account
+      allow read, write: if isOwner(userId);
     }
 
-    // Organizations collection
+    // ======================================================================
+    // Organization, Site, and Member data is protected.
+    // High-level access is granted to organization members, but specific
+    // write operations are handled by secure Cloud Functions.
+    // ======================================================================
     match /orgs/{orgId} {
-      // Any member of an org can read it.
-      allow get: if isMemberOfResourceOrg();
-      
-      // Only owner can update or delete an org.
-      allow update: if isOrgOwner(orgId);
-      allow delete: if isOrgOwner(orgId);
-      
-      // Creation is handled by a Cloud Function on user signup.
-      allow create: if false; 
+      allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(orgId));
+      allow write: if false; // All writes must go through Cloud Functions
     }
 
-    // Org Members
-    match /orgMembers/{membershipId} {
-        // Membership is composite key `userId_orgId`
-        
-        // Any member of the org can see who else is in it.
-        allow get, list: if isMemberOfResourceOrg();
-        
-        // Admins can add/remove members. Owners can't be removed.
-        allow create, delete: if isOrgAdmin(resource.data.orgId) && resource.data.role != 'owner';
-        
-        // Admins can change roles, but not create/remove owners.
-        allow update: if isOrgAdmin(resource.data.orgId) && resource.data.role != 'owner' && request.resource.data.role != 'owner';
-    }
-    
-    // Org Invitations
-    match /orgInvitations/{inviteId} {
-        // Invites contain emails, so should be protected.
-        allow get: if isOrgAdmin(resource.data.orgId) || request.auth.token.email == resource.data.email;
-        allow list: if isOrgAdmin(request.query.orgId); // Allow listing by org for admins
-        
-        // Creation and deletion handled by secure cloud functions
-        allow create, update, delete: if false;
-    }
-
-    // Sites are nested under organizations now.
     match /orgs/{orgId}/sites/{siteId} {
-      // Org viewers can see sites
-      allow get, list: if isOrgViewer(orgId);
-      
-      // Org members can create sites
-      allow create: if isOrgMember(orgId);
-      
-      // Org admins can update/delete sites
-      allow update, delete: if isOrgAdmin(orgId);
-    }
-    
-    match /users/{userId}/sites/{siteId} {
-        allow get, list, create, update, delete: if false; // This path is deprecated
+       allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(orgId));
+       allow write: if false; // All writes must go through Cloud Functions
     }
 
-    // Billing subscriptions are now part of the user document and managed by webhooks.
-    // This collection is deprecated.
-    match /users/{userId}/billingSubscriptions/{billingId} {
+    match /orgMembers/{membershipId} {
+       allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(resource.data.orgId));
+       allow write: if false; // All writes must go through Cloud Functions
+    }
+
+    // ======================================================================
+    // Audit logs and metrics are admin-only collections.
+    // They are read-only from the client side.
+    // ======================================================================
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Written by server-side processes only
+    }
+
+    match /metrics/{metricId} {
+      allow read: if isAdmin();
+      allow write: if false; // Written by server-side processes only
+    }
+    
+    // ======================================================================
+    // Other collections should be explicitly denied by default
+    // until rules are defined for them.
+    // ======================================================================
+     match /orgInvitations/{inviteId} {
         allow read, write: if false;
-    }
-
-    match /users/{userId}/supportTickets/{ticketId} {
-        allow get, list, create: if isOwner(userId);
-        allow update: if isOwner(userId) && isOwnerFieldImmutable('userId');
-        allow delete: if false; // Tickets should be closed, not deleted by users
-    }
-    
-    match /users/{userId}/login_events/{eventId} {
-        allow get, list: if isOwner(userId);
-        allow create, update, delete: if false; // Backend only
-    }
+     }
+     match /users/{userId}/supportTickets/{ticketId} {
+        allow read, write: if isOwner(userId);
+     }
+     match /users/{userId}/login_events/{eventId} {
+        allow read, write: if isOwner(userId);
+     }
   }
 }

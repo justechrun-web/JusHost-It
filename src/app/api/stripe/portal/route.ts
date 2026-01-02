@@ -1,15 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { adminDb } from "@/lib/firebase/admin";
+import { headers } from "next/headers";
 
-export async function POST(req: Request) {
+
+export async function POST(req: NextRequest) {
     try {
-        const token = req.headers.get("Authorization")?.replace("Bearer ", "");
-        if (!token) {
+        const uid = headers().get('X-User-ID');
+        if (!uid) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
         
-        const { uid } = await adminAuth.verifyIdToken(token);
         const userDoc = await adminDb.collection("users").doc(uid).get();
 
         if (!userDoc.exists) {
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
         const customerId = userDoc.data()?.stripeCustomerId;
 
         if (!customerId) {
-            return new NextResponse("Stripe customer not found for user", { status: 404 });
+            return new NextResponse("Stripe customer not found for user. Please subscribe to a plan first.", { status: 400 });
         }
 
         const session = await stripe.billingPortal.sessions.create({
@@ -31,6 +32,6 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error("Error creating billing portal session:", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
     }
 }

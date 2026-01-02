@@ -1,7 +1,8 @@
-import { FieldValue } from 'firebase-admin/firestore';
-import { NextResponse } from "next/server";
+
+import { NextRequest, NextResponse } from "next/server";
 import { stripe } from '@/lib/stripe/server';
 import { adminDb } from '@/lib/firebase/admin';
+import { headers } from 'next/headers';
 
 async function logAdminAction({ adminId, action, targetUserId, before, after }: { adminId: string, action: string, targetUserId: string, before: any, after: any }) {
   await adminDb.collection("auditLogs").add({
@@ -10,20 +11,26 @@ async function logAdminAction({ adminId, action, targetUserId, before, after }: 
     targetId: targetUserId,
     before,
     after,
-    timestamp: FieldValue.serverTimestamp(),
+    timestamp: adminDb.FieldValue.serverTimestamp(),
   });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const adminId = headers().get('X-User-ID');
+    const isAdmin = headers().get('X-User-Is-Admin') === 'true';
+
+    if (!adminId || !isAdmin) {
+        return new NextResponse("Unauthorized", { status: 401 });
+    }
+
     const form = await req.formData()
     const uid = form.get("uid") as string
     const newPlan = form.get("plan") as string
-    const adminId = form.get("adminId") as string;
 
 
     if (!uid || !newPlan || !adminId) {
-        return new NextResponse("Missing user ID, plan, or admin ID", { status: 400 });
+        return new NextResponse("Missing user ID or plan", { status: 400 });
     }
 
     const userRef = adminDb.doc(`users/${uid}`);
@@ -64,8 +71,9 @@ export async function POST(req: Request) {
         after: { plan: newPlan }
     });
     
-    // Redirect back to the admin billing page
-    const redirectUrl = new URL('/admin/billing', req.url);
+    const referer = req.headers.get('referer');
+    const redirectUrl = referer || new URL('/admin/billing', req.url);
+
     return NextResponse.redirect(redirectUrl.toString(), { status: 303 });
 
 

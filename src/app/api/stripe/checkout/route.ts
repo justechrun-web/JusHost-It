@@ -1,23 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { adminDb } from "@/lib/firebase/admin";
+import { headers } from "next/headers";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const token = req.headers.get("Authorization")?.replace("Bearer ", "");
-    if (!token) {
-        return new NextResponse("Unauthorized", { status: 401 });
+    const uid = headers().get('X-User-ID');
+    if (!uid) {
+        return new NextResponse("Unauthorized: Missing user ID", { status: 401 });
+    }
+    
+    const userDocRef = adminDb.collection('users').doc(uid);
+    const userDoc = await userDocRef.get();
+    const email = userDoc.data()?.email;
+    let stripeCustomerId = userDoc.data()?.stripeCustomerId;
+
+    if (!email) {
+      // This should ideally not happen if user exists
+      return new NextResponse("User email not found", { status: 404 });
     }
 
-    const { uid, email } = await adminAuth.verifyIdToken(token);
     const { priceId } = await req.json();
 
     if (!priceId) {
         return new NextResponse("Price ID is required", { status: 400 });
     }
-
-    const userDoc = await adminDb.collection('users').doc(uid).get();
-    let stripeCustomerId = userDoc.data()?.stripeCustomerId;
 
     if (!stripeCustomerId) {
         const customer = await stripe.customers.create({
@@ -25,7 +32,7 @@ export async function POST(req: Request) {
             metadata: { firebaseUID: uid },
         });
         stripeCustomerId = customer.id;
-        await adminDb.collection('users').doc(uid).set({ 
+        await userDocRef.set({ 
             stripeCustomerId
         }, { merge: true });
     }
@@ -42,7 +49,7 @@ export async function POST(req: Request) {
       ],
       subscription_data: {
         trial_period_days: 7,
-        metadata: { firebaseUID: uid }, // Pass UID here for webhook
+        metadata: { firebaseUID: uid },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
@@ -52,6 +59,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Error creating checkout session:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
   }
 }

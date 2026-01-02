@@ -47,7 +47,7 @@ export async function POST(req: Request) {
           stripeCustomerId: session.customer,
           plan: "starter", // Default to starter plan on initial checkout
           subscriptionStatus: "active", // Or 'trialing' if you use trials
-          updatedAt: adminDb.app.options.credential ? require('firebase-admin').firestore.FieldValue.serverTimestamp() : new Date(),
+          updatedAt: require('firebase-admin').firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
 
         break;
