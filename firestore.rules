@@ -76,8 +76,16 @@ service cloud.firestore {
       // Users can read their own document. Admins can read any.
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin(); // Only admins can list users.
+      
       // Prevent client-side writes to sensitive fields to enforce server-side logic (e.g. from webhooks)
-      allow create, update, delete: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && 
+                      request.resource.data.plan == resource.data.plan &&
+                      request.resource.data.subscriptionStatus == resource.data.subscriptionStatus &&
+                      request.resource.data.role == resource.data.role &&
+                      request.resource.data.hardCap == resource.data.hardCap;
+      allow delete: if false;
+
 
         match /sites/{siteId} {
           allow get, list: if isOwner(userId) || isAdmin();
@@ -111,5 +119,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
