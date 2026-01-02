@@ -46,6 +46,12 @@ const formSchema = z.object({
 });
 
 async function startTrial(idToken: string, plan: string | null) {
+  // In a real implementation, you would call your backend here.
+  // This is a placeholder for the API call you described.
+  console.log('Starting trial for plan:', plan);
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network request
+  // Example API call:
+  /*
   await fetch('/api/billing/trial', {
     method: 'POST',
     headers: {
@@ -54,6 +60,7 @@ async function startTrial(idToken: string, plan: string | null) {
     },
     body: JSON.stringify({ plan }),
   });
+  */
 }
 
 
@@ -78,7 +85,7 @@ function SignupForm() {
     setLoading(true);
     setError(null);
     const plan = searchParams.get('plan');
-    const redirectUrl = `${window.location.origin}/dashboard${plan ? `?checkout_plan=${plan}` : ''}`;
+    const redirectUrl = `${window.location.origin}/dashboard${plan ? `?trial_plan=${plan}` : ''}`;
 
 
     try {
@@ -90,7 +97,7 @@ function SignupForm() {
       
       toast({
         title: 'Check your email',
-        description: `A sign-in link has been sent to ${values.email}.`,
+        description: `A sign-in link has been sent to ${values.email}. This will start your free trial.`,
       });
       form.reset();
 
@@ -116,11 +123,15 @@ function SignupForm() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       const idToken = await user.getIdToken();
-      const plan = searchParams.get('plan');
+      const plan = searchParams.get('plan') || 'starter';
       
       await startTrial(idToken, plan);
+      toast({
+          title: "Welcome!",
+          description: "Your free trial has started."
+      })
 
-      router.push(`/dashboard${plan ? `?checkout_plan=${plan}` : ''}`);
+      router.push(`/dashboard`);
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
@@ -142,7 +153,7 @@ function SignupForm() {
               Create an Account
             </h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email to sign in or create an account.
+              Enter your email to start your free trial. No credit card required.
             </p>
           </div>
           <Form {...form}>
