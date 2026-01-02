@@ -51,26 +51,24 @@ export default function AdminDashboard() {
       if (!db || !usersCol || !sitesCol) return;
       setLoading(true);
       try {
-
         const usersCountPromise = getCountFromServer(usersCol);
         const sitesCountPromise = getCountFromServer(sitesCol);
         
         // This part is less efficient, but necessary for a specific status count.
         // For larger datasets, this logic should move to a backend aggregation.
-        const sitesSnapPromise = getDocs(sitesCol);
+        const suspendedSitesQuery = query(sitesCol, where('status', '==', 'Suspended'));
+        const suspendedCountPromise = getCountFromServer(suspendedSitesQuery);
 
-        const [usersCountSnap, sitesCountSnap, sitesSnap] = await Promise.all([
+        const [usersCountSnap, sitesCountSnap, suspendedCountSnap] = await Promise.all([
           usersCountPromise,
           sitesCountPromise,
-          sitesSnapPromise
+          suspendedCountPromise
         ]);
         
-        const suspendedCount = sitesSnap.docs.filter(doc => doc.data().status === 'Suspended').length;
-
         setStats({ 
           users: usersCountSnap.data().count, 
           sites: sitesCountSnap.data().count, 
-          suspended: suspendedCount 
+          suspended: suspendedCountSnap.data().count
         });
       } catch (error) {
         console.error('Error loading admin stats:', error);

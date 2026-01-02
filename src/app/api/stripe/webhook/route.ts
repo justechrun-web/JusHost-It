@@ -61,8 +61,9 @@ export async function POST(req: Request) {
             subscription: {
                 id: subscription.id,
                 status: subscription.status,
+                plan: PLAN_BY_PRICE_ID[subscription.items.data[0].price.id],
                 priceId: subscription.items.data[0].price.id,
-                currentPeriodEnd: subscription.current_period_end * 1000,
+                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
             },
         }, { merge: true });
 
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
             'subscription.status': sub.status,
             'subscription.plan': plan,
             'subscription.priceId': priceId,
-            'subscription.currentPeriodEnd': sub.current_period_end * 1000,
+            'subscription.currentPeriodEnd': new Date(sub.current_period_end * 1000),
         });
         console.log(`Subscription updated for user ${userDoc.id}. New plan: ${plan}, Status: ${sub.status}`);
         break;

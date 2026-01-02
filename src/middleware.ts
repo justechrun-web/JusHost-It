@@ -64,7 +64,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // If it's an admin path and user is not an admin, redirect.
-    if (isAdminPath && userRole !== "admin") {
+    if (isAdminPath) {
        return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 

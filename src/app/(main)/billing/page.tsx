@@ -37,7 +37,6 @@ type UserData = {
     bandwidthGb: number;
     storageGb: number;
   };
-  invoices: Array<{ date: string; amount: string; url: string }>;
 };
 
 export default function BillingPage() {
@@ -76,7 +75,9 @@ export default function BillingPage() {
             setInvoicesLoading(false);
         }
     }
-    fetchInvoices();
+    if (user) {
+        fetchInvoices();
+    }
   }, [user]);
 
 
@@ -131,7 +132,8 @@ export default function BillingPage() {
   
   const getPeriodEndDate = () => {
     if(!subscription?.currentPeriodEnd) return '';
-    return new Date(subscription.currentPeriodEnd.seconds * 1000).toLocaleDateString();
+    const date = new Date(subscription.currentPeriodEnd);
+    return date.toLocaleDateString();
   }
 
   return (
