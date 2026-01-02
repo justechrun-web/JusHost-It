@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,12 @@ import { reauthenticateWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { ResourceUsageChart } from "../components/resource-usage-chart";
 import { useState } from "react";
+import Link from "next/link";
 
 type BillingSubscription = {
   id: string;
   plan: string;
-  status: 'active' | 'canceled' | 'past_due';
+  status: 'active' | 'canceled' | 'past_due' | 'trialing';
   nextBillingDate: { seconds: number };
   invoices: Array<{ date: string; amount: string; url: string }>;
 };
@@ -44,6 +46,8 @@ export default function BillingPage() {
 
   const billingRef = useMemoFirebase(() => {
     if (!user || !db) return null;
+    // NOTE: The billing subscription ID is the same as the user UID for simplicity.
+    // In a multi-tenant system, this might be a separate ID.
     return doc(db, `users/${user.uid}/billingSubscriptions`, user.uid);
   }, [db, user]);
 
@@ -119,6 +123,19 @@ export default function BillingPage() {
 
   const isLoading = isUserLoading || isBillingLoading;
   
+  const getStatusBadgeVariant = (status: BillingSubscription['status']) => {
+    switch (status) {
+      case 'active':
+      case 'trialing':
+        return 'success';
+      case 'past_due':
+      case 'canceled':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -152,7 +169,7 @@ export default function BillingPage() {
                 <div className="space-y-2">
                   <p className="text-2xl font-semibold capitalize">{billingInfo.plan} Plan</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant={billingInfo.status === 'active' ? 'success' : 'destructive'} className="capitalize">
+                    <Badge variant={getStatusBadgeVariant(billingInfo.status)} className="capitalize">
                       {billingInfo.status}
                     </Badge>
                     {billingInfo.nextBillingDate && (
@@ -243,3 +260,5 @@ export default function BillingPage() {
     </div>
   );
 }
+
+    

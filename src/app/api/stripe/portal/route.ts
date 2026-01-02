@@ -1,8 +1,8 @@
+
 'use server';
 
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { getAuth } from "firebase-admin/auth";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -26,11 +26,11 @@ const db = getFirestore();
 
 export async function POST(req: Request) {
   try {
-    const { idToken } = await req.json();
-
-    if (!idToken) {
-        return NextResponse.json({ error: "Missing idToken" }, { status: 400 });
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json({ error: "Missing authorization token" }, { status: 401 });
     }
+    const idToken = authHeader.split('Bearer ')[1];
 
     // 🔐 Verify identity
     const decoded = await getAuth().verifyIdToken(idToken);
@@ -61,3 +61,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+    
