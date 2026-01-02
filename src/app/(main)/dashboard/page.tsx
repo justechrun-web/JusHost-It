@@ -19,6 +19,7 @@ import { RecentSites } from '../components/recent-sites';
 import { ResourceUsageChart } from '../components/resource-usage-chart';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { ActiveAlerts } from '../components/active-alerts';
 
 const StatCard = ({ title, value, icon: Icon, loading }: { title: string, value: string, icon: React.ElementType, loading: boolean }) => (
     <Card>
@@ -62,6 +63,8 @@ export default function DashboardPage() {
           Welcome back! Here's a quick overview of your account.
         </p>
       </div>
+
+      <ActiveAlerts />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
