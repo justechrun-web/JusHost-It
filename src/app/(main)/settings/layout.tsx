@@ -7,11 +7,12 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, Building } from 'lucide-react';
+import { User, Building, CreditCard } from 'lucide-react';
 
 const settingsTabs = [
     { name: 'Profile', href: '/settings/profile', icon: User },
     { name: 'Organization', href: '/settings/organization', icon: Building },
+    { name: 'Payment Method', href: '/settings/payment-method', icon: CreditCard },
 ];
 
 export default function SettingsLayout({
@@ -29,7 +30,7 @@ export default function SettingsLayout({
         <div className="space-y-2">
             <h1 className="text-3xl font-bold font-headline tracking-tight">Settings</h1>
             <p className="text-muted-foreground">
-                Manage your personal and organizational settings.
+                Manage your personal, organizational, and payment settings.
             </p>
         </div>
         <Tabs value={activeTab} onValueChange={(value) => router.push(value)}>
