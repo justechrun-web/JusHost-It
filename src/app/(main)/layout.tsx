@@ -6,7 +6,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { MainSidebar } from "@/components/main-sidebar";
 import { Header } from "@/components/header";
 import { usePathname, useRouter } from "next/navigation";
-import { useUser, useAuthGate } from "@/firebase";
+import { useAuthGate } from "@/firebase";
 import { Loader2 } from "lucide-react";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
