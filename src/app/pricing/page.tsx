@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ const tiers = [
       'Community support',
       'Overage allowed'
     ],
-    cta: 'Start Free Trial',
+    cta: 'Choose Plan',
   },
   {
     name: 'Pro',
@@ -36,7 +37,7 @@ const tiers = [
       'Usage alerts',
       'Priority email support'
     ],
-    cta: 'Start Free Trial',
+    cta: 'Choose Plan',
     featured: true
   },
   {
@@ -67,14 +68,10 @@ export default function PricingPage() {
         setLoadingPlan(planId);
         
         if (!user) {
-            // User is not logged in, redirect to signup with the selected plan.
-            // The signup page will handle the trial initiation.
             router.push(`/signup?plan=${planId}`);
             return;
         }
 
-        // If user is already logged in, they are likely changing plans or re-subscribing.
-        // The old checkout flow is appropriate here.
         try {
             const idToken = await user.getIdToken();
 
@@ -195,3 +192,4 @@ export default function PricingPage() {
     </div>
   )
 }
+
