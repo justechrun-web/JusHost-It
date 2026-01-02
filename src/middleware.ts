@@ -28,6 +28,14 @@ export async function middleware(req: NextRequest) {
   
   const protectedPaths = ["/dashboard", "/sites", "/billing", "/settings", "/support"];
   const isAdminPath = req.nextUrl.pathname.startsWith("/admin");
+  const isAuthPath = req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup');
+
+  // If user is logged in and tries to access login/signup, redirect to dashboard
+  if (token) {
+    if (isAuthPath) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+  }
 
   // If it's not a protected path, let it through.
   if (!protectedPaths.some(p => req.nextUrl.pathname.startsWith(p)) && !isAdminPath) {
@@ -62,7 +70,7 @@ export async function middleware(req: NextRequest) {
 
     // For all other protected paths, check for active billing.
     if (billingStatus !== "active" && billingStatus !== "trialing") {
-      return NextResponse.redirect(new URL("/pricing", req.url));
+      return NextResponse.redirect(new URL("/billing-required", req.url));
     }
 
     return NextResponse.next();
@@ -87,6 +95,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - and root-level static pages like /pricing, /login, etc.
      */
-    '/((?!_next/static|_next/image|favicon.ico|login|signup|forgot-password|trust|sla|pricing|api/stripe/webhook).*)',
+    '/((?!_next/static|_next/image|favicon.ico|trust|sla|pricing|api/stripe/webhook).*)',
   ],
 };

@@ -10,6 +10,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
 
+// Initialize Firebase Admin SDK if not already initialized
 if (!getApps().length) {
   try {
     initializeApp({
@@ -30,62 +31,87 @@ const db = getFirestore();
 export async function POST(req: Request) {
   const body = await req.text();
   const sig = headers().get("stripe-signature")!;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err: any) {
     console.error(`❌ Webhook signature verification failed: ${err.message}`);
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
   
+  const session = event.data.object;
+
   try {
-    if (event.type.startsWith("customer.subscription")) {
-        const sub = event.data.object as Stripe.Subscription;
-        const uid = sub.metadata.uid;
-        
+    if (event.type === 'checkout.session.completed') {
+        const checkoutSession = session as Stripe.Checkout.Session;
+        const uid = checkoutSession.metadata?.firebaseUID;
+
         if (!uid) {
-            console.error("Webhook Error: Missing uid in subscription metadata.", sub.id);
+            console.error("Webhook Error: Missing firebaseUID in checkout session metadata.", checkoutSession.id);
             return NextResponse.json({ received: true });
         }
 
-        const priceId = sub.items.data[0].price.id;
-        const plan = PLAN_BY_PRICE_ID[priceId];
+        // Customer object is not expanded here, so we only get the ID.
+        // We set the customer ID during checkout session creation now.
+        const customerId = checkoutSession.customer as string;
 
-        await db.collection("users").doc(uid).set(
-          {
-            role: plan, // Set top-level role
+        await db.collection("users").doc(uid).set({
+            billing: {
+                stripeCustomerId: customerId
+            }
+        }, { merge: true });
+        console.log(`User ${uid} checkout session completed. Stripe Customer ID: ${customerId}`);
+
+
+    } else if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+        const sub = session as Stripe.Subscription;
+        const uid = sub.metadata.firebaseUID;
+        
+        if (!uid) {
+            console.error("Webhook Error: Missing firebaseUID in subscription metadata.", sub.id);
+            return NextResponse.json({ received: true });
+        }
+
+        const priceId = sub.items.data[0]?.price.id;
+        // For deleted events, price might not be relevant, but status is.
+        const plan = priceId ? PLAN_BY_PRICE_ID[priceId] : null;
+
+        const userUpdateData: any = {
             billing: {
               status: sub.status,
-              plan: plan, // "starter", "pro", etc.
               subscriptionId: sub.id,
               stripeCustomerId: sub.customer as string,
-              currentPeriodEnd: new Date(sub.current_period_end * 1000),
             },
-          },
-          { merge: true }
-        );
-        console.log(`Updated subscription for user ${uid}. Status: ${sub.status}, Plan: ${plan}`);
-    } else if (event.type === 'checkout.session.completed') {
-        const checkoutSession = event.data.object as Stripe.Checkout.Session;
-        if (checkoutSession.mode === 'subscription') {
-            const uid = checkoutSession.metadata?.uid;
-            if (!uid) {
-                console.error("Webhook Error: Missing uid in checkout session metadata.", checkoutSession.id);
-                return NextResponse.json({ received: true });
-            }
+        };
+        
+        if (plan) {
+            userUpdateData.role = plan;
+            userUpdateData.billing.plan = plan;
+        }
 
-             await db.collection("users").doc(uid).set({
-                billing: {
-                    stripeCustomerId: checkoutSession.customer as string
-                }
-             }, { merge: true });
-             console.log(`User ${uid} completed checkout. Customer ID: ${checkoutSession.customer}`);
+        if (sub.status === 'active' || sub.status === 'trialing') {
+            userUpdateData.billing.currentPeriodEnd = new Date(sub.current_period_end * 1000);
+        } else {
+            // For canceled, past_due, etc., we can clear the role or set to a base level
+             userUpdateData.role = 'free'; // or whatever your base role is
+        }
+        
+        await db.collection("users").doc(uid).set(userUpdateData, { merge: true });
+        console.log(`Updated subscription for user ${uid}. Status: ${sub.status}, Plan: ${plan || 'N/A'}`);
+    } else if (event.type === 'invoice.payment_failed') {
+        const invoice = session as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        const userQuery = await db.collection('users').where('billing.stripeCustomerId', '==', customerId).limit(1).get();
+
+        if (!userQuery.empty) {
+            const userDoc = userQuery.docs[0];
+            await userDoc.ref.set({
+                billing: { status: 'past_due' }
+            }, { merge: true });
+            console.log(`User ${userDoc.id} has a failed payment. Set status to past_due.`);
         }
     }
 

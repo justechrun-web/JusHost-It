@@ -7,6 +7,7 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
+// Initialize Firebase Admin SDK if not already initialized
 if (!getApps().length) {
   try {
     initializeApp({
@@ -32,11 +33,16 @@ export async function POST(req: Request) {
         }
         
         const { uid } = await auth.verifyIdToken(token);
-        const user = await db.collection("users").doc(uid).get();
-        const customerId = user.data()?.billing?.stripeCustomerId;
+        const userDoc = await db.collection("users").doc(uid).get();
+
+        if (!userDoc.exists) {
+            return new NextResponse("User not found", { status: 404 });
+        }
+        
+        const customerId = userDoc.data()?.billing?.stripeCustomerId;
 
         if (!customerId) {
-            return new NextResponse("Stripe customer not found", { status: 404 });
+            return new NextResponse("Stripe customer not found for user", { status: 404 });
         }
 
         const session = await stripe.billingPortal.sessions.create({

@@ -7,6 +7,7 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
+// Initialize Firebase Admin SDK if not already initialized
 if (!getApps().length) {
   try {
     initializeApp({
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     if (!stripeCustomerId) {
         const customer = await stripe.customers.create({
             email,
-            metadata: { uid },
+            metadata: { firebaseUID: uid },
         });
         stripeCustomerId = customer.id;
         await db.collection('users').doc(uid).set({ 
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
     }
 
     const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
       mode: "subscription",
       customer: stripeCustomerId,
       line_items: [
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
       ],
       subscription_data: {
         trial_period_days: 7,
-        metadata: { uid },
+        metadata: { firebaseUID: uid },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,

@@ -16,12 +16,14 @@ type AppUser = {
   id: string;
   email: string;
   displayName: string;
-  role?: 'user' | 'admin';
+  role?: 'user' | 'admin' | 'starter' | 'pro' | 'business';
   company?: string;
-  plan: string;
-  subscriptionStatus: string;
-  monthlySpend: number;
-  hardCap: number;
+  billing?: {
+    plan: string;
+    status: string;
+    monthlySpend: number;
+    hardCap: boolean;
+  }
 };
 
 export default function UserDetailPage() {
@@ -56,6 +58,16 @@ export default function UserDetailPage() {
     );
   }
 
+  // Flatten user and billing info for easier prop passing to legacy components
+  const displayUser = {
+    ...user,
+    plan: user.billing?.plan,
+    subscriptionStatus: user.billing?.status,
+    monthlySpend: user.billing?.monthlySpend,
+    hardCap: user.billing?.hardCap,
+  };
+
+
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
@@ -77,11 +89,11 @@ export default function UserDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-            <UserOrgCard user={user} />
+            <UserOrgCard user={displayUser} />
             <UserUsageCard />
         </div>
         <div className="space-y-8">
-            <UserBillingCard user={user} />
+            <UserBillingCard user={displayUser} />
             {user && <UserDangerZone orgId={user.id} />}
         </div>
       </div>

@@ -27,8 +27,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { FEATURES } from "@/lib/features";
 
-type BillingInfo = {
-  id: string;
+type UserData = {
   billing: {
     plan: 'starter' | 'pro' | 'business';
     status: 'active' | 'canceled' | 'past_due' | 'trialing';
@@ -53,7 +52,7 @@ export default function BillingPage() {
     return doc(db, `users/${user.uid}`);
   }, [db, user]);
 
-  const { data: userData, isLoading: isBillingLoading } = useDoc<BillingInfo>(userRef);
+  const { data: userData, isLoading: isBillingLoading } = useDoc<UserData>(userRef);
   const { billing, usage } = userData || {};
   const planFeatures = billing?.plan ? FEATURES[billing.plan] : null;
 
@@ -94,7 +93,7 @@ export default function BillingPage() {
 
   const isLoading = isUserLoading || isBillingLoading;
   
-  const getStatusBadgeVariant = (status?: BillingInfo['billing']['status']) => {
+  const getStatusBadgeVariant = (status?: UserData['billing']['status']) => {
     switch (status) {
       case 'active':
       case 'trialing':
@@ -209,7 +208,7 @@ export default function BillingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {userData.invoices && userData.invoices.length > 0 ? (
+                    {userData?.invoices && userData.invoices.length > 0 ? (
                       userData.invoices.map((invoice, index) => (
                         <TableRow key={index}>
                           <TableCell className="font-medium">{invoice.date}</TableCell>
