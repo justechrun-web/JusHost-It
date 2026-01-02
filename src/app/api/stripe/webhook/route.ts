@@ -1,6 +1,3 @@
-
-'use server';
-
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import Stripe from "stripe";
