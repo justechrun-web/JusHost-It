@@ -20,8 +20,7 @@ export async function POST(req: NextRequest) {
 
     if (!stripeCustomerId) {
       // This can happen if a user signs up but never starts a checkout session
-      // You can either create a customer here or direct them to pricing.
-      return NextResponse.json({ error: "Stripe customer not found." }, { status: 404 });
+      return NextResponse.json({ error: "Stripe customer not found. Please select a plan to start." }, { status: 404 });
     }
 
     const portalSession = await stripe.billingPortal.sessions.create({

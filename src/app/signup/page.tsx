@@ -69,12 +69,13 @@ function SignupForm() {
     const email = window.localStorage.getItem('emailForSignIn');
     if (isSignInWithEmailLink(auth, window.location.href) && email) {
       signInWithEmailLink(auth, email, window.location.href)
-        .then(() => {
+        .then((result) => {
           window.localStorage.removeItem('emailForSignIn');
           // User is signed in.
           // Now, check if a plan was part of the original signup flow.
           const plan = searchParams.get('plan');
-          if (plan) {
+          const priceId = searchParams.get('priceId');
+          if (plan && priceId) {
             // Redirect to pricing to complete the checkout.
             router.push(`/pricing?plan=${plan}`);
           } else {
@@ -92,7 +93,11 @@ function SignupForm() {
     setLoading(true);
     setError(null);
     const plan = searchParams.get('plan');
-    const redirectUrl = `${window.location.origin}/signup${plan ? `?plan=${plan}` : ''}`;
+    const priceId = searchParams.get('priceId');
+    let redirectUrl = `${window.location.origin}/signup`;
+    if (plan && priceId) {
+        redirectUrl += `?plan=${plan}&priceId=${priceId}`;
+    }
 
 
     try {

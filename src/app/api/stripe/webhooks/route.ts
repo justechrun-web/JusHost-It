@@ -1,3 +1,4 @@
+
 'use server';
 
 import { headers } from "next/headers";
@@ -31,71 +32,56 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
   }
 
-  // This is the core logic of your webhook handler.
-  // It updates the user's subscription status in your Firestore database
-  // based on the events received from Stripe.
-  switch (event.type) {
-    case "customer.subscription.created":
-    case "customer.subscription.updated":
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const userId = subscription.metadata.userId;
+  const session = event.data.object as any;
+  const userId = session.metadata?.userId;
 
-      if (!userId) {
-        console.error("Webhook Error: Missing userId in subscription metadata.", subscription.id);
-        break;
-      }
-      
-      const userSubscriptionRef = db.collection("users").doc(userId);
+  if (!userId) {
+    console.error("Webhook Error: Missing userId in metadata.", session.id);
+    return NextResponse.json({ error: "Missing userId in metadata" }, { status: 400 });
+  }
 
-      try {
-        await userSubscriptionRef.set({
-          subscriptionStatus: subscription.status, // "trialing", "active", "canceled", "past_due"
-          plan: subscription.items.data[0].price.id,
-          currentPeriodEnd: subscription.current_period_end * 1000, // Convert to milliseconds
-        }, { merge: true });
+  const userSubscriptionRef = db.collection("users").doc(userId);
 
-        console.log(`Updated subscription for user ${userId} to status: ${subscription.status}`);
-      } catch (error) {
-        console.error(`Firestore update failed for user ${userId}:`, error);
-      }
-      break;
-    }
-    
-    // This event is sent when a checkout session is successfully completed.
-    // It's a good place to initially set the subscription status.
-    case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.mode === 'subscription' && session.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-        const userId = subscription.metadata.userId;
-
-        if (!userId) {
-            console.error("Webhook Error: Missing userId in subscription metadata from checkout.session.completed.", session.id);
+  try {
+    switch (event.type) {
+        case "customer.subscription.created":
+        case "customer.subscription.updated": {
+            await userSubscriptionRef.set({
+                subscriptionStatus: session.status, // "trialing", "active", "past_due"
+                plan: session.items.data[0].price.id,
+                currentPeriodEnd: session.current_period_end * 1000, // Convert to milliseconds
+            }, { merge: true });
+            console.log(`Updated subscription for user ${userId} to status: ${session.status}`);
             break;
         }
 
-        const userSubscriptionRef = db.collection("users").doc(userId);
-        
-        try {
+        case "customer.subscription.deleted": {
             await userSubscriptionRef.set({
-                stripeCustomerId: subscription.customer as string,
-                subscriptionStatus: subscription.status,
-                plan: subscription.items.data[0].price.id,
-                currentPeriodEnd: subscription.current_period_end * 1000,
+                subscriptionStatus: "canceled",
             }, { merge: true });
-
-            console.log(`Initial subscription created for user ${userId}, status: ${subscription.status}`);
-        } catch (error) {
-            console.error(`Firestore initial setup failed for user ${userId}:`, error);
+            console.log(`Canceled subscription for user ${userId}.`);
+            break;
         }
-      }
-      break;
-    }
 
-    default:
-      console.log(`Unhandled webhook event type: ${event.type}`);
+        case 'checkout.session.completed': {
+            if (session.mode === 'subscription') {
+                await userSubscriptionRef.set({
+                    stripeCustomerId: session.customer as string,
+                    subscriptionStatus: session.status === 'open' ? 'trialing' : session.status,
+                }, { merge: true });
+                console.log(`Initial subscription checkout for user ${userId}, status: ${session.status}`);
+            }
+            break;
+        }
+
+        default:
+            console.log(`Unhandled webhook event type: ${event.type}`);
+    }
+  } catch (error) {
+     console.error(`Firestore update failed for user ${userId} on event ${event.type}:`, error);
+     return NextResponse.json({ error: "Firestore update failed." }, { status: 500 });
   }
+
 
   return NextResponse.json({ received: true });
 }

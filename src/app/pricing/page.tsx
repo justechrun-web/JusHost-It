@@ -69,7 +69,7 @@ export default function PricingPage() {
         if (!plan.priceId) {
             toast({
                 title: 'Configuration Error',
-                description: `The price ID for the ${plan.name} plan is not set up.`,
+                description: `The price ID for the ${plan.name} plan is not set up. Please contact support.`,
                 variant: 'destructive',
             });
             return;
@@ -78,7 +78,7 @@ export default function PricingPage() {
         setLoadingPlan(plan.id);
         
         if (!user) {
-            router.push(`/signup?plan=${plan.id}`);
+            router.push(`/signup?plan=${plan.id}&priceId=${plan.priceId}`);
             return;
         }
 

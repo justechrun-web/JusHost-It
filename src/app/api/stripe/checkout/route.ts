@@ -1,3 +1,4 @@
+
 'use server';
 
 import { NextRequest, NextResponse } from "next/server";
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
     const userDoc = await userRef.get();
     let stripeCustomerId = userDoc.data()?.stripeCustomerId;
 
+    // Create a new Stripe customer if one doesn't exist
     if (!stripeCustomerId) {
         const customer = await stripe.customers.create({
             email,
@@ -43,10 +45,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      // Important: trial_period_days is now preferred over subscription_data.trial_from_plan
-      // when creating a checkout session directly with a price.
-      // If your price object in Stripe has a trial period, you can omit this.
-      // For clarity and control, we set it here.
+      // Enable a 7-day free trial for the subscription
       subscription_data: {
         trial_period_days: 7,
         metadata: { userId },
