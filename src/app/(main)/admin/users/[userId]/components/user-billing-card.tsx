@@ -32,6 +32,7 @@ export function UserBillingCard({ user }: { user: any }) {
         return 'success';
       case 'past_due':
       case 'canceled':
+      case 'over_budget':
         return 'destructive';
       default:
         return 'secondary';
