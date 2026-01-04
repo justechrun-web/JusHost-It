@@ -222,14 +222,25 @@ export async function POST(req: Request) {
     await eventRef.set({
       type: event.type,
       created: adminDb.Timestamp.fromMillis(event.created * 1000),
+      status: 'processed'
     });
 
   } catch (error) {
       console.error(`Webhook handler for ${event.type} failed:`, error);
-      return new NextResponse("Webhook handler failed. See logs.", { status: 500 });
+      // Still record the event to prevent retries, but mark it as failed.
+      await eventRef.set({
+        type: event.type,
+        created: adminDb.Timestamp.fromMillis(event.created * 1000),
+        status: 'failed',
+        error: {
+          message: (error as Error).message,
+          stack: (error as Error).stack,
+        }
+      });
+      // We still return a 200 to Stripe to acknowledge receipt and stop retries.
+      // The failure is logged on our end for manual investigation.
+      return NextResponse.json({ received: true, error: "Webhook handler failed internally." });
   }
 
   return NextResponse.json({ received: true });
 }
-
-    
