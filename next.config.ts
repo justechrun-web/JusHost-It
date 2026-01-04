@@ -38,11 +38,14 @@ const nextConfig: NextConfig = {
       // Prevent server-side packages from being bundled on the client.
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        cardinal: false,
-        process: false,
+        'firebase-admin': false,
+        'dotenv': false,
+        'crypto': false,
+        'fs': false,
+        'net': false,
+        'tls': false,
+        'cardinal': false,
+        'process': false,
       };
     }
     return config;
