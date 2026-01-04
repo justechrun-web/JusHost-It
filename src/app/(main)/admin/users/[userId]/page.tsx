@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,8 @@ type AppUser = {
   id: string;
   email: string;
   displayName: string;
-  role?: 'free' | 'paid' | 'admin';
+  role?: 'user' | 'admin';
+  company?: string;
   plan?: 'starter' | 'pro' | 'business';
   subscriptionStatus?: 'trialing' | 'active' | 'past_due' | 'canceled';
   monthlySpend?: number;
@@ -57,16 +58,6 @@ export default function UserDetailPage() {
     );
   }
 
-  // Flatten user and subscription info for easier prop passing to legacy components
-  const displayUser = {
-    ...user,
-    plan: user.plan,
-    subscriptionStatus: user.subscriptionStatus,
-    monthlySpend: user.monthlySpend,
-    hardCap: user.hardCap,
-  };
-
-
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
@@ -88,12 +79,12 @@ export default function UserDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-            <UserOrgCard user={displayUser} />
+            <UserOrgCard user={user} />
             <UserUsageCard />
         </div>
         <div className="space-y-8">
-            <UserBillingCard user={displayUser} />
-            {user && <UserDangerZone orgId={user.id} />}
+            <UserBillingCard user={user} />
+            <UserDangerZone orgId={user.id} />
         </div>
       </div>
     </div>

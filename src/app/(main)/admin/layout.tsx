@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import { useUser } from '@/firebase';
-import { multiFactor } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';

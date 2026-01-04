@@ -22,12 +22,14 @@ type Site = {
   domain: string;
   status: 'Active' | 'Suspended' | 'Provisioning';
   plan: string;
-  userId: string;
+  orgId: string;
   billingStatus?: 'active' | 'past_due' | 'canceled';
 };
 
 export function SitesTable() {
   const db = useFirestore();
+  // In a real app with many sites, you would get all orgs then query sites for each.
+  // For this demo, we'll query a root 'sites' collection which is less scalable but simpler.
   const sitesQuery = useMemoFirebase(
     () => db ? query(collection(db, 'sites'), orderBy('domain'), limit(50)) : null,
     [db]
@@ -73,7 +75,7 @@ export function SitesTable() {
             <TableHead>Status</TableHead>
             <TableHead>Billing Status</TableHead>
             <TableHead>Plan</TableHead>
-            <TableHead>Owner ID</TableHead>
+            <TableHead>Org ID</TableHead>
             <TableHead className="text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
@@ -105,7 +107,7 @@ export function SitesTable() {
                 </TableCell>
                 <TableCell>{site.plan}</TableCell>
                 <TableCell className="font-mono text-xs">
-                  {site.userId}
+                  {site.orgId}
                 </TableCell>
                 <TableCell className="text-right">
                   <AdminAction site={site} />
