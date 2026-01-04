@@ -83,6 +83,7 @@ export function CreateSiteDialog() {
       });
       setDomain('');
       setSitePurpose('');
+      setSuggestions([]);
       setOpen(false);
     } catch (error: any) {
       console.error('Cloud Function error:', error);
