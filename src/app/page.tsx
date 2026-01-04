@@ -1,5 +1,3 @@
-'use client';
-
 import { Check, Server, Shield, BarChart3, Zap, CreditCard, Users } from 'lucide-react';
 
 // =====================
@@ -16,7 +14,7 @@ export default function JusHostItLanding() {
         <div className="font-bold text-xl">JusHostIt</div>
         <nav className="hidden md:flex gap-6 text-sm">
           <a href="/pricing" className="hover:underline">Pricing</a>
-          <a href="/trust" className="hover:underline">Security</a>
+          <a href="/security" className="hover:underline">Security</a>
           <a href="/login" className="hover:underline">Login</a>
         </nav>
         <a href="/signup">
