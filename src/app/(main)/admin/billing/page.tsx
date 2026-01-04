@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -11,7 +12,7 @@ import {
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
-import { AdminBillingForm } from './components/admin-billing-form';
+import { AdminBillingForm } from '@/app/(main)/admin/components/admin-billing-form';
 
 type UserData = {
   id: string;
