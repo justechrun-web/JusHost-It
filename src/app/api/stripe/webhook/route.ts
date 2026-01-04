@@ -7,17 +7,9 @@ import { headers } from "next/headers";
 import { buffer } from "node:stream/consumers";
 import type { Stripe } from "stripe";
 import { noStore } from "next/cache";
+import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
 
 export const runtime = 'nodejs';
-
-const mapPriceIdToPlan = (priceId: string) => {
-  const plans: Record<string, string> = {
-    [process.env.STRIPE_PRICE_STARTER!]: 'starter',
-    [process.env.STRIPE_PRICE_PRO!]: 'pro',
-    [process.env.STRIPE_PRICE_BUSINESS!]: 'business',
-  };
-  return plans[priceId] || 'free';
-};
 
 export async function POST(req: Request) {
   noStore();
@@ -47,10 +39,9 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const orgId = session.metadata?.orgId;
-        const ownerUid = session.metadata?.ownerUid;
-
-        if (!orgId || !ownerUid) {
-            console.error("Webhook Error: Missing orgId or ownerUid in checkout session metadata.", session.id);
+        
+        if (!orgId) {
+            console.error("Webhook Error: Missing orgId in checkout session metadata.", session.id);
             return NextResponse.json({ error: "Missing organization identifier in webhook metadata" }, { status: 400 });
         }
         
@@ -66,20 +57,43 @@ export async function POST(req: Request) {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = sub.customer as string;
         
-        const priceId = sub.items.data[0].price.id;
-        const plan = mapPriceIdToPlan(priceId);
-
         const orgQuery = await adminDb.collection("orgs").where("stripeCustomerId", "==", customerId).limit(1).get();
-        if (!orgQuery.empty) {
-            const orgDoc = orgQuery.docs[0];
-            await orgDoc.ref.update({
-                subscriptionId: sub.id,
-                subscriptionStatus: sub.status,
-                plan: plan,
-                'seats.limit': sub.items.data[0].quantity,
-                currentPeriodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
-            });
-        }
+        if (orgQuery.empty) break;
+        
+        const orgDoc = orgQuery.docs[0];
+        const basePlanPriceId = sub.items.data.find(item => item.price.recurring)?.price.id;
+        const plan = basePlanPriceId ? PLAN_BY_PRICE_ID[basePlanPriceId] : 'free';
+
+        const subscriptionItemIds: { [key: string]: string } = {};
+        sub.items.data.forEach(item => {
+            if (item.price.id === process.env.STRIPE_PRICE_METERED_API) {
+                subscriptionItemIds.apiCalls = item.id;
+            }
+            if (item.price.id === process.env.STRIPE_PRICE_METERED_AI) {
+                subscriptionItemIds.aiTokens = item.id;
+            }
+             if (item.price.id === process.env.STRIPE_PRICE_METERED_EXPORTS) {
+                subscriptionItemIds.exports = item.id;
+            }
+        });
+        
+        await orgDoc.ref.update({
+            subscriptionId: sub.id,
+            subscriptionStatus: sub.status,
+            plan: plan,
+            'seats.limit': sub.items.data.find(item => item.price.recurring)?.quantity || 1,
+            currentPeriodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
+            subscriptionItemIds: subscriptionItemIds
+        });
+
+        // Reset usage for new period
+        await adminDb.collection('orgUsage').doc(orgDoc.id).set({
+          periodStart: adminDb.Timestamp.fromMillis(sub.current_period_start * 1000),
+          periodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
+          usage: { apiCalls: 0, aiTokens: 0, exports: 0 },
+          overage: { apiCalls: 0, aiTokens: 0, exports: 0 },
+        }, { merge: true });
+
         break;
       }
        case "customer.subscription.deleted": {
@@ -121,11 +135,11 @@ export async function POST(req: Request) {
         case 'invoice.payment_succeeded': {
             const invoice = event.data.object as Stripe.Invoice;
             const customerId = invoice.customer as string;
-            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-
+            
             const orgQuery = await adminDb.collection("orgs").where("stripeCustomerId", "==", customerId).limit(1).get();
             if (!orgQuery.empty) {
                 const orgDoc = orgQuery.docs[0];
+                const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
                 await orgDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
@@ -148,3 +162,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ received: true });
 }
+
+    

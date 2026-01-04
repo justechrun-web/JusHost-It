@@ -1,0 +1,190 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account within the JusHostIt platform. This document is lightweight and primarily for auth context.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the user (UID)." },
+        "email": { "type": "string", "description": "Email address of the user.", "format": "email" },
+        "displayName": { "type": "string", "description": "The user's display name or full name." },
+        "photoURL": { "type": "string", "description": "URL of the user's profile photo.", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "orgId": { "type": "string", "description": "The ID of the organization this user belongs to." },
+        "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"], "description": "The user's role within their organization." }
+      },
+      "required": ["id", "email"]
+    },
+    "Organization": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Organization",
+      "type": "object",
+      "description": "Represents an organization or company, which is the root for all resources like sites and members. All billing and usage is tied to this entity.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the organization." },
+        "name": { "type": "string", "description": "Display name of the organization." },
+        "ownerUid": { "type": "string", "description": "The UID of the user who owns the organization." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "plan": { "type": "string", "description": "The organization's subscription plan (e.g., 'starter', 'pro')." },
+        "stripeCustomerId": { "type": "string", "description": "The customer ID from Stripe for billing." },
+        "subscriptionId": { "type": "string", "description": "The ID of the active Stripe subscription." },
+        "subscriptionStatus": { "type": "string", "enum": ["trialing", "active", "past_due", "canceled", "incomplete"] },
+        "currentPeriodEnd": { "type": "string", "format": "date-time", "description": "Timestamp for when the current Stripe billing period ends." },
+        "gracePeriodEndsAt": { "type": "string", "format": "date-time", "description": "If status is past_due, this is when access will be revoked." },
+        "seats": {
+          "type": "object",
+          "properties": {
+            "used": { "type": "integer" },
+            "limit": { "type": "integer" }
+          }
+        },
+        "subscriptionItemIds": {
+            "type": "object",
+            "description": "Stores the Stripe subscription item IDs for metered usage reporting.",
+            "properties": {
+                "apiCalls": { "type": "string" },
+                "aiTokens": { "type": "string" },
+                "exports": { "type": "string" }
+            }
+        }
+      },
+      "required": ["id", "name", "ownerUid", "plan", "subscriptionStatus"]
+    },
+    "OrgMember": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrgMember",
+      "type": "object",
+      "description": "Represents a user's membership and role within an organization. ID is a composite key for fast lookups.",
+      "properties": {
+        "id": { "type": "string", "description": "Composite key: {orgId}_{uid}" },
+        "orgId": { "type": "string", "description": "Reference to Organization." },
+        "uid": { "type": "string", "description": "Reference to User." },
+        "email": { "type": "string", "description": "Denormalized email of the user for easy lookup." },
+        "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"] },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "uid", "email", "role"]
+    },
+    "OrgUsage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrgUsage",
+      "type": "object",
+      "description": "Tracks pooled resource usage for an entire organization for the current billing period, including included and overage amounts.",
+      "properties": {
+        "id": { "type": "string", "description": "Same as the organization ID." },
+        "periodStart": { "type": "string", "format": "date-time" },
+        "periodEnd": { "type": "string", "format": "date-time" },
+        "usage": {
+          "type": "object",
+          "description": "Total usage within the current period.",
+          "properties": {
+            "apiCalls": { "type": "integer" },
+            "aiTokens": { "type": "integer" },
+            "exports": { "type": "integer" }
+          }
+        },
+        "overage": {
+            "type": "object",
+            "description": "Usage that has exceeded the plan's included quota and is billable.",
+            "properties": {
+              "apiCalls": { "type": "integer" },
+              "aiTokens": { "type": "integer" },
+              "exports": { "type": "integer" }
+            }
+        }
+      },
+      "required": ["id", "periodStart", "periodEnd", "usage"]
+    },
+    "OrgInvitation": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OrgInvitation",
+        "type": "object",
+        "description": "Represents an invitation for a user to join an organization.",
+        "properties": {
+            "id": { "type": "string" },
+            "orgId": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "role": { "type": "string", "enum": ["admin", "member", "viewer"] },
+            "status": { "type": "string", "enum": ["pending", "accepted", "declined", "expired"] },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "orgId", "email", "role", "status"]
+    },
+    "Site": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Site",
+      "type": "object",
+      "description": "Represents a website hosted on the JusHostIt platform, owned by an organization.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string", "description": "Reference to Organization." },
+        "domain": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Suspended", "Provisioning"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "domain", "status"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "google.com"]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": { "$ref": "#/entities/User" },
+          "description": "Stores user profile information and their current organization context (orgId, role). Writable only by the user themselves or by trusted server processes."
+        }
+      },
+      {
+        "path": "/orgs/{orgId}",
+        "definition": {
+          "entityName": "Organization",
+          "schema": { "$ref": "#/entities/Organization" },
+          "description": "Root document for an organization. Contains billing status, plan, and other metadata. Writable only by trusted server processes (e.g., Stripe webhook)."
+        }
+      },
+      {
+        "path": "/orgMembers/{membershipId}",
+        "definition": {
+            "entityName": "OrgMember",
+            "schema": { "$ref": "#/entities/OrgMember" },
+            "description": "A flat collection for scalable role lookups. The ID is a composite key: {orgId}_{uid}. This enables security rules to quickly check a user's role within any organization."
+        }
+      },
+      {
+        "path": "/orgUsage/{orgId}",
+        "definition": {
+            "entityName": "OrgUsage",
+            "schema": { "$ref": "#/entities/OrgUsage" },
+            "description": "Stores pooled usage metrics for an organization, including included and overage amounts. Writable only by trusted server processes."
+        }
+      },
+      {
+        "path": "/orgs/{orgId}/sites/{siteId}",
+        "definition": {
+          "entityName": "Site",
+          "schema": { "$ref": "#/entities/Site" },
+          "description": "Stores website information, nested under the owning organization."
+        }
+      },
+      {
+          "path": "/orgInvitations/{inviteId}",
+          "definition": {
+              "entityName": "OrgInvitation",
+              "schema": { "$ref": "#/entities/OrgInvitation" },
+              "description": "Stores pending invitations for users to join an organization. Documents can be cleaned up after they are accepted or expire."
+          }
+      }
+    ],
+    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. This structure is highly scalable, secure, and aligns with Stripe's subscription model."
+  }
+}
+
+    
