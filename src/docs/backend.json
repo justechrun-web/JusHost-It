@@ -216,12 +216,29 @@
         "orgId": { "type": "string" },
         "amount": { "type": "integer", "description": "The initial amount of the credit purchase, in cents." },
         "remaining": { "type": "integer", "description": "The remaining credit balance, in cents." },
-        "source": { "type": "string", "enum": ["stripe", "manual_grant", "auto_top_up"] },
+        "source": { "type": "string", "enum": ["stripe", "manual_grant", "auto_top_up", "po"] },
         "stripePaymentIntentId": { "type": "string", "description": "The Stripe Payment Intent ID for this purchase." },
         "expiresAt": { "type": "string", "format": "date-time", "description": "Optional expiration date for the credits." },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "orgId", "amount", "remaining", "source"]
+    },
+     "PurchaseOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PurchaseOrder",
+      "type": "object",
+      "description": "Represents a purchase order from a customer, allowing for invoiced billing against a pre-committed amount.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "poNumber": { "type": "string" },
+        "maxAmount": { "type": "integer", "description": "The total value of the PO in cents." },
+        "remainingAmount": { "type": "integer", "description": "The remaining value on the PO in cents." },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "depleted", "expired"] }
+      },
+      "required": ["id", "orgId", "poNumber", "maxAmount", "remainingAmount", "status"]
     },
     "OverageApproval": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -362,6 +379,14 @@
           "description": "An auditable ledger of all prepaid credit purchases for an organization. Allows for FIFO consumption and clear financial tracking."
         }
       },
+      {
+        "path": "/purchaseOrders/{poId}",
+        "definition": {
+          "entityName": "PurchaseOrder",
+          "schema": { "$ref": "#/entities/PurchaseOrder" },
+          "description": "Stores purchase order details for enterprise customers, enabling invoiced billing against a committed amount."
+        }
+      },
        {
         "path": "/overageApprovals/{approvalId}",
         "definition": {
@@ -398,3 +423,5 @@
     "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. `Departments` add a layer of budget control within an org. The `OverageApproval` and `DeptSpendStats` collections provide advanced, enterprise-grade governance and safety controls."
   }
 }
+
+    

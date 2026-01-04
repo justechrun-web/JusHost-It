@@ -11,6 +11,7 @@ import { UserOrgCard } from './components/user-org-card';
 import { UserUsageCard } from './components/user-usage-card';
 import { UserBillingCard } from './components/user-billing-card';
 import { UserDangerZone } from './components/user-danger-zone';
+import { UserPurchaseOrderCard } from './components/user-po-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,7 @@ export default function UserDetailPage() {
         <div className="lg:col-span-2 space-y-8">
             <UserOrgCard user={user} />
             <UserUsageCard />
+            <UserPurchaseOrderCard orgId={user.id} />
         </div>
         <div className="space-y-8">
             <UserBillingCard user={user} />
@@ -90,3 +92,5 @@ export default function UserDetailPage() {
     </div>
   );
 }
+
+    

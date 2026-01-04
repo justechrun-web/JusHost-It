@@ -35,7 +35,15 @@ const nextConfig: NextConfig = {
 
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      config.externals.push('firebase-admin', 'dotenv', 'crypto');
+      // Prevent server-side packages from being bundled on the client.
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        cardinal: false,
+        process: false,
+      };
     }
     return config;
   },
