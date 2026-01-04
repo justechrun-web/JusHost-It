@@ -5,37 +5,11 @@ import * as React from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MainSidebar } from "@/components/main-sidebar";
 import { Header } from "@/components/header";
-import { usePathname, useRouter } from "next/navigation";
-import { useUser } from "@/firebase";
-import { Loader2 } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
 
-  React.useEffect(() => {
-    if (isUserLoading) {
-      return;
-    }
-
-    if (!user) {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, router, pathname]);
-
-  if (isUserLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-  
   // The admin layout handles its own structure.
   if (pathname.startsWith('/admin')) {
     return <>{children}</>
