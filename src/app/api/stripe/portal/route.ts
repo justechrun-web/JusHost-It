@@ -1,3 +1,5 @@
+
+import 'server-only';
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { adminDb } from "@/lib/firebase/admin";

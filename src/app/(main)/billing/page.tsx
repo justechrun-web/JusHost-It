@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -109,8 +110,7 @@ export default function BillingPage() {
         title: 'Error',
         description: error.message,
       });
-    } finally {
-        setIsPortalLoading(false);
+      setIsPortalLoading(false);
     }
   };
 
