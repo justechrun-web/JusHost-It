@@ -212,6 +212,7 @@ export async function POST(req: Request) {
                  await adminDb.collection('orgs').doc(orgId).update({
                     'autoTopUp.enabled': false,
                     'autoTopUp.spentThisMonth': FieldValue.increment(-pi.amount),
+                    'autoTopUp.spentToday': FieldValue.increment(-pi.amount),
                 });
                 // TODO: Notify user that auto top-up was disabled due to payment failure.
             }
@@ -231,3 +232,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ received: true });
 }
+
+    

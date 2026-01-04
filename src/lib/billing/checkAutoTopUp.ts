@@ -2,6 +2,7 @@
 'use server'
 import { adminDb } from '@/lib/firebase/admin'
 import { stripe } from '@/lib/stripe/server'
+import { resetDailyAutoTopUpIfNeeded } from './resetDailyAutoTopUp';
 
 const COOLDOWN_MS = 60 * 60 * 1000 // 1 hour
 
@@ -10,7 +11,12 @@ export async function checkAutoTopUp(orgId: string) {
   const orgSnap = await orgRef.get()
   if (!orgSnap.exists) return
 
-  const org = orgSnap.data()!
+  // Reset daily counter if needed before we check anything
+  await resetDailyAutoTopUpIfNeeded(orgId)
+  
+  // Re-fetch the document after potential reset
+  const updatedOrgSnap = await orgRef.get();
+  const org = updatedOrgSnap.data()!
   const auto = org.autoTopUp
 
   if (!auto?.enabled) return
@@ -52,22 +58,24 @@ export async function checkAutoTopUp(orgId: string) {
     return
   }
 
-  // Cap enforcement
-  const spentThisMonth = auto.spentThisMonth ?? 0
-  const remainingCap = (auto.monthlyCap ?? Infinity) - spentThisMonth;
-  
+  // Monthly and Daily Cap Enforcement
+  const monthlyRemaining = (auto.monthlyCap ?? Infinity) - (auto.spentThisMonth ?? 0);
+  const dailyRemaining = (auto.dailyCap ?? Infinity) - (auto.spentToday ?? 0);
+  const remainingCap = Math.min(monthlyRemaining, dailyRemaining);
+
   if (remainingCap <= 0) {
-    // Monthly cap has been reached. Do not top up.
+    // Hard stop if either cap has been reached.
     return;
   }
 
-  // Determine the actual amount to charge, respecting the remaining cap.
   const chargeAmount = Math.min(auto.amount, remainingCap);
+  if (chargeAmount <= 0) return;
 
   // Optimistic lock to reserve cap space and set cooldown
   await orgRef.update({
     'autoTopUp.lastTriggeredAt': adminDb.FieldValue.serverTimestamp(),
     'autoTopUp.spentThisMonth': adminDb.FieldValue.increment(chargeAmount),
+    'autoTopUp.spentToday': adminDb.FieldValue.increment(chargeAmount),
   })
   
   // Create PaymentIntent (OFF-SESSION)
@@ -91,7 +99,10 @@ export async function checkAutoTopUp(orgId: string) {
      await orgRef.update({
         'autoTopUp.lastTriggeredAt': auto.lastTriggeredAt, // Revert to previous value
         'autoTopUp.spentThisMonth': adminDb.FieldValue.increment(-chargeAmount),
+        'autoTopUp.spentToday': adminDb.FieldValue.increment(-chargeAmount),
      });
      // The payment_intent.payment_failed webhook will handle disabling the feature
   }
 }
+
+    

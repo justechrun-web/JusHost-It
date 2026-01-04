@@ -60,6 +60,9 @@
                 "monthlyCap": { "type": "integer", "description": "The maximum amount in cents that can be auto-topped-up in a single billing period." },
                 "spentThisMonth": { "type": "integer", "description": "The total amount in cents auto-topped-up in the current billing period." },
                 "capPeriodStart": { "type": "string", "format": "date-time", "description": "The start date of the current cap period, aligned with the Stripe billing cycle." },
+                "dailyCap": { "type": "integer", "description": "The maximum amount in cents that can be auto-topped-up in a single day." },
+                "spentToday": { "type": "integer", "description": "The total amount in cents auto-topped-up in the current day." },
+                "dayStart": { "type": "string", "format": "date-time", "description": "The start of the current 24-hour spend period." },
                 "lastTriggeredAt": { "type": "string", "format": "date-time", "description": "Timestamp to prevent rapid re-triggers." }
             }
         }
@@ -224,3 +227,5 @@
     "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. This structure is highly scalable, secure, and aligns with Stripe's subscription and metered billing models."
   }
 }
+
+    
