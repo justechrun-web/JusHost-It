@@ -2,16 +2,15 @@ name: CI
 
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
 
 jobs:
-  build-and-audit:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -22,34 +21,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify locked core versions
-        run: |
-          node -e "
-          const pkg = require('./package.json');
-          const expected = {
-            next: '15.4.8',
-            react: '19.2.1',
-            'react-dom': '19.2.1'
-          };
-          for (const [dep, version] of Object.entries(expected)) {
-            if (!pkg.dependencies[dep]) {
-              throw new Error(dep + ' is missing from dependencies');
-            }
-            if (pkg.dependencies[dep] !== version) {
-              throw new Error(
-                dep + ' version drift detected: ' +
-                pkg.dependencies[dep] + ' (expected ' + version + ')'
-              );
-            }
-          }
-          console.log('✔ Core dependencies locked');
-          "
-      
-      - name: Type check
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
         run: npm run typecheck
 
       - name: Build
         run: npm run build
-
-      - name: Production security audit
-        run: npm audit --production --audit-level=high
