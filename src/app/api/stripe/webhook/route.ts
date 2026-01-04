@@ -120,6 +120,7 @@ export async function POST(req: Request) {
         case 'invoice.payment_succeeded': {
             const invoice = event.data.object as Stripe.Invoice;
             const customerId = invoice.customer as string;
+            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
 
             const userQuery = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
             if (!userQuery.empty) {
@@ -127,6 +128,7 @@ export async function POST(req: Request) {
                 await userDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
+                    currentPeriodEnd: adminDb.Timestamp.fromMillis(subscription.current_period_end * 1000),
                 });
             }
             break;
