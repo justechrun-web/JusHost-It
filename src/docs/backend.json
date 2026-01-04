@@ -57,6 +57,9 @@
                 "enabled": { "type": "boolean" },
                 "threshold": { "type": "integer", "description": "The balance in cents at which to trigger a top-up." },
                 "amount": { "type": "integer", "description": "The amount in cents to purchase." },
+                "monthlyCap": { "type": "integer", "description": "The maximum amount in cents that can be auto-topped-up in a single billing period." },
+                "spentThisMonth": { "type": "integer", "description": "The total amount in cents auto-topped-up in the current billing period." },
+                "capPeriodStart": { "type": "string", "format": "date-time", "description": "The start date of the current cap period, aligned with the Stripe billing cycle." },
                 "lastTriggeredAt": { "type": "string", "format": "date-time", "description": "Timestamp to prevent rapid re-triggers." }
             }
         }

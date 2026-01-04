@@ -52,16 +52,28 @@ export async function checkAutoTopUp(orgId: string) {
     return
   }
 
-  // Optimistic lock to prevent multiple triggers
+  // Cap enforcement
+  const spentThisMonth = auto.spentThisMonth ?? 0
+  const remainingCap = (auto.monthlyCap ?? Infinity) - spentThisMonth;
+  
+  if (remainingCap <= 0) {
+    // Monthly cap has been reached. Do not top up.
+    return;
+  }
+
+  // Determine the actual amount to charge, respecting the remaining cap.
+  const chargeAmount = Math.min(auto.amount, remainingCap);
+
+  // Optimistic lock to reserve cap space and set cooldown
   await orgRef.update({
-    'autoTopUp.lastTriggeredAt':
-      adminDb.FieldValue.serverTimestamp(),
+    'autoTopUp.lastTriggeredAt': adminDb.FieldValue.serverTimestamp(),
+    'autoTopUp.spentThisMonth': adminDb.FieldValue.increment(chargeAmount),
   })
   
   // Create PaymentIntent (OFF-SESSION)
   try {
     await stripe.paymentIntents.create({
-      amount: auto.amount,
+      amount: chargeAmount,
       currency: 'usd',
       customer: org.stripeCustomerId,
       payment_method: customer.invoice_settings.default_payment_method as string,
@@ -78,6 +90,7 @@ export async function checkAutoTopUp(orgId: string) {
      // Revert the optimistic lock if the Stripe call fails immediately
      await orgRef.update({
         'autoTopUp.lastTriggeredAt': auto.lastTriggeredAt, // Revert to previous value
+        'autoTopUp.spentThisMonth': adminDb.FieldValue.increment(-chargeAmount),
      });
      // The payment_intent.payment_failed webhook will handle disabling the feature
   }

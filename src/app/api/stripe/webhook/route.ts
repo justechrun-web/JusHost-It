@@ -98,7 +98,7 @@ export async function POST(req: Request) {
             subscriptionStatus: sub.status,
             plan: plan,
             'seats.limit': sub.items.data.find(item => item.price.recurring)?.quantity || 1,
-            currentPeriodEnd: FieldValue.serverTimestamp(),
+            currentPeriodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
             subscriptionItemIds: subscriptionItemIds
         });
 
@@ -130,6 +130,23 @@ export async function POST(req: Request) {
             });
           }
           break;
+        }
+        case 'invoice.paid': {
+            const invoice = event.data.object as Stripe.Invoice;
+            const customerId = invoice.customer as string;
+            
+            const orgQuery = await adminDb.collection("orgs").where("stripeCustomerId", "==", customerId).limit(1).get();
+            if (!orgQuery.empty) {
+                const orgDoc = orgQuery.docs[0];
+                await orgDoc.ref.update({
+                    subscriptionStatus: 'active',
+                    gracePeriodEndsAt: null,
+                    currentPeriodEnd: adminDb.Timestamp.fromMillis(invoice.period_end * 1000),
+                    'autoTopUp.spentThisMonth': 0,
+                    'autoTopUp.capPeriodStart': adminDb.Timestamp.fromMillis(invoice.period_start * 1000),
+                });
+            }
+            break;
         }
         case 'invoice.payment_failed': {
             const invoice = event.data.object as Stripe.Invoice;
@@ -194,6 +211,7 @@ export async function POST(req: Request) {
             if (orgId) {
                  await adminDb.collection('orgs').doc(orgId).update({
                     'autoTopUp.enabled': false,
+                    'autoTopUp.spentThisMonth': FieldValue.increment(-pi.amount),
                 });
                 // TODO: Notify user that auto top-up was disabled due to payment failure.
             }
