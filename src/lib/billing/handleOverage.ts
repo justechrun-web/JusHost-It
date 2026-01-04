@@ -5,6 +5,7 @@ import 'server-only';
 import { adminDb, FieldValue } from '@/lib/firebase/admin';
 import type { UsageKey } from './costs';
 import { sendSlackAlert } from '../alerts/slack';
+import { logAdminAction } from '../audit/logAdminAction';
 
 type HandleOverageParams = {
   org: any;
@@ -22,7 +23,7 @@ export async function handleOverage({
   cost,
   uid,
   userEmail,
-}: HandleOverageParams): Promise<'allow' | 'pending'> {
+}: HandleOverageParams): Promise<'allow' | 'pending' | 'block'> {
   if (org.overagePolicy?.mode === 'auto' || !org.overagePolicy) {
     return 'allow';
   }
@@ -38,10 +39,32 @@ export async function handleOverage({
     .get();
 
   if (!approvals.empty) {
+    const lastApproval = approvals.docs[0].data();
     // A simple check: if any recent approval exists, allow it.
     // A more complex system might check if the approved amount covers the cost.
-    return 'allow';
+    const timeSinceApproval = Date.now() - lastApproval.resolvedAt.toMillis();
+    if (timeSinceApproval < 5 * 60 * 1000) { // 5 minute window
+        return 'allow';
+    }
   }
+
+  // Final backstop: enable read-only mode if we've reached this point.
+  // This means credits are gone, auto-top-up isn't working, and no valid approval exists.
+  const orgRef = adminDb.collection('orgs').doc(org.id);
+  await orgRef.update({
+    'readOnly.enabled': true,
+    'readOnly.reason': 'budget_exceeded',
+    'readOnly.enabledAt': FieldValue.serverTimestamp(),
+  });
+  
+  await logAdminAction({
+      type: 'read_only_enabled',
+      actorUid: 'system',
+      actorRole: 'system',
+      orgId: org.id,
+      metadata: { reason: 'budget_exceeded', feature, cost, finalAttemptedBy: uid }
+  });
+
 
   // Create a new pending approval request
   const approvalRef = adminDb.collection('overageApprovals').doc();
@@ -95,10 +118,11 @@ export async function handleOverage({
             }
         ]
     };
-    await sendSlackAlert(slackWebhookUrl, message);
+    await sendSlackAlert(slackWebhookUrl, message as any);
   }
 
-  return 'pending';
+  return 'block'; // Changed from 'pending' to 'block' to signify a hard stop.
 }
 
+    
     

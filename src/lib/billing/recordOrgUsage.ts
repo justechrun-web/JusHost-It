@@ -31,8 +31,12 @@ export async function recordOrgUsage(
   const { orgId, org, user } = await requireOrg();
   const plan = org.plan;
 
+  if (org.readOnly?.enabled) {
+    redirect(`/billing?reason=${org.readOnly.reason}`);
+  }
+
   if (!plan || !org.subscriptionStatus || !['active', 'trialing', 'past_due'].includes(org.subscriptionStatus)) {
-    redirect('/billing');
+    redirect('/billing-required');
   }
 
   // 1. Convert usage to cost
@@ -80,6 +84,8 @@ export async function recordOrgUsage(
     const overageCostInCents = calculateCostInCents(key, overageAmount);
     
     const remainingCost = await consumeCredits(orgId, overageCostInCents);
+    
+    await checkAutoTopUp(orgId);
 
     if(remainingCost > 0) {
         const overageDecision = await handleOverage({
@@ -91,10 +97,8 @@ export async function recordOrgUsage(
             userEmail: user.email,
         });
 
-        if (overageDecision === 'pending') {
-            // The handleOverage function now sends the Slack notification.
-            // We just need to stop processing for this user.
-            throw new Error(`Overage for ${key} requires approval.`);
+        if (overageDecision === 'block') {
+            redirect(`/billing?reason=overage_approval_required`);
         }
         
         // If 'allow', proceed to report to Stripe
@@ -118,10 +122,8 @@ export async function recordOrgUsage(
             }
         }
     }
-     
-    // Check for auto-top up after credits are consumed
-    await checkAutoTopUp(orgId);
   }
 }
 
+    
     

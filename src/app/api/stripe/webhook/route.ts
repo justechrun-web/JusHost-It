@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { adminDb, FieldValue } from "@/lib/firebase/admin";
 import { headers } from "next/headers";
-import { buffer } from "node:stream/consumers";
 import type { Stripe } from "stripe";
 import { noStore } from "next/cache";
 import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
@@ -13,7 +12,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   noStore();
-  const rawBody = await buffer(req.body!);
+  const rawBody = Buffer.from(await req.arrayBuffer());
   const sig = headers().get("stripe-signature")!;
 
   let event: Stripe.Event;
