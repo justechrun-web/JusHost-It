@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { httpsCallable } from 'firebase/functions';
 import { useFunctions, useUser } from '@/firebase';
-import { suggestDomains } from '@/ai/flows/domain-suggestion-flow';
+import { suggestDomains } from '@/server/actions/domain-suggestion.action';
 
 export function CreateSiteDialog() {
   const [open, setOpen] = useState(false);
