@@ -54,8 +54,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Missing user identifier in webhook metadata" }, { status: 400 });
         }
         
-        // This handler might be redundant if sub.created is handled, but useful for initial setup.
-        // Let's defer to the subscription created/updated events for setting plan details.
         await adminDb.collection("users").doc(uid).set({
           stripeCustomerId: session.customer,
         }, { merge: true });
@@ -97,6 +95,7 @@ export async function POST(req: Request) {
             await userDoc.ref.update({
               plan: "free",
               subscriptionStatus: "canceled",
+              gracePeriodEndsAt: null,
             });
           }
           break;
@@ -108,8 +107,26 @@ export async function POST(req: Request) {
             const userQuery = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
             if (!userQuery.empty) {
                 const userDoc = userQuery.docs[0];
+                const graceDays = 7;
+                const graceEnds = new Date(Date.now() + graceDays * 86400000);
+
                 await userDoc.ref.update({
                     subscriptionStatus: 'past_due',
+                    gracePeriodEndsAt: graceEnds,
+                });
+            }
+            break;
+        }
+        case 'invoice.payment_succeeded': {
+            const invoice = event.data.object as Stripe.Invoice;
+            const customerId = invoice.customer as string;
+
+            const userQuery = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
+            if (!userQuery.empty) {
+                const userDoc = userQuery.docs[0];
+                await userDoc.ref.update({
+                    subscriptionStatus: 'active',
+                    gracePeriodEndsAt: null,
                 });
             }
             break;

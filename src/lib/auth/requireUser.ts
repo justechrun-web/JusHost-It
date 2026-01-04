@@ -25,15 +25,22 @@ export async function requireUser() {
       redirect('/login')
   }
 
-  const user = snap.data();
+  const user = snap.data()!;
+  
+  const status = user.subscriptionStatus;
+  const graceEnds = user.gracePeriodEndsAt?.toDate?.();
+  const now = new Date();
 
-  // Redirect if billing status is not active or trialing
-  if (user?.subscriptionStatus !== 'active' && user?.subscriptionStatus !== 'trialing') {
+  const isGraceValid = status === 'past_due' && graceEnds && graceEnds > now;
+  const hasAccess = status === 'active' || status === 'trialing' || isGraceValid;
+
+  // Redirect if billing status is not valid
+  if (!hasAccess) {
     redirect('/billing-required');
   }
 
   return {
     uid: decoded.uid,
-    user: snap.data()!,
+    user: user,
   }
 }
