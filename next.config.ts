@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
 
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      config.externals.push('firebase-admin');
+      config.externals.push('firebase-admin', 'dotenv');
     }
     return config;
   },
