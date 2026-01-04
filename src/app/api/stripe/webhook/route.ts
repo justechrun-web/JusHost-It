@@ -3,17 +3,18 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { adminDb, FieldValue } from "@/lib/firebase/admin";
-import { headers } from "next/headers";
 import type { Stripe } from "stripe";
-import { noStore } from "next/cache";
 import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  noStore();
   const rawBody = Buffer.from(await req.arrayBuffer());
-  const sig = headers().get("stripe-signature")!;
+  const sig = req.headers.get("stripe-signature");
+
+  if (!sig) {
+    return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 });
+  }
 
   let event: Stripe.Event;
   try {
@@ -97,14 +98,14 @@ export async function POST(req: Request) {
             subscriptionStatus: sub.status,
             plan: plan,
             'seats.limit': sub.items.data.find(item => item.price.recurring)?.quantity || 1,
-            currentPeriodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
+            currentPeriodEnd: FieldValue.serverTimestamp(),
             subscriptionItemIds: subscriptionItemIds
         });
 
         // Reset usage for new period
         await adminDb.collection('orgUsage').doc(orgDoc.id).set({
-          periodStart: adminDb.Timestamp.fromMillis(sub.current_period_start * 1000),
-          periodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
+          periodStart: FieldValue.serverTimestamp(),
+          periodEnd: FieldValue.serverTimestamp(),
           usage: { apiCalls: 0, aiTokens: 0, exports: 0 },
           overage: { apiCalls: 0, aiTokens: 0, exports: 0 },
         }, { merge: true });
@@ -140,9 +141,9 @@ export async function POST(req: Request) {
                 await orgDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
-                    currentPeriodEnd: adminDb.Timestamp.fromMillis(invoice.period_end * 1000),
+                    currentPeriodEnd: FieldValue.serverTimestamp(),
                     'autoTopUp.spentThisMonth': 0,
-                    'autoTopUp.capPeriodStart': adminDb.Timestamp.fromMillis(invoice.period_start * 1000),
+                    'autoTopUp.capPeriodStart': FieldValue.serverTimestamp(),
                 });
             }
             break;
@@ -221,7 +222,7 @@ export async function POST(req: Request) {
 
     await eventRef.set({
       type: event.type,
-      created: adminDb.Timestamp.fromMillis(event.created * 1000),
+      created: FieldValue.serverTimestamp(),
       status: 'processed'
     });
 
@@ -230,7 +231,7 @@ export async function POST(req: Request) {
       // Still record the event to prevent retries, but mark it as failed.
       await eventRef.set({
         type: event.type,
-        created: adminDb.Timestamp.fromMillis(event.created * 1000),
+        created: FieldValue.serverTimestamp(),
         status: 'failed',
         error: {
           message: (error as Error).message,
