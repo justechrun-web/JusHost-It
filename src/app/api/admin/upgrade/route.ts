@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         return new NextResponse("User does not have a subscription to update.", { status: 400 });
     }
 
-    const priceId = process.env[`NEXT_PUBLIC_STRIPE_PRICE_${newPlan.toUpperCase()}`];
+    const priceId = process.env[`STRIPE_PRICE_${newPlan.toUpperCase()}`];
     if (!priceId) {
         return new NextResponse(`Price ID for plan '${newPlan}' not found in environment variables.`, { status: 500 });
     }
