@@ -1,7 +1,13 @@
+
 'use client';
 
-import { ShieldCheck, Database, Lock, CreditCard, GanttChartSquare, Users } from 'lucide-react';
+import { ShieldCheck, Database, Lock, CreditCard, GanttChartSquare, Users, Sparkles, Loader2, FileQuestion } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { answerSecurityQuestion } from '@/ai/flows/security-questionnaire-flow';
 
 const features = [
   {
@@ -37,6 +43,27 @@ const features = [
 ]
 
 export default function TrustCenterPage() {
+    const [question, setQuestion] = useState('');
+    const [answer, setAnswer] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleQuestionSubmit = async () => {
+        if (!question.trim()) return;
+        setLoading(true);
+        setError(null);
+        setAnswer('');
+        try {
+            const result = await answerSecurityQuestion({ question });
+            setAnswer(result.answer);
+        } catch (err) {
+            setError('An error occurred. Please try again.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
   return (
     <div className="bg-background text-foreground">
        <header className="border-b">
@@ -55,7 +82,7 @@ export default function TrustCenterPage() {
       
       <main className="py-16 sm:py-24 lg:py-32">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl mx-auto text-center">
+            <div className="max-w-3xl mx-auto text-center">
                 <h1 className="text-4xl font-bold tracking-tight font-headline sm:text-5xl lg:text-6xl">
                     Security You Can Trust
                 </h1>
@@ -64,8 +91,9 @@ export default function TrustCenterPage() {
                 </p>
             </div>
 
-            <div className="mt-20 max-w-lg sm:mx-auto md:max-w-none">
-                <div className="grid grid-cols-1 gap-y-16 md:grid-cols-2 md:gap-x-12 md:gap-y-16 lg:grid-cols-3">
+            <div className="mt-20">
+                <h2 className="text-3xl font-bold text-center tracking-tight">Our Security Principles</h2>
+                <div className="mt-12 grid grid-cols-1 gap-y-16 md:grid-cols-2 md:gap-x-12 lg:grid-cols-3">
                     {features.map((feature) => (
                     <div key={feature.name} className="flex flex-col gap-6">
                         <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -78,6 +106,52 @@ export default function TrustCenterPage() {
                     </div>
                     ))}
                 </div>
+            </div>
+
+            <div className="mt-24 bg-muted/50 rounded-lg p-8 md:p-12">
+                 <div className="grid md:grid-cols-2 gap-8 items-start">
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1 text-sm font-medium text-primary">
+                            <FileQuestion className="h-4 w-4" />
+                            <span>Powered by AI</span>
+                        </div>
+                        <h2 className="text-3xl font-bold tracking-tight">Security Questionnaire Autofill</h2>
+                        <p className="text-muted-foreground">
+                            Accelerate your security review process. Ask questions and get instant answers based on our official security documentation. Our AI is restricted to our trusted knowledge base and will not speculate.
+                        </p>
+                         <div className="space-y-2">
+                            <Label htmlFor="security-question">Your Question</Label>
+                            <Textarea
+                                id="security-question"
+                                value={question}
+                                onChange={(e) => setQuestion(e.target.value)}
+                                rows={4}
+                                placeholder="e.g., How do you handle data encryption at rest?"
+                            />
+                        </div>
+                        <Button onClick={handleQuestionSubmit} disabled={loading || !question.trim()} className="w-full sm:w-auto">
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            Get Answer
+                        </Button>
+                    </div>
+                    <div className="bg-background rounded-lg p-6 min-h-[200px] flex flex-col border">
+                         <h3 className="text-base font-semibold mb-2 text-foreground">Generated Answer</h3>
+                         {loading ? (
+                            <div className="flex-1 flex items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : answer ? (
+                            <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap flex-1 overflow-auto">
+                                {answer}
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+                                Your answer will appear here.
+                            </div>
+                        )}
+                        {error && <p className="text-sm text-destructive mt-4">{error}</p>}
+                    </div>
+                 </div>
             </div>
         </div>
       </main>

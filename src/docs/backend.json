@@ -288,6 +288,17 @@
             "createdAt": { "type": "string", "format": "date-time" }
         },
         "required": ["id", "type", "actorUid", "orgId", "createdAt"]
+    },
+    "SecurityQuestionnaireFlow": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SecurityQuestionnaireFlow",
+      "type": "object",
+      "description": "An AI flow that answers security questions based on a trusted knowledge base.",
+      "properties": {
+        "question": { "type": "string" },
+        "answer": { "type": "string" }
+      },
+      "required": ["question", "answer"]
     }
   },
   "auth": {
@@ -387,6 +398,3 @@
     "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. `Departments` add a layer of budget control within an org. The `OverageApproval` and `DeptSpendStats` collections provide advanced, enterprise-grade governance and safety controls."
   }
 }
-    
-
-    
