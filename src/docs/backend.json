@@ -84,6 +84,14 @@
                 },
                 "lastTriggeredAt": { "type": "string", "format": "date-time", "description": "Timestamp to prevent rapid re-triggers." }
             }
+        },
+        "overagePolicy": {
+            "type": "object",
+            "properties": {
+                "mode": { "type": "string", "enum": ["auto", "approval_required"] },
+                "approverRoles": { "type": "array", "items": { "type": "string", "enum": ["owner", "admin"] } },
+                "maxPendingCents": { "type": "integer" }
+            }
         }
       },
       "required": ["id", "name", "ownerUid", "plan", "subscriptionStatus"]
@@ -117,7 +125,14 @@
                     "exports": { "type": "integer" }
                 }
             },
-            "dayStart": { "type": "string", "format": "date-time" }
+            "dayStart": { "type": "string", "format": "date-time" },
+            "alerts": {
+                "type": "object",
+                "properties": {
+                    "slackWebhookUrl": { "type": "string" },
+                    "notifyOn": { "type": "array", "items": { "type": "string", "enum": ["80_percent", "100_percent", "overage_requested", "anomaly"] }}
+                }
+            }
         },
         "required": ["id", "orgId", "name"]
     },
@@ -199,6 +214,39 @@
       },
       "required": ["id", "orgId", "amount", "remaining", "source"]
     },
+    "OverageApproval": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OverageApproval",
+      "type": "object",
+      "description": "An immutable audit trail record for an overage approval request.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "feature": { "type": "string", "enum": ["apiCalls", "aiTokens", "exports"] },
+        "requestedAmount": { "type": "integer", "description": "The cost in cents that triggered the approval request." },
+        "approvedAmount": { "type": "integer", "description": "The amount in cents that was approved for overage." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "requestedByUid": { "type": "string" },
+        "approvedByUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "resolvedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "feature", "requestedAmount", "status", "requestedByUid"]
+    },
+    "DeptSpendStats": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DeptSpendStats",
+        "type": "object",
+        "description": "Stores rolling baseline spend statistics for anomaly detection.",
+        "properties": {
+            "id": { "type": "string", "description": "Same as department ID." },
+            "avgDailySpend": { "type": "integer", "description": "Average daily spend in cents." },
+            "avgHourlySpend": { "type": "integer", "description": "Average hourly spend in cents." },
+            "lastUpdated": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id"]
+    },
     "Site": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Site",
@@ -243,6 +291,14 @@
           "description": "Stores department-level budget and spending information. Writable only by trusted server processes."
         }
       },
+       {
+        "path": "/deptSpendStats/{deptId}",
+        "definition": {
+          "entityName": "DeptSpendStats",
+          "schema": { "$ref": "#/entities/DeptSpendStats" },
+          "description": "Stores rolling spend statistics for a department to enable anomaly detection. Updated by scheduled jobs."
+        }
+      },
       {
         "path": "/orgMembers/{membershipId}",
         "definition": {
@@ -267,6 +323,14 @@
           "description": "An auditable ledger of all prepaid credit purchases for an organization. Allows for FIFO consumption and clear financial tracking."
         }
       },
+       {
+        "path": "/overageApprovals/{approvalId}",
+        "definition": {
+          "entityName": "OverageApproval",
+          "schema": { "$ref": "#/entities/OverageApproval" },
+          "description": "Immutable records of overage requests and their resolution status. Provides a clear audit trail for all spend that exceeds automated limits."
+        }
+      },
       {
         "path": "/orgs/{orgId}/sites/{siteId}",
         "definition": {
@@ -284,6 +348,8 @@
           }
       }
     ],
-    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. `Departments` add a layer of budget control within an org. This structure is highly scalable, secure, and aligns with Stripe's subscription and metered billing models."
+    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. `Departments` add a layer of budget control within an org. The `OverageApproval` and `DeptSpendStats` collections provide advanced, enterprise-grade governance and safety controls."
   }
 }
+
+    

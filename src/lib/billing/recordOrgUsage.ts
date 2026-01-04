@@ -11,6 +11,9 @@ import { consumeCredits } from './consumeCredits';
 import { calculateCostInCents, type UsageKey } from './costs';
 import { checkAutoTopUp } from './checkAutoTopUp';
 import { enforceBudgets } from './enforceBudgets';
+import { detectAnomaly } from './detectAnomaly';
+import { sendSlackAlert } from '../alerts/slack';
+import { handleOverage } from './handleOverage';
 
 /**
  * Records usage for an organization, applying it against prepaid credits first,
@@ -44,69 +47,83 @@ export async function recordOrgUsage(
         feature: key,
         cost: costInCents,
       });
+
+      // 3. Anomaly detection (after budget enforcement)
+      const anomaly = await detectAnomaly({ orgId, departmentId: user.departmentId, cost: costInCents });
+      if (anomaly) {
+        const deptSnap = user.departmentId ? await adminDb.collection('departments').doc(user.departmentId).get() : null;
+        const slackWebhookUrl = deptSnap?.data()?.alerts?.slackWebhookUrl;
+        if (slackWebhookUrl) {
+            await sendSlackAlert(slackWebhookUrl, `🚨 *Spend Anomaly Detected*: ${anomaly.type} - Dept: ${deptSnap?.data()?.name || 'N/A'}, Feature: ${key}, Cost: $${(costInCents/100).toFixed(2)}`);
+        }
+      }
+
     } catch (error: any) {
       console.error(`Budget enforcement failed for org ${orgId}:`, error.message);
-      // In a real app, you might redirect to a specific "cap reached" page.
-      // For now, redirecting to billing is a safe default.
       redirect(`/billing?limit_reached=1&reason=${encodeURIComponent(error.message)}`);
     }
   }
 
-  // The rest of the logic only applies to usage that has a defined limit (i.e., not unlimited)
   const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.[key] ?? 0;
-  if (limit === Infinity) {
-    // For business plan with unlimited usage, we still record the usage itself,
-    // but without overage/credit logic.
-    const usageRef = adminDb.collection('orgUsage').doc(orgId);
-    await usageRef.set({
-      [`usage.${key}`]: adminDb.FieldValue.increment(amount),
-    }, { merge: true });
-    return;
-  }
-  
   const usageRef = adminDb.collection('orgUsage').doc(orgId);
   const usageSnap = await usageRef.get();
   const currentUsage = usageSnap.data()?.usage?.[key] ?? 0;
   const newTotalUsage = currentUsage + amount;
+  
+  await usageRef.set({
+    [`usage.${key}`]: adminDb.FieldValue.increment(amount),
+  }, { merge: true });
 
   const overageAmount = Math.max(0, newTotalUsage - limit) - Math.max(0, currentUsage - limit);
-  await usageRef.update({
-    [`usage.${key}`]: adminDb.FieldValue.increment(amount),
-  });
 
   if (overageAmount > 0) {
     const overageCostInCents = calculateCostInCents(key, overageAmount);
     
-    // 3. Consume credits
-    const remainingCostInCents = await consumeCredits(orgId, overageCostInCents);
+    const remainingCost = await consumeCredits(orgId, overageCostInCents);
 
-    // 4. Check for auto-top if credits were used
-    if (remainingCostInCents < overageCostInCents) {
-        await checkAutoTopUp(orgId);
-    }
-    
-    // 5. Report to Stripe if cost remains
-    if (remainingCostInCents > 0) {
-      const remainingOverageUnits = Math.ceil(remainingCostInCents / (calculateCostInCents(key, 1) || 1));
-      
-      await usageRef.update({
-        [`overage.${key}`]: adminDb.FieldValue.increment(remainingOverageUnits),
-      });
+    if(remainingCost > 0) {
+        const overageDecision = await handleOverage({
+            org,
+            departmentId: user.departmentId,
+            feature: key,
+            cost: remainingCost,
+            uid: user.id
+        });
 
-      if (org.subscriptionItemIds?.[key]) {
-        try {
-          await stripe.subscriptionItems.createUsageRecord(
-              org.subscriptionItemIds[key],
-              {
-                  quantity: remainingOverageUnits,
-                  timestamp: 'now',
-                  action: 'increment',
-              }
-          );
-        } catch (error) {
-          console.error(`Failed to report usage to Stripe for org ${orgId}, key ${key}:`, error);
+        if (overageDecision === 'pending') {
+            const deptSnap = user.departmentId ? await adminDb.collection('departments').doc(user.departmentId).get() : null;
+            const slackWebhookUrl = deptSnap?.data()?.alerts?.slackWebhookUrl;
+             if (slackWebhookUrl) {
+                await sendSlackAlert(slackWebhookUrl, `🚨 *Overage Approval Required*: Dept: ${deptSnap?.data()?.name || 'N/A'}, Feature: ${key}, Amount: $${(remainingCost/100).toFixed(2)} requested by ${user.email}`);
+            }
+            throw new Error(`Overage for ${key} requires approval.`);
         }
-      }
+        
+        // If 'allow', proceed to report to Stripe
+        const remainingOverageUnits = Math.ceil(remainingCost / (calculateCostInCents(key, 1) || 1));
+        await usageRef.update({
+            [`overage.${key}`]: adminDb.FieldValue.increment(remainingOverageUnits),
+        });
+
+        if (org.subscriptionItemIds?.[key]) {
+            try {
+                await stripe.subscriptionItems.createUsageRecord(
+                    org.subscriptionItemIds[key],
+                    {
+                        quantity: remainingOverageUnits,
+                        timestamp: 'now',
+                        action: 'increment',
+                    }
+                );
+            } catch (error) {
+                console.error(`Failed to report usage to Stripe for org ${orgId}, key ${key}:`, error);
+            }
+        }
     }
+     
+    // Check for auto-top up after credits are consumed
+    await checkAutoTopUp(orgId);
   }
 }
+
+    
