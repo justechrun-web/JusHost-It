@@ -1,0 +1,415 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account within the JusHostIt platform. This document is lightweight and primarily for auth context.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the user (UID)." },
+        "email": { "type": "string", "description": "Email address of the user.", "format": "email" },
+        "displayName": { "type": "string", "description": "The user's display name or full name." },
+        "photoURL": { "type": "string", "description": "URL of the user's profile photo.", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "orgId": { "type": "string", "description": "The ID of the organization this user belongs to." },
+        "departmentId": { "type": "string", "description": "The ID of the department this user belongs to within the organization." },
+        "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"], "description": "The user's role within their organization." }
+      },
+      "required": ["id", "email"]
+    },
+    "Organization": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Organization",
+      "type": "object",
+      "description": "Represents an organization or company, which is the root for all resources like sites and members. All billing and usage is tied to this entity.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the organization." },
+        "name": { "type": "string", "description": "Display name of the organization." },
+        "ownerUid": { "type": "string", "description": "The UID of the user who owns the organization." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "plan": { "type": "string", "description": "The organization's subscription plan (e.g., 'starter', 'pro')." },
+        "stripeCustomerId": { "type": "string", "description": "The customer ID from Stripe for billing." },
+        "subscriptionId": { "type": "string", "description": "The ID of the active Stripe subscription." },
+        "subscriptionStatus": { "type": "string", "enum": ["trialing", "active", "past_due", "canceled", "incomplete"] },
+        "currentPeriodEnd": { "type": "string", "format": "date-time", "description": "Timestamp for when the current Stripe billing period ends." },
+        "gracePeriodEndsAt": { "type": "string", "format": "date-time", "description": "If status is past_due, this is when access will be revoked." },
+        "seats": {
+          "type": "object",
+          "properties": {
+            "used": { "type": "integer" },
+            "limit": { "type": "integer" }
+          }
+        },
+        "subscriptionItemIds": {
+            "type": "object",
+            "description": "Stores the Stripe subscription item IDs for metered usage reporting.",
+            "properties": {
+                "apiCalls": { "type": "string" },
+                "aiTokens": { "type": "string" },
+                "exports": { "type": "string" }
+            }
+        },
+        "autoTopUp": {
+            "type": "object",
+            "description": "Settings for automatically topping up prepaid credits.",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "threshold": { "type": "integer", "description": "The balance in cents at which to trigger a top-up." },
+                "amount": { "type": "integer", "description": "The amount in cents to purchase." },
+                "monthlyCap": { "type": "integer", "description": "The maximum amount in cents that can be auto-topped-up in a single billing period." },
+                "spentThisMonth": { "type": "integer", "description": "The total amount in cents auto-topped-up in the current billing period." },
+                "capPeriodStart": { "type": "string", "format": "date-time", "description": "The start date of the current cap period, aligned with the Stripe billing cycle." },
+                "dailyCap": { "type": "integer", "description": "The maximum amount in cents that can be auto-topped-up in a single day." },
+                "spentToday": { "type": "integer", "description": "The total amount in cents auto-topped-up in the current day." },
+                "dayStart": { "type": "string", "format": "date-time", "description": "The start of the current 24-hour spend period." },
+                "featureDailyCaps": {
+                    "type": "object",
+                    "description": "Monetary caps (in cents) for specific features per day.",
+                    "properties": {
+                        "apiCalls": { "type": "integer" },
+                        "aiTokens": { "type": "integer" },
+                        "exports": { "type": "integer" }
+                    }
+                },
+                "featureSpentToday": {
+                    "type": "object",
+                    "description": "Spend (in cents) against feature caps for the current day.",
+                    "properties": {
+                        "apiCalls": { "type": "integer" },
+                        "aiTokens": { "type": "integer" },
+                        "exports": { "type": "integer" }
+                    }
+                },
+                "lastTriggeredAt": { "type": "string", "format": "date-time", "description": "Timestamp to prevent rapid re-triggers." }
+            }
+        },
+        "overagePolicy": {
+            "type": "object",
+            "properties": {
+                "mode": { "type": "string", "enum": ["auto", "approval_required"] },
+                "approverRoles": { "type": "array", "items": { "type": "string", "enum": ["owner", "admin"] } },
+                "maxPendingCents": { "type": "integer" }
+            }
+        },
+        "readOnly": {
+            "type": "object",
+            "description": "Settings for enabling read-only mode for an organization, typically when a hard budget cap is breached.",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "reason": { "type": "string", "enum": ["budget_exceeded", "admin_lock"] },
+                "enabledAt": { "type": "string", "format": "date-time" }
+            }
+        }
+      },
+      "required": ["id", "name", "ownerUid", "plan", "subscriptionStatus"]
+    },
+    "Department": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Department",
+        "type": "object",
+        "description": "Represents a department or team within an organization for budget control.",
+        "properties": {
+            "id": { "type": "string" },
+            "orgId": { "type": "string" },
+            "name": { "type": "string" },
+            "dailyCap": { "type": "integer", "description": "The total daily spending cap for this department in cents." },
+            "spentToday": { "type": "integer" },
+            "featureDailyCaps": {
+                "type": "object",
+                "description": "Monetary caps (in cents) for specific features per day for this department.",
+                "properties": {
+                    "apiCalls": { "type": "integer" },
+                    "aiTokens": { "type": "integer" },
+                    "exports": { "type": "integer" }
+                }
+            },
+            "featureSpentToday": {
+                "type": "object",
+                "description": "Spend (in cents) against department feature caps for the current day.",
+                "properties": {
+                    "apiCalls": { "type": "integer" },
+                    "aiTokens": { "type": "integer" },
+                    "exports": { "type": "integer" }
+                }
+            },
+            "dayStart": { "type": "string", "format": "date-time" },
+            "alerts": {
+                "type": "object",
+                "properties": {
+                    "slackWebhookUrl": { "type": "string" },
+                    "notifyOn": { "type": "array", "items": { "type": "string", "enum": ["80_percent", "100_percent", "overage_requested", "anomaly"] }}
+                }
+            }
+        },
+        "required": ["id", "orgId", "name"]
+    },
+    "OrgMember": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrgMember",
+      "type": "object",
+      "description": "Represents a user's membership and role within an organization. ID is a composite key for fast lookups.",
+      "properties": {
+        "id": { "type": "string", "description": "Composite key: {orgId}_{uid}" },
+        "orgId": { "type": "string", "description": "Reference to Organization." },
+        "uid": { "type": "string", "description": "Reference to User." },
+        "email": { "type": "string", "description": "Denormalized email of the user for easy lookup." },
+        "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"] },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "uid", "email", "role"]
+    },
+    "OrgUsage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrgUsage",
+      "type": "object",
+      "description": "Tracks pooled resource usage for an entire organization for the current billing period, including included and overage amounts.",
+      "properties": {
+        "id": { "type": "string", "description": "Same as the organization ID." },
+        "periodStart": { "type": "string", "format": "date-time" },
+        "periodEnd": { "type": "string", "format": "date-time" },
+        "usage": {
+          "type": "object",
+          "description": "Total usage within the current period.",
+          "properties": {
+            "apiCalls": { "type": "integer" },
+            "aiTokens": { "type": "integer" },
+            "exports": { "type": "integer" }
+          }
+        },
+        "overage": {
+            "type": "object",
+            "description": "Usage that has exceeded the plan's included quota and is billable.",
+            "properties": {
+              "apiCalls": { "type": "integer" },
+              "aiTokens": { "type": "integer" },
+              "exports": { "type": "integer" }
+            }
+        }
+      },
+      "required": ["id", "periodStart", "periodEnd", "usage"]
+    },
+    "OrgInvitation": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OrgInvitation",
+        "type": "object",
+        "description": "Represents an invitation for a user to join an organization.",
+        "properties": {
+            "id": { "type": "string" },
+            "orgId": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "role": { "type": "string", "enum": ["admin", "member", "viewer"] },
+            "status": { "type": "string", "enum": ["pending", "accepted", "declined", "expired"] },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "orgId", "email", "role", "status"]
+    },
+    "OrgCredit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrgCredit",
+      "type": "object",
+      "description": "Represents a single purchase of prepaid credits for an organization. This creates an auditable ledger of all credit transactions.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "amount": { "type": "integer", "description": "The initial amount of the credit purchase, in cents." },
+        "remaining": { "type": "integer", "description": "The remaining credit balance, in cents." },
+        "source": { "type": "string", "enum": ["stripe", "manual_grant", "auto_top_up", "po"] },
+        "stripePaymentIntentId": { "type": "string", "description": "The Stripe Payment Intent ID for this purchase." },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "Optional expiration date for the credits." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "amount", "remaining", "source"]
+    },
+     "PurchaseOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PurchaseOrder",
+      "type": "object",
+      "description": "Represents a purchase order from a customer, allowing for invoiced billing against a pre-committed amount.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "poNumber": { "type": "string" },
+        "maxAmount": { "type": "integer", "description": "The total value of the PO in cents." },
+        "remainingAmount": { "type": "integer", "description": "The remaining value on the PO in cents." },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "depleted", "expired"] }
+      },
+      "required": ["id", "orgId", "poNumber", "maxAmount", "remainingAmount", "status"]
+    },
+    "OverageApproval": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OverageApproval",
+      "type": "object",
+      "description": "An immutable audit trail record for an overage approval request.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "feature": { "type": "string", "enum": ["apiCalls", "aiTokens", "exports"] },
+        "requestedAmount": { "type": "integer", "description": "The cost in cents that triggered the approval request." },
+        "approvedAmount": { "type": "integer", "description": "The amount in cents that was approved for overage." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "requestedByUid": { "type": "string" },
+        "approvedByUid": { "type": "string" },
+        "approvedBySlackUser": { "type": "string", "description": "The Slack user ID of the approver." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "resolvedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "feature", "requestedAmount", "status", "requestedByUid"]
+    },
+    "DeptSpendStats": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DeptSpendStats",
+        "type": "object",
+        "description": "Stores rolling baseline spend statistics for anomaly detection.",
+        "properties": {
+            "id": { "type": "string", "description": "Same as department ID." },
+            "avgDailySpend": { "type": "integer", "description": "Average daily spend in cents." },
+            "avgHourlySpend": { "type": "integer", "description": "Average hourly spend in cents." },
+            "avgSpendPerMinute": { "type": "number", "description": "Average spend in cents per minute for short-term forecasting." },
+            "last24hSpend": { "type": "integer", "description": "Total spend in the last 24 hours." },
+            "lastUpdated": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id"]
+    },
+    "Site": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Site",
+      "type": "object",
+      "description": "Represents a website hosted on the JusHostIt platform, owned by an organization.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string", "description": "Reference to Organization." },
+        "domain": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Suspended", "Provisioning"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "domain", "status"]
+    },
+    "AuditLog": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AuditLog",
+        "type": "object",
+        "description": "A log of critical administrative or financial events for SOC2 compliance.",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "enum": ["overage_approved", "overage_rejected", "cap_exceeded", "read_only_enabled", "read_only_disabled", "admin_plan_change"] },
+            "actorUid": { "type": "string" },
+            "actorRole": { "type": "string" },
+            "orgId": { "type": "string" },
+            "metadata": { "type": "object" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "type", "actorUid", "orgId", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "google.com"]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": { "$ref": "#/entities/User" },
+          "description": "Stores user profile information and their current organization context (orgId, role). Writable only by the user themselves or by trusted server processes."
+        }
+      },
+      {
+        "path": "/orgs/{orgId}",
+        "definition": {
+          "entityName": "Organization",
+          "schema": { "$ref": "#/entities/Organization" },
+          "description": "Root document for an organization. Contains billing status, plan, and other metadata. Writable only by trusted server processes (e.g., Stripe webhook)."
+        }
+      },
+      {
+        "path": "/departments/{deptId}",
+        "definition": {
+          "entityName": "Department",
+          "schema": { "$ref": "#/entities/Department" },
+          "description": "Stores department-level budget and spending information. Writable only by trusted server processes."
+        }
+      },
+       {
+        "path": "/deptSpendStats/{deptId}",
+        "definition": {
+          "entityName": "DeptSpendStats",
+          "schema": { "$ref": "#/entities/DeptSpendStats" },
+          "description": "Stores rolling spend statistics for a department to enable anomaly detection. Updated by scheduled jobs."
+        }
+      },
+      {
+        "path": "/orgMembers/{membershipId}",
+        "definition": {
+            "entityName": "OrgMember",
+            "schema": { "$ref": "#/entities/OrgMember" },
+            "description": "A flat collection for scalable role lookups. The ID is a composite key: {orgId}_{uid}. This enables security rules to quickly check a user's role within any organization."
+        }
+      },
+      {
+        "path": "/orgUsage/{orgId}",
+        "definition": {
+            "entityName": "OrgUsage",
+            "schema": { "$ref": "#/entities/OrgUsage" },
+            "description": "Stores pooled usage metrics for an organization, including included and overage amounts. Writable only by trusted server processes."
+        }
+      },
+      {
+        "path": "/orgCredits/{creditId}",
+        "definition": {
+          "entityName": "OrgCredit",
+          "schema": { "$ref": "#/entities/OrgCredit" },
+          "description": "An auditable ledger of all prepaid credit purchases for an organization. Allows for FIFO consumption and clear financial tracking."
+        }
+      },
+      {
+        "path": "/purchaseOrders/{poId}",
+        "definition": {
+          "entityName": "PurchaseOrder",
+          "schema": { "$ref": "#/entities/PurchaseOrder" },
+          "description": "Stores purchase order details for enterprise customers, enabling invoiced billing against a committed amount."
+        }
+      },
+       {
+        "path": "/overageApprovals/{approvalId}",
+        "definition": {
+          "entityName": "OverageApproval",
+          "schema": { "$ref": "#/entities/OverageApproval" },
+          "description": "Immutable records of overage requests and their resolution status. Provides a clear audit trail for all spend that exceeds automated limits."
+        }
+      },
+      {
+        "path": "/auditLogs/{logId}",
+        "definition": {
+            "entityName": "AuditLog",
+            "schema": { "$ref": "#/entities/AuditLog" },
+            "description": "Immutable log of critical security, financial, and administrative events for compliance and auditing (e.g., SOC2)."
+        }
+      },
+      {
+        "path": "/orgs/{orgId}/sites/{siteId}",
+        "definition": {
+          "entityName": "Site",
+          "schema": { "$ref": "#/entities/Site" },
+          "description": "Stores website information, nested under the owning organization."
+        }
+      },
+      {
+          "path": "/orgInvitations/{inviteId}",
+          "definition": {
+              "entityName": "OrgInvitation",
+              "schema": { "$ref": "#/entities/OrgInvitation" },
+              "description": "Stores pending invitations for users to join an organization. Documents can be cleaned up after they are accepted or expire."
+          }
+      }
+    ],
+    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. `Departments` add a layer of budget control within an org. The `OverageApproval` and `DeptSpendStats` collections provide advanced, enterprise-grade governance and safety controls."
+  }
+}
+    
