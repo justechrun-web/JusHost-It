@@ -12,6 +12,8 @@ import { UserUsageCard } from './components/user-usage-card';
 import { UserBillingCard } from './components/user-billing-card';
 import { UserDangerZone } from './components/user-danger-zone';
 
+export const dynamic = 'force-dynamic';
+
 type AppUser = {
   id: string;
   email: string;

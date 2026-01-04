@@ -18,6 +18,8 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { CustomerSiteAction } from './components/customer-site-action';
 import { doc } from 'firebase/firestore';
 
+export const dynamic = 'force-dynamic';
+
 type SiteEvent = {
   type: string;
   message: string;

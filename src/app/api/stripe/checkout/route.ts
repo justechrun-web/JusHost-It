@@ -3,6 +3,8 @@ import { stripe } from "@/lib/stripe/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { headers } from "next/headers";
 
+export const runtime = 'nodejs';
+
 export async function POST(req: NextRequest) {
   try {
     const uid = headers().get('X-User-ID');

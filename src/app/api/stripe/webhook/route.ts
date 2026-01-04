@@ -5,6 +5,8 @@ import { adminDb } from "@/lib/firebase/admin";
 import { headers } from "next/headers";
 import { buffer } from "node:stream/consumers";
 
+export const runtime = 'nodejs';
+
 const mapPriceIdToPlan = (priceId: string) => {
   const plans: Record<string, string> = {
     [process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER!]: 'starter',

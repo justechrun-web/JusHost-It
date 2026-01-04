@@ -3,6 +3,8 @@ import { stripe } from '@/lib/stripe/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { headers } from 'next/headers';
 
+export const runtime = 'nodejs';
+
 async function logAdminAction({ adminId, action, targetUserId, before, after }: { adminId: string, action: string, targetUserId: string, before: any, after: any }) {
   await adminDb.collection("auditLogs").add({
     adminId,

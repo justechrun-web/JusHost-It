@@ -9,6 +9,7 @@ import { Loader2, Users, Server, AlertTriangle } from 'lucide-react';
 import { SitesTable } from './components/sites-table';
 import { UsersTable } from './components/users-table';
 
+export const dynamic = 'force-dynamic';
 
 const StatCard = ({
   title,

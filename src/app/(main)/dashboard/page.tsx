@@ -21,6 +21,8 @@ import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { ActiveAlerts } from '../components/active-alerts';
 
+export const dynamic = 'force-dynamic';
+
 const StatCard = ({ title, value, icon: Icon, loading }: { title: string, value: string, icon: React.ElementType, loading: boolean }) => (
     <Card>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

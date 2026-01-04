@@ -26,6 +26,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FEATURES } from "@/lib/features";
 
+export const dynamic = 'force-dynamic';
+
 type UserData = {
   plan: 'starter' | 'pro' | 'business' | 'free';
   subscriptionStatus: 'trialing' | 'active' | 'past_due' | 'canceled';

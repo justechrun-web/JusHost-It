@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
 
 type Site = {
   id: string;
