@@ -1,4 +1,4 @@
-
+'use server'
 import 'server-only'
 import { adminDb } from '@/lib/firebase/admin'
 import { requireUser } from '@/lib/auth/requireUser'
@@ -23,11 +23,21 @@ export async function requireOrg() {
     // Redirect to a safe place, maybe an error page or onboarding
     redirect('/onboarding/create-org')
   }
+  
+  const org = orgSnap.data()!;
+
+  // This is a simplified check. A real app might allow access to the billing page
+  // itself while in read-only mode.
+  if (org.readOnly?.enabled) {
+      redirect(`/billing?reason=read_only`);
+  }
+
 
   return {
     uid,
+    user: { ...user, id: uid },
     role: user.role,
     orgId: user.orgId,
-    org: orgSnap.data()!,
+    org: { ...org, id: orgSnap.id },
   }
 }

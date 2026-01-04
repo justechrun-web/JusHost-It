@@ -1,4 +1,13 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+
+export const metadata: Metadata = {
+  title: {
+    default: 'JusHostIt',
+    template: '%s | JusHostIt',
+  },
+  description: 'Enterprise-grade spend governance and controls.',
+};
 
 export default function RootLayout({
   children,
@@ -7,7 +16,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-screen bg-white text-slate-900 antialiased">
+        {children}
+      </body>
     </html>
   );
 }
