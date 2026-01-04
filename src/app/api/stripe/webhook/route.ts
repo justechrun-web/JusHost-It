@@ -2,7 +2,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
-import { adminDb } from "@/lib/firebase/admin";
+import { adminDb, FieldValue } from "@/lib/firebase/admin";
 import { headers } from "next/headers";
 import { buffer } from "node:stream/consumers";
 import type { Stripe } from "stripe";
@@ -39,15 +39,31 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const orgId = session.metadata?.orgId;
-        
+        const creditAmount = Number(session.metadata?.creditAmount);
+
         if (!orgId) {
             console.error("Webhook Error: Missing orgId in checkout session metadata.", session.id);
             return NextResponse.json({ error: "Missing organization identifier in webhook metadata" }, { status: 400 });
         }
-        
-        await adminDb.collection("orgs").doc(orgId).set({
-          stripeCustomerId: session.customer,
-        }, { merge: true });
+
+        // Handle one-time credit purchase
+        if (creditAmount > 0 && session.payment_intent) {
+            await adminDb.collection('orgCredits').add({
+                orgId,
+                amount: creditAmount,
+                remaining: creditAmount,
+                source: 'stripe',
+                stripePaymentIntentId: session.payment_intent,
+                expiresAt: null, // or set an expiration date
+                createdAt: FieldValue.serverTimestamp(),
+            });
+        }
+        // Handle subscription creation
+        else if (session.subscription) {
+            await adminDb.collection("orgs").doc(orgId).set({
+              stripeCustomerId: session.customer,
+            }, { merge: true });
+        }
 
         break;
       }
@@ -82,7 +98,7 @@ export async function POST(req: Request) {
             subscriptionStatus: sub.status,
             plan: plan,
             'seats.limit': sub.items.data.find(item => item.price.recurring)?.quantity || 1,
-            currentPeriodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
+            currentPeriodEnd: FieldValue.serverTimestamp(),
             subscriptionItemIds: subscriptionItemIds
         });
 
@@ -143,7 +159,7 @@ export async function POST(req: Request) {
                 await orgDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
-                    currentPeriodEnd: adminDb.Timestamp.fromMillis(subscription.current_period_end * 1000),
+                    currentPeriodEnd: FieldValue.serverTimestamp(),
                 });
             }
             break;
@@ -162,5 +178,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ received: true });
 }
-
-    

@@ -114,6 +114,23 @@
         },
         "required": ["id", "orgId", "email", "role", "status"]
     },
+    "OrgCredit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrgCredit",
+      "type": "object",
+      "description": "Represents a single purchase of prepaid credits for an organization. This creates an auditable ledger of all credit transactions.",
+      "properties": {
+        "id": { "type": "string" },
+        "orgId": { "type": "string" },
+        "amount": { "type": "integer", "description": "The initial amount of the credit purchase, in cents." },
+        "remaining": { "type": "integer", "description": "The remaining credit balance, in cents." },
+        "source": { "type": "string", "enum": ["stripe", "manual_grant"] },
+        "stripePaymentIntentId": { "type": "string", "description": "The Stripe Payment Intent ID for this purchase." },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "Optional expiration date for the credits." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orgId", "amount", "remaining", "source"]
+    },
     "Site": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Site",
@@ -167,6 +184,14 @@
         }
       },
       {
+        "path": "/orgCredits/{creditId}",
+        "definition": {
+          "entityName": "OrgCredit",
+          "schema": { "$ref": "#/entities/OrgCredit" },
+          "description": "An auditable ledger of all prepaid credit purchases for an organization. Allows for FIFO consumption and clear financial tracking."
+        }
+      },
+      {
         "path": "/orgs/{orgId}/sites/{siteId}",
         "definition": {
           "entityName": "Site",
@@ -183,8 +208,6 @@
           }
       }
     ],
-    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. This structure is highly scalable, secure, and aligns with Stripe's subscription model."
+    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. This structure is highly scalable, secure, and aligns with Stripe's subscription and metered billing models."
   }
 }
-
-    

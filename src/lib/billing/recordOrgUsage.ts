@@ -1,13 +1,13 @@
 
-import 'server-only'
-import { adminDb } from '@/lib/firebase/admin'
-import { requireOrg } from '@/lib/org/requireOrg'
-import { PLAN_LIMITS } from './limits'
-import { redirect } from 'next/navigation'
-import { noStore } from 'next/cache'
-import { stripe } from '@/lib/stripe/server'
-import { consumeCredits } from './consumeCredits'
-import { calculateCostInCents, type UsageKey } from './costs'
+import 'server-only';
+import { adminDb } from '@/lib/firebase/admin';
+import { requireOrg } from '@/lib/org/requireOrg';
+import { PLAN_LIMITS } from './limits';
+import { redirect } from 'next/navigation';
+import { noStore } from 'next/cache';
+import { stripe } from '@/lib/stripe/server';
+import { consumeCredits } from './consumeCredits';
+import { calculateCostInCents, type UsageKey } from './costs';
 
 /**
  * Records usage for an organization, applying it against prepaid credits first,
@@ -74,8 +74,7 @@ export async function recordOrgUsage(
     // If there's still a cost remaining after consuming credits, report it to Stripe.
     if (remainingCostInCents > 0) {
       // For Stripe, we need to convert the remaining cost back to usage units.
-      // This is a simplification; a more precise implementation would handle floating point differences.
-      const remainingOverageUnits = Math.ceil(remainingCostInCents / (calculateCostInCents(key, 1) || 1));
+      const remainingOverageUnits = Math.ceil(remainingCostInCents / (calculateCostInCents(key, 1)));
       
       await usageRef.update({
         [`overage.${key}`]: adminDb.FieldValue.increment(remainingOverageUnits),
