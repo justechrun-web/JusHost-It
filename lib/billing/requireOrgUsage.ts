@@ -6,7 +6,7 @@ import { PLAN_LIMITS } from './limits'
 import { redirect } from 'next/navigation'
 import { noStore } from 'next/cache'
 
-type UsageKey = 'apiCalls' | 'aiTokens' | 'exports'
+type UsageKey = 'apiCalls' | 'aiTokens' | 'exports' | 'seats'
 
 export async function requireOrgUsage(
   key: UsageKey,

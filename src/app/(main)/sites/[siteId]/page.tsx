@@ -71,14 +71,17 @@ const getEventIcon = (type: string) => {
 
 export default function SiteDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
 
   const siteId = Array.isArray(params.siteId) ? params.siteId[0] : params.siteId;
-  
-  // In a real multi-org app, you'd get the orgId from claims or another context.
-  const orgId = user?.uid;
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return doc(db, `users/${user.uid}`);
+  }, [db, user]);
+  const { data: userData, isLoading: isUserDataLoading } = useDoc<{orgId: string}>(userDocRef);
+  const orgId = userData?.orgId;
 
   const siteRef = useMemoFirebase(() => {
     if (!orgId || !db || !siteId) return null;
@@ -91,7 +94,7 @@ export default function SiteDetailPage() {
     error,
   } = useDoc<Site>(siteRef);
   
-  const isLoading = isSiteLoading || isUserLoading;
+  const isLoading = isSiteLoading || isUserLoading || isUserDataLoading;
 
   if (isLoading) {
     return (

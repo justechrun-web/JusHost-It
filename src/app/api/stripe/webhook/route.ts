@@ -36,7 +36,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 });
   }
 
-  // Idempotency check: Ensure we haven't processed this event before.
   const eventRef = adminDb.collection('stripe_events').doc(event.id);
   const doc = await eventRef.get();
   if (doc.exists) {
@@ -47,14 +46,15 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const uid = session.metadata?.firebaseUID;
+        const orgId = session.metadata?.orgId;
+        const ownerUid = session.metadata?.ownerUid;
 
-        if (!uid) {
-            console.error("Webhook Error: Missing firebaseUID in checkout session metadata.", session.id);
-            return NextResponse.json({ error: "Missing user identifier in webhook metadata" }, { status: 400 });
+        if (!orgId || !ownerUid) {
+            console.error("Webhook Error: Missing orgId or ownerUid in checkout session metadata.", session.id);
+            return NextResponse.json({ error: "Missing organization identifier in webhook metadata" }, { status: 400 });
         }
         
-        await adminDb.collection("users").doc(uid).set({
+        await adminDb.collection("orgs").doc(orgId).set({
           stripeCustomerId: session.customer,
         }, { merge: true });
 
@@ -69,13 +69,14 @@ export async function POST(req: Request) {
         const priceId = sub.items.data[0].price.id;
         const plan = mapPriceIdToPlan(priceId);
 
-        const userQuery = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
-        if (!userQuery.empty) {
-            const userDoc = userQuery.docs[0];
-            await userDoc.ref.update({
+        const orgQuery = await adminDb.collection("orgs").where("stripeCustomerId", "==", customerId).limit(1).get();
+        if (!orgQuery.empty) {
+            const orgDoc = orgQuery.docs[0];
+            await orgDoc.ref.update({
                 subscriptionId: sub.id,
                 subscriptionStatus: sub.status,
                 plan: plan,
+                'seats.limit': sub.items.data[0].quantity,
                 currentPeriodEnd: adminDb.Timestamp.fromMillis(sub.current_period_end * 1000),
             });
         }
@@ -85,14 +86,14 @@ export async function POST(req: Request) {
           const sub = event.data.object as Stripe.Subscription;
           const customerId = sub.customer as string;
           const snap = await adminDb
-            .collection("users")
+            .collection("orgs")
             .where("stripeCustomerId", "==", customerId)
             .limit(1)
             .get();
 
           if (!snap.empty) {
-            const userDoc = snap.docs[0];
-            await userDoc.ref.update({
+            const orgDoc = snap.docs[0];
+            await orgDoc.ref.update({
               plan: "free",
               subscriptionStatus: "canceled",
               gracePeriodEndsAt: null,
@@ -104,13 +105,13 @@ export async function POST(req: Request) {
             const invoice = event.data.object as Stripe.Invoice;
             const customerId = invoice.customer as string;
 
-            const userQuery = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
-            if (!userQuery.empty) {
-                const userDoc = userQuery.docs[0];
+            const orgQuery = await adminDb.collection("orgs").where("stripeCustomerId", "==", customerId).limit(1).get();
+            if (!orgQuery.empty) {
+                const orgDoc = orgQuery.docs[0];
                 const graceDays = 7;
                 const graceEnds = new Date(Date.now() + graceDays * 86400000);
 
-                await userDoc.ref.update({
+                await orgDoc.ref.update({
                     subscriptionStatus: 'past_due',
                     gracePeriodEndsAt: graceEnds,
                 });
@@ -122,10 +123,10 @@ export async function POST(req: Request) {
             const customerId = invoice.customer as string;
             const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
 
-            const userQuery = await adminDb.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();
-            if (!userQuery.empty) {
-                const userDoc = userQuery.docs[0];
-                await userDoc.ref.update({
+            const orgQuery = await adminDb.collection("orgs").where("stripeCustomerId", "==", customerId).limit(1).get();
+            if (!orgQuery.empty) {
+                const orgDoc = orgQuery.docs[0];
+                await orgDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
                     currentPeriodEnd: adminDb.Timestamp.fromMillis(subscription.current_period_end * 1000),
@@ -135,7 +136,6 @@ export async function POST(req: Request) {
         }
     }
 
-    // Record that we've handled the event to prevent replay attacks.
     await eventRef.set({
       type: event.type,
       created: adminDb.Timestamp.fromMillis(event.created * 1000),

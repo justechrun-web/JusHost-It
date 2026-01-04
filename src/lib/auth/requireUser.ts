@@ -11,32 +11,40 @@ export async function requireUser() {
   const session = cookies().get('__session')?.value
   if (!session) redirect('/login')
 
-  let decoded
+  let decoded;
   try {
     decoded = await adminAuth.verifySessionCookie(session, true)
-  } catch {
+  } catch (error) {
+    console.error("Session verification failed:", error);
     redirect('/login')
   }
 
-  const snap = await adminDb.collection('users').doc(decoded.uid).get()
-  if (!snap.exists) {
-      // In a real app, you might redirect to an onboarding flow
-      // if the user is authenticated but has no user profile document.
-      redirect('/login')
+  const userSnap = await adminDb.collection('users').doc(decoded.uid).get()
+  if (!userSnap.exists) {
+      redirect('/login'); // Or to an onboarding flow
   }
+  const user = userSnap.data()!;
 
-  const user = snap.data()!;
-  
-  const status = user.subscriptionStatus;
-  const graceEnds = user.gracePeriodEndsAt?.toDate?.();
-  const now = new Date();
+  // If orgId is present, we need to check org status, not user status
+  if (user.orgId) {
+    const orgSnap = await adminDb.collection('orgs').doc(user.orgId).get();
+    if (!orgSnap.exists) {
+        // This case might indicate an inconsistent state, maybe redirect to a support page
+        // or a page to re-create an org. For now, redirecting to billing seems safe.
+        redirect('/billing-required'); 
+    }
 
-  const isGraceValid = status === 'past_due' && graceEnds && graceEnds > now;
-  const hasAccess = status === 'active' || status === 'trialing' || isGraceValid;
+    const org = orgSnap.data()!;
+    const status = org.subscriptionStatus;
+    const graceEnds = org.gracePeriodEndsAt?.toDate?.();
+    const now = new Date();
+    
+    const isGraceValid = status === 'past_due' && graceEnds && graceEnds > now;
+    const hasAccess = status === 'active' || status === 'trialing' || isGraceValid;
 
-  // Redirect if billing status is not valid
-  if (!hasAccess) {
-    redirect('/billing-required');
+    if (!hasAccess) {
+      redirect('/billing-required');
+    }
   }
 
   return {

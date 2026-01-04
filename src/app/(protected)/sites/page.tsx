@@ -4,7 +4,6 @@
 import {
   collection,
   query,
-  where,
   orderBy,
 } from 'firebase/firestore';
 import {
@@ -17,10 +16,11 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { CreateSiteDialog } from '@/app/(main)/sites/components/create-site-dialog';
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase, useDoc } from '@/firebase';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { doc } from 'firebase/firestore';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +37,13 @@ export default function SitesPage() {
   const db = useFirestore();
   const router = useRouter();
 
-  // In a real app with multiple orgs, you'd get this from the user's session/claims.
-  // For now, we assume the orgId is the user's UID (if they created the org).
-  const orgId = user?.uid;
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return doc(db, `users/${user.uid}`);
+  }, [db, user]);
+
+  const { data: userData, isLoading: isUserDataLoading } = useDoc<{orgId: string}>(userDocRef);
+  const orgId = userData?.orgId;
 
   const sitesQuery = useMemoFirebase(() => {
     if (!orgId || !db) return null;
@@ -71,7 +75,7 @@ export default function SitesPage() {
     }
   };
   
-  const isLoading = isUserLoading || sitesLoading;
+  const isLoading = isUserLoading || isUserDataLoading || sitesLoading;
 
   const handleRowClick = (siteId: string) => {
     router.push(`/sites/${siteId}`);

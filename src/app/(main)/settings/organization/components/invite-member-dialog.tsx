@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -23,7 +24,8 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
-import { useFunctions, useUser } from '@/firebase';
+import { useFunctions } from '@/firebase';
+import { inviteUser } from '@/lib/org/inviteUser';
 
 type InviteMemberDialogProps = {
   orgId: string;
@@ -36,7 +38,6 @@ export function InviteMemberDialog({ orgId, children }: InviteMemberDialogProps)
   const [role, setRole] = useState<'admin' | 'member' | 'viewer'>('member');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const functions = useFunctions();
 
   const handleInvite = async () => {
     if (!email) {
@@ -49,8 +50,7 @@ export function InviteMemberDialog({ orgId, children }: InviteMemberDialogProps)
     setIsLoading(true);
     
     try {
-        const inviteUser = httpsCallable(functions, 'inviteUser');
-        await inviteUser({ orgId, email, role });
+        await inviteUser({ email, role });
         
         toast({
             title: 'Invitation Sent',

@@ -1,0 +1,33 @@
+
+import 'server-only'
+import { adminDb } from '@/lib/firebase/admin'
+import { requireUser } from '@/lib/auth/requireUser'
+import { redirect } from 'next/navigation'
+
+export async function requireOrg() {
+  const { uid, user } = await requireUser()
+
+  if (!user.orgId) {
+    // This case should be rare if user creation flow is solid,
+    // but it's a good safeguard.
+    redirect('/onboarding/create-org')
+  }
+
+  const orgSnap = await adminDb
+    .collection('orgs')
+    .doc(user.orgId)
+    .get()
+
+  if (!orgSnap.exists) {
+    console.error(`Inconsistent state: User ${uid} has orgId ${user.orgId} but org does not exist.`);
+    // Redirect to a safe place, maybe an error page or onboarding
+    redirect('/onboarding/create-org')
+  }
+
+  return {
+    uid,
+    role: user.role,
+    orgId: user.orgId,
+    org: orgSnap.data()!,
+  }
+}

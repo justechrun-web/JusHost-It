@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -10,8 +11,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, MoreVertical, Trash2, UserPlus } from 'lucide-react';
-import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +46,13 @@ export default function OrganizationSettingsPage() {
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
 
-  const orgId = user?.uid;
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !db) return null;
+    return doc(db, `users/${user.uid}`);
+  }, [db, user]);
+
+  const { data: userData, isLoading: isUserDataLoading } = useDoc<{orgId: string}>(userDocRef);
+  const orgId = userData?.orgId;
 
   const membersQuery = useMemoFirebase(() => {
     if (!orgId) return null;
@@ -71,7 +78,7 @@ export default function OrganizationSettingsPage() {
     })) || [])
   ];
 
-  const isLoading = isUserLoading || isMembersLoading || isInvitesLoading;
+  const isLoading = isUserLoading || isUserDataLoading || isMembersLoading || isInvitesLoading;
 
   const getRoleBadgeVariant = (role: OrgMember['role']) => {
     switch (role) {
