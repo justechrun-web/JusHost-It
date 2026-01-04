@@ -75,6 +75,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - and root-level static pages like /pricing, /login, etc.
      */
-    '/((?!_next/static|_next/image|favicon.ico|trust|sla|pricing|api/stripe/webhook|api/auth/verify-token).*)',
+    '/((?!_next/static|_next/image|favicon.ico|trust|sla|pricing|api/slack/actions|api/stripe/webhook|api/auth/verify-token).*)',
   ],
 };

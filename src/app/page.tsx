@@ -15,7 +15,7 @@ export default function JusHostItLanding() {
         <div className="text-xl font-bold">JusHost It</div>
         <nav className="flex items-center gap-6 text-sm font-medium">
           <a href="/pricing" className="hover:text-black text-gray-600">Pricing</a>
-          <a href="/security" className="hover:text-black text-gray-600">Security</a>
+          <a href="/trust" className="hover:text-black text-gray-600">Trust</a>
           <a href="/login" className="hover:text-black text-gray-600">Login</a>
           <a href="/signup" className="px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800">Get Started</a>
         </nav>

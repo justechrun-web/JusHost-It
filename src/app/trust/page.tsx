@@ -1,3 +1,4 @@
+'use client';
 
 import { ShieldCheck, Database, Lock, CreditCard, GanttChartSquare, Users } from 'lucide-react';
 import Link from 'next/link';

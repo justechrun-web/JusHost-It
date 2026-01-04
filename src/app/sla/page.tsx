@@ -1,3 +1,4 @@
+'use client';
 
 import { ShieldCheck, Server, Clock, Headset } from 'lucide-react';
 import Link from 'next/link';
