@@ -92,6 +92,15 @@
                 "approverRoles": { "type": "array", "items": { "type": "string", "enum": ["owner", "admin"] } },
                 "maxPendingCents": { "type": "integer" }
             }
+        },
+        "readOnly": {
+            "type": "object",
+            "description": "Settings for enabling read-only mode for an organization, typically when a hard budget cap is breached.",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "reason": { "type": "string", "enum": ["budget_exceeded", "admin_lock"] },
+                "enabledAt": { "type": "string", "format": "date-time" }
+            }
         }
       },
       "required": ["id", "name", "ownerUid", "plan", "subscriptionStatus"]
@@ -229,6 +238,7 @@
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "requestedByUid": { "type": "string" },
         "approvedByUid": { "type": "string" },
+        "approvedBySlackUser": { "type": "string", "description": "The Slack user ID of the approver." },
         "createdAt": { "type": "string", "format": "date-time" },
         "resolvedAt": { "type": "string", "format": "date-time" }
       },
@@ -243,6 +253,8 @@
             "id": { "type": "string", "description": "Same as department ID." },
             "avgDailySpend": { "type": "integer", "description": "Average daily spend in cents." },
             "avgHourlySpend": { "type": "integer", "description": "Average hourly spend in cents." },
+            "avgSpendPerMinute": { "type": "number", "description": "Average spend in cents per minute for short-term forecasting." },
+            "last24hSpend": { "type": "integer", "description": "Total spend in the last 24 hours." },
             "lastUpdated": { "type": "string", "format": "date-time" }
         },
         "required": ["id"]
@@ -260,6 +272,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "orgId", "domain", "status"]
+    },
+    "AuditLog": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AuditLog",
+        "type": "object",
+        "description": "A log of critical administrative or financial events for SOC2 compliance.",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "enum": ["overage_approved", "overage_rejected", "cap_exceeded", "read_only_enabled", "read_only_disabled", "admin_plan_change"] },
+            "actorUid": { "type": "string" },
+            "actorRole": { "type": "string" },
+            "orgId": { "type": "string" },
+            "metadata": { "type": "object" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "type", "actorUid", "orgId", "createdAt"]
     }
   },
   "auth": {
@@ -329,6 +357,14 @@
           "entityName": "OverageApproval",
           "schema": { "$ref": "#/entities/OverageApproval" },
           "description": "Immutable records of overage requests and their resolution status. Provides a clear audit trail for all spend that exceeds automated limits."
+        }
+      },
+      {
+        "path": "/auditLogs/{logId}",
+        "definition": {
+            "entityName": "AuditLog",
+            "schema": { "$ref": "#/entities/AuditLog" },
+            "description": "Immutable log of critical security, financial, and administrative events for compliance and auditing (e.g., SOC2)."
         }
       },
       {

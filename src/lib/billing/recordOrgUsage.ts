@@ -87,15 +87,13 @@ export async function recordOrgUsage(
             departmentId: user.departmentId,
             feature: key,
             cost: remainingCost,
-            uid: user.id
+            uid: user.id,
+            userEmail: user.email,
         });
 
         if (overageDecision === 'pending') {
-            const deptSnap = user.departmentId ? await adminDb.collection('departments').doc(user.departmentId).get() : null;
-            const slackWebhookUrl = deptSnap?.data()?.alerts?.slackWebhookUrl;
-             if (slackWebhookUrl) {
-                await sendSlackAlert(slackWebhookUrl, `🚨 *Overage Approval Required*: Dept: ${deptSnap?.data()?.name || 'N/A'}, Feature: ${key}, Amount: $${(remainingCost/100).toFixed(2)} requested by ${user.email}`);
-            }
+            // The handleOverage function now sends the Slack notification.
+            // We just need to stop processing for this user.
             throw new Error(`Overage for ${key} requires approval.`);
         }
         
