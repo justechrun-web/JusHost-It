@@ -65,7 +65,7 @@ export default function PaymentMethodPage() {
       <CardHeader>
         <CardTitle>Payment Method</CardTitle>
         <CardDescription>
-          Update your payment method. This will be used for all future invoices.
+          Update your payment method. This will be used for all future invoices and auto top-ups.
         </CardDescription>
       </CardHeader>
       <CardContent>

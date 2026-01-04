@@ -26,6 +26,8 @@ import { ResourceUsageChart } from "@/app/(main)/components/resource-usage-chart
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FEATURES } from "@/lib/features";
+import type { AutoTopUpCardProps } from './components/auto-topup-card';
+import { AutoTopUpCard } from './components/auto-topup-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,12 +35,22 @@ type OrgData = {
   plan: 'starter' | 'pro' | 'business' | 'free';
   subscriptionStatus: 'trialing' | 'active' | 'past_due' | 'canceled';
   currentPeriodEnd: { seconds: number };
+  autoTopUp?: {
+      enabled: boolean;
+      threshold: number;
+      amount: number;
+  }
 };
 
 type UsageData = {
   sites: number;
   bandwidthGb: number;
   storageGb: number;
+}
+
+type UserData = {
+    orgId?: string;
+    role?: 'owner' | 'admin' | 'member' | 'viewer';
 }
 
 export default function BillingPage() {
@@ -48,13 +60,14 @@ export default function BillingPage() {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [autoTopUpProps, setAutoTopUpProps] = useState<AutoTopUpCardProps | null>(null);
 
-  // First, get the user's orgId
+  // First, get the user's orgId and role
   const userDocRef = useMemoFirebase(() => {
     if (!user || !db) return null;
     return doc(db, `users/${user.uid}`);
   }, [db, user]);
-  const { data: userData, isLoading: isUserDataLoading } = useDoc<{orgId: string}>(userDocRef);
+  const { data: userData, isLoading: isUserDataLoading } = useDoc<UserData>(userDocRef);
 
   // Then, fetch the organization and usage data
   const orgRef = useMemoFirebase(() => {
@@ -71,6 +84,37 @@ export default function BillingPage() {
   const { data: usageData, isLoading: isUsageLoading } = useDoc<UsageData>(usageRef);
 
   const planFeatures = orgData?.plan ? FEATURES[orgData.plan as keyof typeof FEATURES] : FEATURES['starter'];
+  const userRole = userData?.role;
+  const canManageBilling = userRole === 'owner' || userRole === 'admin';
+
+
+  useEffect(() => {
+    async function fetchStripeData() {
+        if (!user || !canManageBilling || !userData?.orgId) return;
+
+        try {
+            const token = await user.getIdToken(true);
+            const res = await fetch('/api/stripe/customer', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Failed to fetch Stripe customer data');
+            const stripeData = await res.json();
+            
+            setAutoTopUpProps({
+                orgId: userData.orgId,
+                autoTopUp: orgData?.autoTopUp,
+                hasPaymentMethod: !!stripeData.hasDefaultPaymentMethod,
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    
+    if (user && orgData) {
+        fetchStripeData();
+    }
+  }, [user, orgData, canManageBilling, userData?.orgId]);
+
 
   useEffect(() => {
     async function fetchInvoices() {
@@ -194,10 +238,12 @@ export default function BillingPage() {
                     )}
                   </div>
                 </div>
-                <Button onClick={handleManageBilling} className="w-full bg-primary text-primary-foreground" disabled={isPortalLoading}>
-                    {isPortalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Manage in Stripe Portal
-                </Button>
+                {canManageBilling && (
+                    <Button onClick={handleManageBilling} className="w-full bg-primary text-primary-foreground" disabled={isPortalLoading}>
+                        {isPortalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Manage in Stripe Portal
+                    </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -221,6 +267,8 @@ export default function BillingPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {canManageBilling && autoTopUpProps && <AutoTopUpCard {...autoTopUpProps} />}
           </div>
 
           <div className="lg:col-span-2 grid gap-8">
