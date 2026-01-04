@@ -14,6 +14,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "lastLogin": { "type": "string", "format": "date-time" },
         "orgId": { "type": "string", "description": "The ID of the organization this user belongs to." },
+        "departmentId": { "type": "string", "description": "The ID of the department this user belongs to within the organization." },
         "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"], "description": "The user's role within their organization." }
       },
       "required": ["id", "email"]
@@ -63,11 +64,62 @@
                 "dailyCap": { "type": "integer", "description": "The maximum amount in cents that can be auto-topped-up in a single day." },
                 "spentToday": { "type": "integer", "description": "The total amount in cents auto-topped-up in the current day." },
                 "dayStart": { "type": "string", "format": "date-time", "description": "The start of the current 24-hour spend period." },
+                "featureDailyCaps": {
+                    "type": "object",
+                    "description": "Monetary caps (in cents) for specific features per day.",
+                    "properties": {
+                        "apiCalls": { "type": "integer" },
+                        "aiTokens": { "type": "integer" },
+                        "exports": { "type": "integer" }
+                    }
+                },
+                "featureSpentToday": {
+                    "type": "object",
+                    "description": "Spend (in cents) against feature caps for the current day.",
+                    "properties": {
+                        "apiCalls": { "type": "integer" },
+                        "aiTokens": { "type": "integer" },
+                        "exports": { "type": "integer" }
+                    }
+                },
                 "lastTriggeredAt": { "type": "string", "format": "date-time", "description": "Timestamp to prevent rapid re-triggers." }
             }
         }
       },
       "required": ["id", "name", "ownerUid", "plan", "subscriptionStatus"]
+    },
+    "Department": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Department",
+        "type": "object",
+        "description": "Represents a department or team within an organization for budget control.",
+        "properties": {
+            "id": { "type": "string" },
+            "orgId": { "type": "string" },
+            "name": { "type": "string" },
+            "dailyCap": { "type": "integer", "description": "The total daily spending cap for this department in cents." },
+            "spentToday": { "type": "integer" },
+            "featureDailyCaps": {
+                "type": "object",
+                "description": "Monetary caps (in cents) for specific features per day for this department.",
+                "properties": {
+                    "apiCalls": { "type": "integer" },
+                    "aiTokens": { "type": "integer" },
+                    "exports": { "type": "integer" }
+                }
+            },
+            "featureSpentToday": {
+                "type": "object",
+                "description": "Spend (in cents) against department feature caps for the current day.",
+                "properties": {
+                    "apiCalls": { "type": "integer" },
+                    "aiTokens": { "type": "integer" },
+                    "exports": { "type": "integer" }
+                }
+            },
+            "dayStart": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "orgId", "name"]
     },
     "OrgMember": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -184,6 +236,14 @@
         }
       },
       {
+        "path": "/departments/{deptId}",
+        "definition": {
+          "entityName": "Department",
+          "schema": { "$ref": "#/entities/Department" },
+          "description": "Stores department-level budget and spending information. Writable only by trusted server processes."
+        }
+      },
+      {
         "path": "/orgMembers/{membershipId}",
         "definition": {
             "entityName": "OrgMember",
@@ -224,8 +284,6 @@
           }
       }
     ],
-    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. This structure is highly scalable, secure, and aligns with Stripe's subscription and metered billing models."
+    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `orgCredits` ledger provides an auditable trail for prepaid credit purchases and consumption. `Departments` add a layer of budget control within an org. This structure is highly scalable, secure, and aligns with Stripe's subscription and metered billing models."
   }
 }
-
-    

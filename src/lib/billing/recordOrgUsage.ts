@@ -1,5 +1,6 @@
 
-import 'server-only';
+'use server';
+
 import { adminDb } from '@/lib/firebase/admin';
 import { requireOrg } from '@/lib/org/requireOrg';
 import { PLAN_LIMITS } from './limits';
@@ -9,6 +10,7 @@ import { stripe } from '@/lib/stripe/server';
 import { consumeCredits } from './consumeCredits';
 import { calculateCostInCents, type UsageKey } from './costs';
 import { checkAutoTopUp } from './checkAutoTopUp';
+import { enforceBudgets } from './enforceBudgets';
 
 /**
  * Records usage for an organization, applying it against prepaid credits first,
@@ -23,66 +25,68 @@ export async function recordOrgUsage(
 ) {
   noStore();
 
-  const { orgId, org } = await requireOrg();
+  const { orgId, org, user } = await requireOrg();
   const plan = org.plan;
 
-  // If there's no plan or subscription, block the action.
   if (!plan || !org.subscriptionStatus || !['active', 'trialing', 'past_due'].includes(org.subscriptionStatus)) {
     redirect('/billing');
   }
 
-  const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.[key] ?? 0;
+  // 1. Convert usage to cost
+  const costInCents = calculateCostInCents(key, amount);
 
-  // For business plan with unlimited usage, just record and exit.
+  if (costInCents > 0) {
+    try {
+      // 2. Enforce budgets (will throw if any cap is reached)
+      await enforceBudgets({
+        orgId,
+        departmentId: user.departmentId,
+        feature: key,
+        cost: costInCents,
+      });
+    } catch (error: any) {
+      console.error(`Budget enforcement failed for org ${orgId}:`, error.message);
+      // In a real app, you might redirect to a specific "cap reached" page.
+      // For now, redirecting to billing is a safe default.
+      redirect(`/billing?limit_reached=1&reason=${encodeURIComponent(error.message)}`);
+    }
+  }
+
+  // The rest of the logic only applies to usage that has a defined limit (i.e., not unlimited)
+  const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.[key] ?? 0;
   if (limit === Infinity) {
+    // For business plan with unlimited usage, we still record the usage itself,
+    // but without overage/credit logic.
     const usageRef = adminDb.collection('orgUsage').doc(orgId);
     await usageRef.set({
       [`usage.${key}`]: adminDb.FieldValue.increment(amount),
     }, { merge: true });
     return;
   }
-
+  
   const usageRef = adminDb.collection('orgUsage').doc(orgId);
-  const now = new Date();
-  const periodEnd = org.currentPeriodEnd?.toDate();
-
-  if (!periodEnd || periodEnd < now) {
-    redirect('/billing');
-  }
-  
   const usageSnap = await usageRef.get();
-
-  // Initialize or reset usage document if it's the start of a new billing period.
-  if (!usageSnap.exists || usageSnap.data()?.periodEnd?.toDate() < now) {
-    await usageRef.set({
-      periodStart: now,
-      periodEnd: periodEnd,
-      usage: { apiCalls: 0, aiTokens: 0, exports: 0 },
-      overage: { apiCalls: 0, aiTokens: 0, exports: 0 },
-    }, { merge: true });
-  }
-  
   const currentUsage = usageSnap.data()?.usage?.[key] ?? 0;
   const newTotalUsage = currentUsage + amount;
 
-  // Determine the portion of this usage increment that constitutes overage.
   const overageAmount = Math.max(0, newTotalUsage - limit) - Math.max(0, currentUsage - limit);
-
-  // Atomically update the total usage in Firestore.
   await usageRef.update({
     [`usage.${key}`]: adminDb.FieldValue.increment(amount),
   });
 
-  // If there is an overage, process it.
   if (overageAmount > 0) {
-    const costInCents = calculateCostInCents(key, overageAmount);
+    const overageCostInCents = calculateCostInCents(key, overageAmount);
     
-    // Attempt to consume the cost from prepaid credits.
-    const remainingCostInCents = await consumeCredits(orgId, costInCents);
+    // 3. Consume credits
+    const remainingCostInCents = await consumeCredits(orgId, overageCostInCents);
 
-    // If there's still a cost remaining after consuming credits, report it to Stripe.
+    // 4. Check for auto-top if credits were used
+    if (remainingCostInCents < overageCostInCents) {
+        await checkAutoTopUp(orgId);
+    }
+    
+    // 5. Report to Stripe if cost remains
     if (remainingCostInCents > 0) {
-      // For Stripe, we need to convert the remaining cost back to usage units.
       const remainingOverageUnits = Math.ceil(remainingCostInCents / (calculateCostInCents(key, 1) || 1));
       
       await usageRef.update({
@@ -105,7 +109,4 @@ export async function recordOrgUsage(
       }
     }
   }
-
-  // After recording usage and consuming credits, check if an auto top-up is needed.
-  await checkAutoTopUp(orgId);
 }
