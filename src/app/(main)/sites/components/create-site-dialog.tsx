@@ -49,8 +49,8 @@ export function CreateSiteDialog() {
     }
     setSuggestionRunning(true);
     try {
-      const result = await suggestDomains({ purpose: sitePurpose });
-      setSuggestions(result.suggestions);
+      const result = await suggestDomains({ keywords: sitePurpose });
+      setSuggestions(result.domains);
     } catch (error) {
       console.error(error);
       toast({
