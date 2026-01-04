@@ -1,6 +1,6 @@
 'use server';
 
-import "server-only";
+import 'server-only';
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -8,31 +8,36 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-let app: App;
-
-const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-};
-
-if (!getApps().length) {
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        const missingVars = Object.entries(serviceAccount)
-            .filter(([, value]) => !value)
-            .map(([key]) => `FIREBASE_${key.toUpperCase()}`)
-            .join(', ');
-        // Throw a clear error if config is missing. This prevents the app from running in a broken state.
-        throw new Error(`Firebase Admin SDK initialization failed. Missing required environment variables: ${missingVars}`);
+function getAdminApp(): App {
+    if (getApps().length > 0) {
+        return getApps()[0];
     }
-    
-    app = initializeApp({
-        credential: cert(serviceAccount),
-    });
-} else {
-  app = getApps()[0];
+
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!serviceAccountJson) {
+        console.warn(
+            'FIREBASE_SERVICE_ACCOUNT_JSON not set. Attempting to use Application Default Credentials. This is expected in a deployed environment.'
+        );
+        try {
+            return initializeApp();
+        } catch (e: any) {
+            throw new Error(`Failed to initialize Firebase with Application Default Credentials: ${e.message}`);
+        }
+    }
+
+    try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        return initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e: any) {
+        throw new Error(
+            `Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON or initialize app with certificate: ${e.message}. Ensure it's a valid JSON string.`
+        );
+    }
 }
 
-export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app);
+const adminApp = getAdminApp();
+export const adminAuth = getAuth(adminApp);
+export const adminDb = getFirestore(adminApp);
 export { FieldValue };
