@@ -8,6 +8,7 @@ import { noStore } from 'next/cache';
 import { stripe } from '@/lib/stripe/server';
 import { consumeCredits } from './consumeCredits';
 import { calculateCostInCents, type UsageKey } from './costs';
+import { checkAutoTopUp } from './checkAutoTopUp';
 
 /**
  * Records usage for an organization, applying it against prepaid credits first,
@@ -31,7 +32,15 @@ export async function recordOrgUsage(
   }
 
   const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]?.[key] ?? 0;
-  if (limit === Infinity) return; // Unlimited usage for this feature on this plan.
+
+  // For business plan with unlimited usage, just record and exit.
+  if (limit === Infinity) {
+    const usageRef = adminDb.collection('orgUsage').doc(orgId);
+    await usageRef.set({
+      [`usage.${key}`]: adminDb.FieldValue.increment(amount),
+    }, { merge: true });
+    return;
+  }
 
   const usageRef = adminDb.collection('orgUsage').doc(orgId);
   const now = new Date();
@@ -74,7 +83,7 @@ export async function recordOrgUsage(
     // If there's still a cost remaining after consuming credits, report it to Stripe.
     if (remainingCostInCents > 0) {
       // For Stripe, we need to convert the remaining cost back to usage units.
-      const remainingOverageUnits = Math.ceil(remainingCostInCents / (calculateCostInCents(key, 1)));
+      const remainingOverageUnits = Math.ceil(remainingCostInCents / (calculateCostInCents(key, 1) || 1));
       
       await usageRef.update({
         [`overage.${key}`]: adminDb.FieldValue.increment(remainingOverageUnits),
@@ -96,4 +105,7 @@ export async function recordOrgUsage(
       }
     }
   }
+
+  // After recording usage and consuming credits, check if an auto top-up is needed.
+  await checkAutoTopUp(orgId);
 }

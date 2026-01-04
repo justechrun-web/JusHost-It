@@ -155,12 +155,47 @@ export async function POST(req: Request) {
             const orgQuery = await adminDb.collection("orgs").where("stripeCustomerId", "==", customerId).limit(1).get();
             if (!orgQuery.empty) {
                 const orgDoc = orgQuery.docs[0];
-                const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
                 await orgDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
                     currentPeriodEnd: FieldValue.serverTimestamp(),
                 });
+            }
+            break;
+        }
+        case 'payment_intent.succeeded': {
+            const pi = event.data.object as Stripe.PaymentIntent;
+
+            // Only handle auto top-ups here. Manual purchases are handled by checkout.session.completed.
+            if (pi.metadata?.type !== 'auto_top_up') break;
+
+            const orgId = pi.metadata.orgId;
+            const amount = pi.amount;
+
+            if (orgId && amount) {
+                await adminDb.collection('orgCredits').add({
+                    orgId,
+                    amount,
+                    remaining: amount,
+                    source: 'auto_top_up',
+                    stripePaymentIntentId: pi.id,
+                    expiresAt: null,
+                    createdAt: FieldValue.serverTimestamp(),
+                });
+            }
+            break;
+        }
+        case 'payment_intent.payment_failed': {
+            const pi = event.data.object as Stripe.PaymentIntent;
+
+            if (pi.metadata?.type !== 'auto_top_up') break;
+            
+            const orgId = pi.metadata.orgId;
+            if (orgId) {
+                 await adminDb.collection('orgs').doc(orgId).update({
+                    'autoTopUp.enabled': false,
+                });
+                // TODO: Notify user that auto top-up was disabled due to payment failure.
             }
             break;
         }

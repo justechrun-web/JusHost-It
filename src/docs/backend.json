@@ -49,6 +49,16 @@
                 "aiTokens": { "type": "string" },
                 "exports": { "type": "string" }
             }
+        },
+        "autoTopUp": {
+            "type": "object",
+            "description": "Settings for automatically topping up prepaid credits.",
+            "properties": {
+                "enabled": { "type": "boolean" },
+                "threshold": { "type": "integer", "description": "The balance in cents at which to trigger a top-up." },
+                "amount": { "type": "integer", "description": "The amount in cents to purchase." },
+                "lastTriggeredAt": { "type": "string", "format": "date-time", "description": "Timestamp to prevent rapid re-triggers." }
+            }
         }
       },
       "required": ["id", "name", "ownerUid", "plan", "subscriptionStatus"]
@@ -124,7 +134,7 @@
         "orgId": { "type": "string" },
         "amount": { "type": "integer", "description": "The initial amount of the credit purchase, in cents." },
         "remaining": { "type": "integer", "description": "The remaining credit balance, in cents." },
-        "source": { "type": "string", "enum": ["stripe", "manual_grant"] },
+        "source": { "type": "string", "enum": ["stripe", "manual_grant", "auto_top_up"] },
         "stripePaymentIntentId": { "type": "string", "description": "The Stripe Payment Intent ID for this purchase." },
         "expiresAt": { "type": "string", "format": "date-time", "description": "Optional expiration date for the credits." },
         "createdAt": { "type": "string", "format": "date-time" }
