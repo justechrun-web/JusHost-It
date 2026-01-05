@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err: any) {
-    console.error("Webhook signature verification failed:", err);
+    console.error("Webhook signature verification failed", err);
     return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 });
   }
 
@@ -227,7 +227,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-      console.error(`Webhook handler for ${event.type} failed:`, error);
+      console.error("Webhook handler for event type '%s' failed:", event.type, error);
       // Still record the event to prevent retries, but mark it as failed.
       await eventRef.set({
         type: event.type,
