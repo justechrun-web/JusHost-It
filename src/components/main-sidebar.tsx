@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useAuth } from "@/firebase";
-import { signOut } from "firebase/auth";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -38,7 +37,6 @@ const menuItems = [
 export function MainSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const auth = useAuth();
   const { user } = useUser();
   const [isAdmin, setIsAdmin] = React.useState(false);
 
@@ -51,10 +49,9 @@ export function MainSidebar() {
     }
   }, [user]);
   
-  const handleLogout = () => {
-    signOut(auth).then(() => {
-      router.push('/login');
-    });
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
   };
 
   return (

@@ -15,17 +15,15 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import Link from "next/link";
 import { Settings, User, LifeBuoy, LogOut } from "lucide-react";
-import { signOut } from "firebase/auth";
-import { useAuth } from "@/firebase";
+import { useRouter } from "next/navigation";
 
 export function Header() {
-  const auth = useAuth();
+  const router = useRouter();
   const userAvatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
 
-  const handleLogout = () => {
-    if (auth) {
-      signOut(auth);
-    }
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push('/login');
   };
 
   return (

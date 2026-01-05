@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -39,6 +40,18 @@ function mapAuthError(code: string): string {
   }
 }
 
+async function createSession(idToken: string) {
+    const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+    });
+
+    if (!res.ok) {
+        throw new Error("Failed to create session.");
+    }
+}
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,14 +69,15 @@ export default function LoginPage() {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let emailFromStorage = window.localStorage.getItem('emailForSignIn');
       if (!emailFromStorage) {
-        // If the email is not in storage, prompt the user for it.
         emailFromStorage = window.prompt('Please provide your email for confirmation');
       }
       
       if (emailFromStorage) {
         signInWithEmailLink(auth, emailFromStorage, window.location.href)
-          .then((result) => {
+          .then(async (result) => {
             window.localStorage.removeItem('emailForSignIn');
+            const idToken = await result.user.getIdToken();
+            await createSession(idToken);
             router.push('/dashboard');
           })
           .catch((err) => {
@@ -80,7 +94,7 @@ export default function LoginPage() {
     try {
       // For login, we're still sending a magic link. This is a passwordless flow.
       await sendSignInLinkToEmail(auth, email, {
-        url: `${window.location.origin}/dashboard`, // Direct to dashboard on successful sign-in
+        url: `${window.location.origin}/login`, // Redirect back to login to complete
         handleCodeInApp: true,
       });
       window.localStorage.setItem('emailForSignIn', email);
@@ -107,7 +121,9 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+      await createSession(idToken);
       router.push('/dashboard');
     } catch (err: any) {
       if (err.code === 'auth/account-exists-with-different-credential') {

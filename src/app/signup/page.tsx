@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { Suspense, useState, useEffect } from 'react';
@@ -43,6 +44,18 @@ function mapAuthError(code: string): string {
   }
 }
 
+async function createSession(idToken: string) {
+    const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+    });
+
+    if (!res.ok) {
+        throw new Error("Failed to create session.");
+    }
+}
+
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
 });
@@ -69,17 +82,16 @@ function SignupForm() {
     const email = window.localStorage.getItem('emailForSignIn');
     if (isSignInWithEmailLink(auth, window.location.href) && email) {
       signInWithEmailLink(auth, email, window.location.href)
-        .then((result) => {
+        .then(async (result) => {
           window.localStorage.removeItem('emailForSignIn');
-          // User is signed in.
-          // Now, check if a plan was part of the original signup flow.
+          const idToken = await result.user.getIdToken();
+          await createSession(idToken);
+          
           const plan = searchParams.get('plan');
           const priceId = searchParams.get('priceId');
           if (plan && priceId) {
-            // Redirect to pricing to complete the checkout.
             router.push(`/pricing?plan=${plan}`);
           } else {
-            // Or to the dashboard if no plan was specified.
             router.push('/dashboard');
           }
         })
@@ -132,8 +144,9 @@ function SignupForm() {
     const provider = new GoogleAuthProvider();
 
     try {
-      await signInWithPopup(auth, provider);
-      // After Google sign-in, redirect to pricing to select a plan and start trial.
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+      await createSession(idToken);
       router.push('/pricing');
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
