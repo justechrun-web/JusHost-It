@@ -1,3 +1,4 @@
+
 import "server-only";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
@@ -97,14 +98,14 @@ export async function POST(req: Request) {
             subscriptionStatus: sub.status,
             plan: plan,
             'seats.limit': sub.items.data.find(item => item.price.recurring)?.quantity || 1,
-            currentPeriodEnd: FieldValue.serverTimestamp(),
+            currentPeriodEnd: FieldValue.fromMillis(sub.current_period_end * 1000),
             subscriptionItemIds: subscriptionItemIds
         });
 
         // Reset usage for new period
         await adminDb.collection('orgUsage').doc(orgDoc.id).set({
-          periodStart: FieldValue.serverTimestamp(),
-          periodEnd: FieldValue.serverTimestamp(),
+          periodStart: FieldValue.fromMillis(sub.current_period_start * 1000),
+          periodEnd: FieldValue.fromMillis(sub.current_period_end * 1000),
           usage: { apiCalls: 0, aiTokens: 0, exports: 0 },
           overage: { apiCalls: 0, aiTokens: 0, exports: 0 },
         }, { merge: true });
@@ -140,9 +141,9 @@ export async function POST(req: Request) {
                 await orgDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
-                    currentPeriodEnd: FieldValue.serverTimestamp(),
+                    currentPeriodEnd: FieldValue.fromMillis(invoice.period_end * 1000),
                     'autoTopUp.spentThisMonth': 0,
-                    'autoTopUp.capPeriodStart': FieldValue.serverTimestamp(),
+                    'autoTopUp.capPeriodStart': FieldValue.fromMillis(invoice.period_start * 1000),
                 });
             }
             break;
@@ -174,7 +175,7 @@ export async function POST(req: Request) {
                 await orgDoc.ref.update({
                     subscriptionStatus: 'active',
                     gracePeriodEndsAt: null,
-                    currentPeriodEnd: FieldValue.serverTimestamp(),
+                    currentPeriodEnd: FieldValue.fromMillis(invoice.period_end * 1000),
                 });
             }
             break;
