@@ -14,8 +14,7 @@
 
 import { ai } from '@/lib/genkit';
 import { z } from 'zod';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { getSecurityContext } from '@/server/actions/get-security-context.action';
 
 // Define the Zod schema for the flow's input.
 export const SecurityQuestionInputSchema = z.object({
@@ -28,36 +27,6 @@ export const SecurityQuestionOutputSchema = z.object({
   answer: z.string().describe('The answer to the question, based *only* on the provided context. If the answer is not in the context, this field must state that the question cannot be answered.'),
 });
 export type SecurityQuestionOutput = z.infer<typeof SecurityQuestionOutputSchema>;
-
-/**
- * Loads the content of the security documents.
- * In a real application, this might be fetched from a more dynamic source,
- * but reading from the file system is robust for documents that change with the codebase.
- */
-async function getSecurityContext(): Promise<string> {
-    try {
-        const securityQuestionnairePath = join(process.cwd(), 'docs', 'security-questionnaire.md');
-        const techAppendixPath = join(process.cwd(), 'docs', 'technical-appendix.md');
-
-        const [questionnaire, appendix] = await Promise.all([
-            readFile(securityQuestionnairePath, 'utf-8'),
-            readFile(techAppendixPath, 'utf-8')
-        ]);
-
-        return `
-# Security Questionnaire Content:
-${questionnaire}
-
-# Technical Appendix Content:
-${appendix}
-`;
-    } catch (error) {
-        console.error("Failed to load security context documents:", error);
-        // If the context can't be loaded, we return an empty string to ensure the AI knows it has no information.
-        return "";
-    }
-}
-
 
 /**
  * The main server action function that answers a security question.
