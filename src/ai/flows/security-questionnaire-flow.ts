@@ -14,7 +14,7 @@
 
 import { ai } from '@/lib/genkit';
 import { z } from 'zod';
-import { getSecurityContext } from '@/server/actions/get-security-context.action';
+import { getSecurityContext } from './security-doc-loader';
 
 // Define the Zod schema for the flow's input.
 export const SecurityQuestionInputSchema = z.object({
