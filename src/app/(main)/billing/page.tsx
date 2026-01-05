@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -117,7 +116,13 @@ export default function BillingPage() {
 
       const { url } = await res.json();
       if (url) {
-        window.location.href = url;
+        // Sanitize the URL to prevent open redirect vulnerabilities.
+        const sanitizedUrl = new URL(url);
+        if (sanitizedUrl.hostname === 'billing.stripe.com') {
+            window.location.assign(sanitizedUrl.href);
+        } else {
+            throw new Error('Invalid redirect URL received.');
+        }
       }
     } catch (error: any) {
       toast({
@@ -125,7 +130,8 @@ export default function BillingPage() {
         title: 'Error',
         description: error.message,
       });
-      setIsPortalLoading(false);
+    } finally {
+        setIsPortalLoading(false);
     }
   };
 
