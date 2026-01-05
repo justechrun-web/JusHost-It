@@ -116,12 +116,11 @@ export default function BillingPage() {
 
       const { url } = await res.json();
       if (url) {
-        // Sanitize the URL to prevent open redirect vulnerabilities.
         const sanitizedUrl = new URL(url);
         if (sanitizedUrl.hostname === 'billing.stripe.com') {
-            window.location.assign(sanitizedUrl.href);
+          window.location.href = sanitizedUrl.href;
         } else {
-            throw new Error('Invalid redirect URL received.');
+          throw new Error('Invalid redirect URL received.');
         }
       }
     } catch (error: any) {
@@ -130,8 +129,7 @@ export default function BillingPage() {
         title: 'Error',
         description: error.message,
       });
-    } finally {
-        setIsPortalLoading(false);
+      setIsPortalLoading(false);
     }
   };
 
@@ -155,15 +153,17 @@ export default function BillingPage() {
     const date = new Date(orgData.currentPeriodEnd.seconds * 1000);
     return date.toLocaleDateString();
   }
-  
+
   const isValidStripeUrl = (url: string) => {
     try {
+      if (!url) return false;
       const parsedUrl = new URL(url);
-      return parsedUrl.protocol === 'https:' && parsedUrl.hostname.endsWith('stripe.com');
+      return parsedUrl.protocol === 'https:' && parsedUrl.hostname.endsWith('.stripe.com');
     } catch (e) {
       return false;
     }
   };
+
 
   return (
     <div className="space-y-8">
@@ -272,17 +272,16 @@ export default function BillingPage() {
                       invoices.map((invoice, index) => {
                         const isSafeUrl = isValidStripeUrl(invoice.invoice_pdf);
                         return (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{new Date(invoice.created * 1000).toLocaleDateString()}</TableCell>
-                            <TableCell>${(invoice.amount_paid / 100).toFixed(2)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="outline" size="sm" asChild disabled={!isSafeUrl}>
-                                <a href={isSafeUrl ? invoice.invoice_pdf : undefined} target="_blank" rel="noopener noreferrer">Download PDF</a>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{new Date(invoice.created * 1000).toLocaleDateString()}</TableCell>
+                          <TableCell>${(invoice.amount_paid / 100).toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" asChild disabled={!isSafeUrl}>
+                              <a href={isSafeUrl ? invoice.invoice_pdf : undefined} target="_blank" rel="noopener noreferrer">Download PDF</a>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )})
                     ) : (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center h-24">No invoice history found.</TableCell>
