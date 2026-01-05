@@ -2,8 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-
   images: {
     remotePatterns: [
       {
@@ -30,26 +28,8 @@ const nextConfig: NextConfig = {
 
   experimental: {
     serverActions: {
-      allowedOrigins: ['*'],
+      
     },
-  },
-
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Prevent server-side packages from being bundled on the client.
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        'firebase-admin': false,
-        'dotenv': false,
-        'crypto': false,
-        'fs': false,
-        'net': false,
-        'tls': false,
-        'cardinal': false,
-        'process': false,
-      };
-    }
-    return config;
   },
 
   async headers() {
