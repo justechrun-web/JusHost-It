@@ -154,6 +154,17 @@ export default function BillingPage() {
     return date.toLocaleDateString();
   }
 
+  const isValidStripeUrl = (url: string) => {
+    try {
+      if (!url) return false;
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === 'https:' && parsedUrl.hostname.endsWith('.stripe.com');
+    } catch (e) {
+      return false;
+    }
+  };
+
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -258,17 +269,19 @@ export default function BillingPage() {
                             </TableCell>
                         </TableRow>
                     ) : invoices && invoices.length > 0 ? (
-                      invoices.map((invoice, index) => (
+                      invoices.map((invoice, index) => {
+                        const isSafeUrl = isValidStripeUrl(invoice.invoice_pdf);
+                        return (
                         <TableRow key={index}>
                           <TableCell className="font-medium">{new Date(invoice.created * 1000).toLocaleDateString()}</TableCell>
                           <TableCell>${(invoice.amount_paid / 100).toFixed(2)}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer">Download PDF</a>
+                            <Button variant="outline" size="sm" asChild disabled={!isSafeUrl}>
+                              <a href={isSafeUrl ? invoice.invoice_pdf : undefined} target="_blank" rel="noopener noreferrer">Download PDF</a>
                             </Button>
                           </TableCell>
                         </TableRow>
-                      ))
+                      )})
                     ) : (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center h-24">No invoice history found.</TableCell>
