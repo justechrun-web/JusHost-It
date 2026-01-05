@@ -1,4 +1,6 @@
 
+'use server';
+
 import 'server-only';
 import { NextResponse } from 'next/server';
 import { requireOrg } from '@/lib/org/requireOrg';
@@ -36,6 +38,9 @@ export async function POST() {
 
   } catch (error: any) {
     console.error('API Error creating SetupIntent:', error);
+    if (error.message.includes('No user found')) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
     return NextResponse.json(
       { error: error.message || 'Internal Server Error' },
       { status: 500 }
