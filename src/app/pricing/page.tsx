@@ -108,7 +108,12 @@ export default function PricingPage() {
 
             const { url } = await res.json();
             if (url) {
-                window.location.href = url;
+                const sanitizedUrl = new URL(url);
+                if (sanitizedUrl.hostname === 'checkout.stripe.com') {
+                  window.location.href = sanitizedUrl.href;
+                } else {
+                  throw new Error('Invalid redirect URL received.');
+                }
             }
         } catch (error: any) {
             console.error("Checkout failed", error);
