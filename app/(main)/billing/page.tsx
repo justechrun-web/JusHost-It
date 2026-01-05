@@ -116,8 +116,7 @@ export default function BillingPage() {
 
       const { url } = await res.json();
       if (url) {
-        const sanitizedUrl = new URL(url);
-        if (sanitizedUrl.hostname === 'billing.stripe.com') {
+        if (new URL(url).hostname === 'billing.stripe.com') {
           window.location.href = url;
         } else {
           throw new Error('Invalid redirect URL received.');
