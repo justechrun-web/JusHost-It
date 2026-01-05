@@ -44,38 +44,41 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const { decodedToken, error } = await verifyToken(token);
+  try {
+    const { decodedToken, error } = await verifyToken(token);
 
-  if (error || !decodedToken) {
+    if (error || !decodedToken) {
+      throw error || new Error("Token verification failed");
+    }
+      
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('X-User-ID', decodedToken.uid);
+
+    const isAdmin = decodedToken.admin === true;
+    requestHeaders.set('X-User-Is-Admin', String(isAdmin));
+    
+    if (req.nextUrl.pathname.startsWith("/admin") && !isAdmin) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+
+    // NOTE: Full Read-Only enforcement for non-GET requests would require inspecting
+    // the user/org document here, which adds latency. A better pattern is to enforce
+    // this at the API/Server Action level. This middleware provides a basic check.
+    // if (org.readOnly?.enabled && req.method !== 'GET') {
+    //   return new NextResponse('{"error":"Organization is in read-only mode."}', { status: 403, headers: { 'Content-Type': 'application/json' } });
+    // }
+    
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  } catch (error) {
     console.error("Middleware Auth Error:", error);
     const response = NextResponse.redirect(new URL("/login", req.url));
     response.cookies.delete("__session");
     return response;
   }
-    
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set('X-User-ID', decodedToken.uid);
-
-  const isAdmin = decodedToken.admin === true;
-  requestHeaders.set('X-User-Is-Admin', String(isAdmin));
-  
-  if (req.nextUrl.pathname.startsWith("/admin") && !isAdmin) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  // NOTE: Full Read-Only enforcement for non-GET requests would require inspecting
-  // the user/org document here, which adds latency. A better pattern is to enforce
-  // this at the API/Server Action level. This middleware provides a basic check.
-  // if (org.readOnly?.enabled && req.method !== 'GET') {
-  //   return new NextResponse('{"error":"Organization is in read-only mode."}', { status: 403, headers: { 'Content-Type': 'application/json' } });
-  // }
-  
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
-
 }
 
 export const config = {
@@ -89,5 +92,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
-
-    
