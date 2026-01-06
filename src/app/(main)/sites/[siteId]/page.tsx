@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
 import { Loader2, ArrowLeft, Cpu, MemoryStick, HardDrive, CheckCircle, Clock, XCircle, Power } from 'lucide-react';
 import {
   Card,

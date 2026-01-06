@@ -23,7 +23,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUser, useAuth } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },

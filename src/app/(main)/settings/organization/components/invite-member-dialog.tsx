@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -24,7 +23,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
-import { useFunctions } from '@/firebase';
+import { useFunctions } from '@/firebase/provider';
 import { inviteUser } from '@/lib/org/inviteUser';
 
 type InviteMemberDialogProps = {

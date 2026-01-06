@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
 import { doc } from "firebase/firestore";
 import { Loader2, Cpu, MemoryStick, HardDrive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -116,9 +116,8 @@ export default function BillingPage() {
 
       const { url } = await res.json();
       if (url) {
-        const sanitizedUrl = new URL(url);
-        if (sanitizedUrl.hostname === 'billing.stripe.com') {
-          window.location.href = sanitizedUrl.href;
+        if (new URL(url).hostname === 'billing.stripe.com') {
+          window.location.href = url;
         } else {
           throw new Error('Invalid redirect URL received.');
         }

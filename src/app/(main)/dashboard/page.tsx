@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -17,7 +16,7 @@ import {
 } from 'lucide-react';
 import { RecentSites } from '../components/recent-sites';
 import { ResourceUsageChart } from '../components/resource-usage-chart';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
 import { doc } from 'firebase/firestore';
 import { ActiveAlerts } from '../components/active-alerts';
 

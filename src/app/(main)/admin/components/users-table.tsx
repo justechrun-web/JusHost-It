@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -11,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { UserAction } from './user-action';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';

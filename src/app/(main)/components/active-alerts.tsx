@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
 import { collection, query } from 'firebase/firestore';
 import { AlertTriangle, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -11,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, MoreVertical, Trash2, UserPlus } from 'lucide-react';
-import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useCollection, useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase/provider';
 import { collection, query, where, doc } from 'firebase/firestore';
 import {
   DropdownMenu,

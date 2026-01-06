@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -13,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader2, PlusCircle } from 'lucide-react';
 import {
@@ -150,5 +149,3 @@ export function UserPurchaseOrderCard({ orgId }: { orgId: string }) {
     </Card>
   );
 }
-
-    

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { Suspense, useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import {
   isSignInWithEmailLink,
   signInWithEmailLink
 } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { useAuth } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -79,6 +78,7 @@ function SignupForm() {
 
   // Handle email link sign-in on component mount
   useEffect(() => {
+    if (!auth) return;
     const email = window.localStorage.getItem('emailForSignIn');
     if (isSignInWithEmailLink(auth, window.location.href) && email) {
       signInWithEmailLink(auth, email, window.location.href)
@@ -102,6 +102,7 @@ function SignupForm() {
   }, [auth, router, searchParams]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth) return;
     setLoading(true);
     setError(null);
     const plan = searchParams.get('plan');
@@ -139,6 +140,7 @@ function SignupForm() {
   }
 
   const handleGoogleLogin = async () => {
+    if (!auth) return;
     setGoogleLoading(true);
     setError(null);
     const provider = new GoogleAuthProvider();

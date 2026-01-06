@@ -24,7 +24,7 @@ import { PlusCircle, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { httpsCallable } from 'firebase/functions';
-import { useFunctions, useUser } from '@/firebase';
+import { useFunctions, useUser } from '@/firebase/provider';
 import { suggestDomains } from '@/server/actions/domain-suggestion.action';
 
 export function CreateSiteDialog() {
