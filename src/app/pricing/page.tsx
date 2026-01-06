@@ -66,64 +66,55 @@ export default function PricingPage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    async function handleSelect(plan: typeof tiers[0]) {
-        if (plan.href) {
-            router.push(plan.href);
-            return;
-        }
-        
-        if (!plan.priceId) {
-            toast({
-                title: 'Configuration Error',
-                description: `The price ID for the ${plan.name} plan is not set up. Please contact support.`,
-                variant: 'destructive',
-            });
-            return;
-        }
-
-        setLoadingPlan(plan.id);
-        
+    const startCheckout = async (plan: "pro" | "business" | "starter") => {
+      setLoadingPlan(plan);
+      try {
         if (!user) {
-            router.push(`/signup?plan=${plan.id}&priceId=${plan.priceId}`);
-            return;
+          router.push(`/signup?plan=${plan}`);
+          return;
         }
 
-        try {
-            const token = await user.getIdToken();
+        const token = await user.getIdToken();
+        const res = await fetch("/api/stripe/checkout", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ plan }),
+        });
 
-            const res = await fetch('/api/stripe/checkout', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ priceId: plan.priceId }),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to create checkout session.');
-            }
-
-            const { url } = await res.json();
-            if (url) {
-                const sanitizedUrl = new URL(url);
-                if (sanitizedUrl.hostname === 'checkout.stripe.com') {
-                  window.location.href = sanitizedUrl.href;
-                } else {
-                  throw new Error('Invalid redirect URL received.');
-                }
-            }
-        } catch (error: any) {
-            console.error("Checkout failed", error);
-            toast({
-                title: 'Checkout Error',
-                description: error.message,
-                variant: 'destructive',
-            });
-        } finally {
-             setLoadingPlan(null);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to create checkout session.');
         }
+
+        const data = await res.json();
+        if (data.url) {
+           if (new URL(data.url).hostname === 'checkout.stripe.com') {
+             window.location.href = data.url;
+           } else {
+             throw new Error('Invalid redirect URL received.');
+           }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPlan(null);
+      }
+    };
+
+
+    const handleSelect = (plan: typeof tiers[0]) => {
+      if (plan.href) {
+        router.push(plan.href);
+        return;
+      }
+      startCheckout(plan.id as "pro" | "business" | "starter");
     }
 
 
