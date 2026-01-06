@@ -15,7 +15,7 @@ export default function LandingPage() {
           <a className="hover:text-white" href="#">Why JusHost</a>
           <a className="hover:text-white" href="#">Compare</a>
         </nav>
-        <Button size="sm" className="rounded-full" onClick={() => window.location.href = '/signup'}>Get Started</Button>
+        <Button size="sm" className="rounded-full" onClick={() => window.location.href = '/login'}>Get Started</Button>
       </header>
 
       {/* Hero */}
@@ -37,7 +37,7 @@ export default function LandingPage() {
             JusHost It automates infrastructure, deployments, and scaling — so you ship faster with less friction.
           </p>
           <div className="mt-10 flex justify-center gap-4">
-            <Button size="lg" className="rounded-full px-8" onClick={() => window.location.href = '/signup'}>
+            <Button size="lg" className="rounded-full px-8" onClick={() => window.location.href = '/login'}>
               Start Building
             </Button>
             <Button size="lg" variant="outline" className="rounded-full px-8 border-neutral-700" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
@@ -79,7 +79,7 @@ export default function LandingPage() {
       <section className="relative z-10 py-24 text-center">
         <h2 className="text-3xl md:text-4xl font-semibold">Ship faster with confidence</h2>
         <p className="mt-4 text-neutral-400">Deploy once. Scale forever.</p>
-        <Button size="lg" className="mt-8 rounded-full px-10" onClick={() => window.location.href = '/signup'}>
+        <Button size="lg" className="mt-8 rounded-full px-10" onClick={() => window.location.href = '/login'}>
           Get Started <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </section>
