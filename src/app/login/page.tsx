@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { HardDrive } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { LoginForm } from './components/login-form';
 
@@ -15,8 +15,8 @@ function LoginPageComponent() {
         <div className="flex items-center justify-center py-12">
             <div className="mx-auto grid w-[400px] gap-6">
                 <div className="grid gap-2 text-center">
-                    <HardDrive className="h-8 w-8 mx-auto text-primary" />
-                    <h1 className="text-3xl font-bold font-headline">JusHostIt</h1>
+                    <GraduationCap className="h-8 w-8 mx-auto text-primary" />
+                    <h1 className="text-3xl font-bold font-headline">Learnsphere</h1>
                     <p className="text-balance text-muted-foreground">
                     Enter your email to sign in to your account.
                     </p>

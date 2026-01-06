@@ -4,7 +4,7 @@ import React, { Suspense, useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
+import { GraduationCap, Loader2, AlertCircle } from 'lucide-react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -149,7 +149,7 @@ function SignupForm() {
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
       await createSession(idToken);
-      router.push('/pricing');
+      router.push('/dashboard');
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
@@ -166,12 +166,12 @@ function SignupForm() {
     return (
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
-            <HardDrive className="h-8 w-8 mx-auto text-primary" />
+            <GraduationCap className="h-8 w-8 mx-auto text-primary" />
             <h1 className="text-3xl font-bold font-headline">
               Create an Account
             </h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email to get started. No credit card required for the first 7 days.
+              Enter your email to get started with Learnsphere.
             </p>
           </div>
           <Form {...form}>

@@ -20,7 +20,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   if (isUserLoading || !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -28,7 +28,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-muted/40">
+      <div className="flex h-screen bg-background">
         <MainSidebar />
         <div className="flex-1 flex flex-col">
           <Header />
