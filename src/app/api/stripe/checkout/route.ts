@@ -13,13 +13,22 @@ export async function POST(req: NextRequest) {
         return new NextResponse("Unauthorized: Missing user ID", { status: 401 });
     }
     
-    const { priceId } = await req.json();
+    const { plan } = await req.json();
+
+    const priceId =
+      plan === "pro"
+        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO
+        : plan === "business"
+        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS
+        : process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER;
+
+
     if (!priceId) {
-        return new NextResponse("Price ID is required", { status: 400 });
+        return new NextResponse("Invalid plan", { status: 400 });
     }
 
-    if (!Object.keys(PLAN_BY_PRICE_ID).includes(priceId)) {
-        return new NextResponse("Invalid price ID", { status: 400 });
+    if (!Object.values(PLAN_BY_PRICE_ID).includes(plan)) {
+        return new NextResponse("Invalid plan ID", { status: 400 });
     }
 
     const userDocRef = adminDb.collection('users').doc(uid);
@@ -46,7 +55,7 @@ export async function POST(req: NextRequest) {
       payment_method_types: ['card'],
       mode: "subscription",
       customer: stripeCustomerId,
-      client_reference_id: uid, // Pass the Firebase UID here
+      client_reference_id: uid, 
       line_items: [
         {
           price: priceId,

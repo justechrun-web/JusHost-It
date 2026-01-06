@@ -42,8 +42,6 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const orgId = session.metadata?.orgId;
-        const creditAmount = Number(session.metadata?.creditAmount);
         const uid = session.client_reference_id;
 
         if (!uid) {
@@ -51,19 +49,7 @@ export async function POST(req: Request) {
              return NextResponse.json({ error: "Missing user identifier in webhook metadata" }, { status: 400 });
         }
 
-        if (orgId) { // This is for credit purchases, not subscriptions
-            if (creditAmount > 0 && session.payment_intent) {
-                await adminDb.collection('orgCredits').add({
-                    orgId,
-                    amount: creditAmount,
-                    remaining: creditAmount,
-                    source: 'stripe',
-                    stripePaymentIntentId: session.payment_intent,
-                    expiresAt: null,
-                    createdAt: FieldValue.serverTimestamp(),
-                });
-            }
-        } else if (session.subscription) {
+        if (session.subscription) {
             // Subscription created via checkout
             await adminDb.collection("users").doc(uid).set({
               stripeCustomerId: session.customer,
@@ -76,7 +62,6 @@ export async function POST(req: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
-        const customerId = sub.customer as string;
         const uid = sub.metadata.firebaseUID;
         
         if (!uid) break;
@@ -111,7 +96,6 @@ export async function POST(req: Request) {
         }
         case 'invoice.paid': {
             const invoice = event.data.object as Stripe.Invoice;
-            const customerId = invoice.customer as string;
             const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
             const uid = sub.metadata.firebaseUID;
 
@@ -126,7 +110,6 @@ export async function POST(req: Request) {
         }
         case 'invoice.payment_failed': {
             const invoice = event.data.object as Stripe.Invoice;
-            const customerId = invoice.customer as string;
             const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
             const uid = sub.metadata.firebaseUID;
 
@@ -136,52 +119,6 @@ export async function POST(req: Request) {
             await userRef.update({
                 subscriptionStatus: 'past_due',
             });
-            break;
-        }
-        case 'invoice.payment_succeeded': {
-            const invoice = event.data.object as Stripe.Invoice;
-            const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
-            const uid = sub.metadata.firebaseUID;
-
-            if (!uid) break;
-            
-            const userRef = adminDb.collection('users').doc(uid);
-            await userRef.update({
-                subscriptionStatus: 'active',
-                currentPeriodEnd: FieldValue.fromMillis(invoice.period_end * 1000),
-            });
-            break;
-        }
-        case 'payment_intent.succeeded': {
-            const pi = event.data.object as Stripe.PaymentIntent;
-            if (pi.metadata?.type !== 'auto_top_up') break;
-
-            const orgId = pi.metadata.orgId;
-            const amount = pi.amount;
-
-            if (orgId && amount) {
-                await adminDb.collection('orgCredits').add({
-                    orgId,
-                    amount,
-                    remaining: amount,
-                    source: 'auto_top_up',
-                    stripePaymentIntentId: pi.id,
-                    expiresAt: null,
-                    createdAt: FieldValue.serverTimestamp(),
-                });
-            }
-            break;
-        }
-        case 'payment_intent.payment_failed': {
-            const pi = event.data.object as Stripe.PaymentIntent;
-            if (pi.metadata?.type !== 'auto_top_up') break;
-            
-            const orgId = pi.metadata.orgId;
-            if (orgId) {
-                 await adminDb.collection('orgs').doc(orgId).update({
-                    'autoTopUp.enabled': false,
-                });
-            }
             break;
         }
     }
