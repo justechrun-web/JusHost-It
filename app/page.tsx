@@ -51,7 +51,7 @@ export default function LandingPage() {
       <div className="relative z-10 border-t border-white/10" />
 
       {/* Value Prop */}
-      <section id="features" className="relative z-10 py-28 text-center px-6">
+      <section className="relative z-10 py-28 text-center px-6">
         <h2 className="text-2xl md:text-3xl font-medium">
           Build better products.
         </h2>
@@ -72,6 +72,64 @@ export default function LandingPage() {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="relative z-10 py-32 px-6">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-semibold">Simple, transparent pricing</h2>
+          <p className="mt-4 text-neutral-400">Start free. Upgrade when you scale.</p>
+
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Free */}
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-left">
+              <h3 className="text-xl font-medium">Free</h3>
+              <p className="mt-2 text-neutral-400">For testing & personal projects</p>
+              <p className="mt-6 text-4xl font-semibold">$0</p>
+              <ul className="mt-6 space-y-2 text-sm text-neutral-300">
+                <li>✔ 1 Project</li>
+                <li>✔ Basic Deployments</li>
+                <li>✔ Community Support</li>
+              </ul>
+              <button onClick={() => window.location.href = '/login'} className="mt-8 w-full rounded-xl border border-white/20 py-2 hover:bg-white/10 transition">
+                Get Started
+              </button>
+            </div>
+
+            {/* Pro */}
+            <div className="relative rounded-2xl border border-blue-500 bg-blue-500/10 p-8 text-left shadow-xl">
+              <span className="absolute -top-3 right-6 rounded-full bg-blue-500 px-3 py-1 text-xs font-medium">Most Popular</span>
+              <h3 className="text-xl font-medium">Pro</h3>
+              <p className="mt-2 text-neutral-300">For startups & growing teams</p>
+              <p className="mt-6 text-4xl font-semibold">$29<span className="text-base font-normal">/mo</span></p>
+              <ul className="mt-6 space-y-2 text-sm text-neutral-100">
+                <li>✔ Unlimited Projects</li>
+                <li>✔ CI/CD Automation</li>
+                <li>✔ Secrets & Environments</li>
+                <li>✔ Email Support</li>
+              </ul>
+              <button onClick={() => window.location.href = '/login'} className="mt-8 w-full rounded-xl bg-blue-600 py-2 font-medium hover:bg-blue-500 transition">
+                Upgrade to Pro
+              </button>
+            </div>
+
+            {/* Team */}
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-left">
+              <h3 className="text-xl font-medium">Team</h3>
+              <p className="mt-2 text-neutral-400">For organizations at scale</p>
+              <p className="mt-6 text-4xl font-semibold">$99<span className="text-base font-normal">/mo</span></p>
+              <ul className="mt-6 space-y-2 text-sm text-neutral-300">
+                <li>✔ Everything in Pro</li>
+                <li>✔ Team Access & Roles</li>
+                <li>✔ Priority Support</li>
+                <li>✔ SLA & Audit Logs</li>
+              </ul>
+              <button onClick={() => window.location.href = '/login'} className="mt-8 w-full rounded-xl border border-white/20 py-2 hover:bg-white/10 transition">
+                Contact Sales
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
