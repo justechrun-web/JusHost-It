@@ -1,3 +1,4 @@
+'use client';
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
@@ -14,7 +15,7 @@ export default function LandingPage() {
           <a className="hover:text-white" href="#">Why JusHost</a>
           <a className="hover:text-white" href="#">Compare</a>
         </nav>
-        <Button size="sm" className="rounded-full">Get Started</Button>
+        <Button size="sm" className="rounded-full" onClick={() => window.location.href = '/signup'}>Get Started</Button>
       </header>
 
       {/* Hero */}
@@ -36,10 +37,10 @@ export default function LandingPage() {
             JusHost It automates infrastructure, deployments, and scaling — so you ship faster with less friction.
           </p>
           <div className="mt-10 flex justify-center gap-4">
-            <Button size="lg" className="rounded-full px-8">
+            <Button size="lg" className="rounded-full px-8" onClick={() => window.location.href = '/signup'}>
               Start Building
             </Button>
-            <Button size="lg" variant="outline" className="rounded-full px-8 border-neutral-700">
+            <Button size="lg" variant="outline" className="rounded-full px-8 border-neutral-700" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
               Explore Features
             </Button>
           </div>
@@ -50,7 +51,7 @@ export default function LandingPage() {
       <div className="relative z-10 border-t border-white/10" />
 
       {/* Value Prop */}
-      <section className="relative z-10 py-28 text-center px-6">
+      <section id="features" className="relative z-10 py-28 text-center px-6">
         <h2 className="text-2xl md:text-3xl font-medium">
           Build better products.
         </h2>
@@ -78,7 +79,7 @@ export default function LandingPage() {
       <section className="relative z-10 py-24 text-center">
         <h2 className="text-3xl md:text-4xl font-semibold">Ship faster with confidence</h2>
         <p className="mt-4 text-neutral-400">Deploy once. Scale forever.</p>
-        <Button size="lg" className="mt-8 rounded-full px-10">
+        <Button size="lg" className="mt-8 rounded-full px-10" onClick={() => window.location.href = '/signup'}>
           Get Started <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </section>
