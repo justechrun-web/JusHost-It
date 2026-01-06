@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionCookie } from '@/lib/auth/verify-session';
 
+const PLAN_ORDER = ['free', 'starter', 'pro', 'business'];
+
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get('__session')?.value;
 
@@ -38,16 +40,31 @@ export async function middleware(req: NextRequest) {
     if (!decodedToken) {
       throw new Error('Invalid session cookie');
     }
-      
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set('X-User-ID', decodedToken.uid);
-
-    const isAdmin = decodedToken.admin === true;
-    requestHeaders.set('X-User-Is-Admin', String(isAdmin));
     
+    // Admin check
+    const isAdmin = decodedToken.admin === true;
     if (req.nextUrl.pathname.startsWith('/admin') && !isAdmin) {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
+    
+    // Plan-based access control
+    const userPlan = (decodedToken.plan as string) || 'free';
+    
+    if (req.nextUrl.pathname.startsWith('/dashboard/pro')) {
+        if (PLAN_ORDER.indexOf(userPlan) < PLAN_ORDER.indexOf('pro')) {
+            return NextResponse.redirect(new URL('/billing?reason=upgrade_required', req.url));
+        }
+    }
+    
+    if (req.nextUrl.pathname.startsWith('/dashboard/team')) {
+        if (PLAN_ORDER.indexOf(userPlan) < PLAN_ORDER.indexOf('business')) {
+            return NextResponse.redirect(new URL('/billing?reason=upgrade_required', req.url));
+        }
+    }
+      
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('X-User-ID', decodedToken.uid);
+    requestHeaders.set('X-User-Is-Admin', String(isAdmin));
     
     return NextResponse.next({
       request: {

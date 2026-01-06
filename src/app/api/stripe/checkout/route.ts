@@ -18,7 +18,6 @@ export async function POST(req: NextRequest) {
         return new NextResponse("Price ID is required", { status: 400 });
     }
 
-    // Validate that the priceId corresponds to a known plan
     if (!Object.keys(PLAN_BY_PRICE_ID).includes(priceId)) {
         return new NextResponse("Invalid price ID", { status: 400 });
     }
@@ -47,6 +46,7 @@ export async function POST(req: NextRequest) {
       payment_method_types: ['card'],
       mode: "subscription",
       customer: stripeCustomerId,
+      client_reference_id: uid, // Pass the Firebase UID here
       line_items: [
         {
           price: priceId,
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/#pricing`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
       subscription_data: {
         metadata: { firebaseUID: uid },
       },
