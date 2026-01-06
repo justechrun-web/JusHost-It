@@ -1,21 +1,44 @@
 // app/login/page.tsx
-export default function LoginPage() {
+'use client';
+
+import React, { Suspense } from 'react';
+import Link from 'next/link';
+import { HardDrive } from 'lucide-react';
+import { LoginForm } from './components/login-form';
+
+function LoginPageComponent() {
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-white">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-        <h1 className="text-2xl font-semibold mb-2">Sign in to JusHost It</h1>
-        <p className="text-sm text-neutral-400 mb-6">
-          Access your dashboard
-        </p>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="mx-auto grid w-[400px] gap-6">
+            <div className="grid gap-2 text-center">
+                <HardDrive className="h-8 w-8 mx-auto text-primary" />
+                <h1 className="text-3xl font-bold font-headline">
+                    Sign in to JusHostIt
+                </h1>
+                <p className="text-balance text-muted-foreground">
+                Enter your email below to sign in to your account.
+                </p>
+            </div>
+            
+            <LoginForm />
 
-        <button className="w-full rounded-xl bg-blue-600 py-2 font-medium hover:bg-blue-500 transition">
-          Continue with Email
-        </button>
-
-        <p className="text-xs text-neutral-500 mt-6 text-center">
-          Don’t have an account? Sign up automatically on first login.
-        </p>
+            <div className="mt-4 text-center text-sm">
+                Don&apos;t have an account?{' '}
+                <Link href="/signup" className="underline">
+                Sign up
+                </Link>
+            </div>
+        </div>
       </div>
-    </div>
   );
+}
+
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <LoginPageComponent />
+        </Suspense>
+    )
 }
