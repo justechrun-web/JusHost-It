@@ -1,96 +1,121 @@
-
 'use client';
 
-import { ArrowRight, ChevronRight, Menu, Bot } from 'lucide-react';
+import { Check, Server, Shield, BarChart3, Zap, CreditCard, Lock } from "lucide-react";
 
 // =====================
-// app/page.tsx — High-tech AI platform landing page
+// app/page.tsx — High‑quality marketing landing page
 // =====================
 // Tailwind-only, no external UI libs, production-safe
 
-const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <a href={href} className="text-gray-300 hover:text-white transition-colors text-sm font-medium">
-    {children}
-  </a>
-);
-
-export default function LuminaLandingPage() {
+export default function JusHostItLanding() {
   return (
-    <div className="min-h-screen bg-[#0A101E] text-white font-sans overflow-x-hidden">
-      {/* Background Grid Pattern */}
-      <div 
-        className="absolute inset-0 z-0 opacity-30" 
-        style={{
-          backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(20, 83, 160, 0.4), transparent 70%), linear-gradient(to bottom, #0A101E, #0A101E)',
-        }}
-      >
-        <div 
-          className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMjU1LDI1NSwy1NSwwLjA1KSI+PGcgaWQ9ImdyaWQiPjxwYXRoIGQ9Ik0zMiAwIEwwIDAgTDAgMzIiLz48L2c+PC9zdmc+')] opacity-50">
-        </div>
-      </div>
+    <div className="min-h-screen bg-white text-gray-900">
+      {/* Header */}
+      <header className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
+        <div className="text-xl font-bold">JusHost It</div>
+        <nav className="flex items-center gap-6 text-sm font-medium">
+          <a href="/pricing" className="hover:text-black text-gray-600">Pricing</a>
+          <a href="/trust" className="hover:text-black text-gray-600">Trust</a>
+          <a href="/login" className="hover:text-black text-gray-600">Login</a>
+          <a href="/signup" className="px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800">Get Started</a>
+        </nav>
+      </header>
 
-      <div className="relative z-10">
-        {/* Header */}
-        <header className="flex items-center justify-between px-6 py-4 md:px-10 max-w-screen-xl mx-auto">
-          <div className="text-xl font-bold tracking-wider">Lumina</div>
-          <nav className="hidden md:flex items-center gap-6">
-            <NavLink href="#">HOME</NavLink>
-            <NavLink href="#">ABOUT</NavLink>
-            <NavLink href="#">HOW IT WORKS</NavLink>
-            <NavLink href="#">COMPARE</NavLink>
-          </nav>
-          <div className="flex items-center gap-4">
-            <button className="md:hidden p-2">
-              <Menu className="w-6 h-6" />
-            </button>
-          </div>
-        </header>
-
-        {/* Hero Section */}
-        <section className="text-center pt-24 pb-32 px-4">
-          <div className="inline-block bg-blue-500/10 border border-blue-400/30 text-blue-300 text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
-            #NEW: AI-POWERED AUTOMATION PLATFORM
-          </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 max-w-4xl mx-auto leading-tight">
-            AI That Connects Your Tools and Gets Work Done
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
+        <div className="relative max-w-7xl mx-auto px-8 py-32 text-center">
+          <h1 className="text-6xl font-extrabold tracking-tight mb-8">
+            Hosting without surprises
           </h1>
-          <div className="flex justify-center gap-4">
-            <button className="bg-white text-gray-900 font-semibold px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors">
-              START BUILDING
-            </button>
-            <button className="bg-gray-800/50 border border-gray-700 text-white font-semibold px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors">
-              EXPLORE LUMINA
-            </button>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-10">
+            Transparent usage‑based hosting with built‑in cost controls,
+            enterprise‑grade security, and instant provisioning.
+          </p>
+          <div className="flex justify-center gap-4 mb-6">
+            <a href="/signup" className="px-8 py-4 rounded-xl bg-black text-white font-semibold hover:bg-gray-800">
+              Start Free Trial
+            </a>
+            <a href="/pricing" className="px-8 py-4 rounded-xl border border-gray-300 font-semibold hover:bg-gray-100">
+              View Pricing
+            </a>
           </div>
-        </section>
+          <p className="text-sm text-gray-500">7‑day free trial · No credit card required</p>
+        </div>
+      </section>
 
-        {/* Section 2: Build Better Products */}
-        <section className="text-center pt-16 pb-24 px-4">
-            <div className="relative flex flex-col items-center">
-                <h2 className="text-2xl md:text-3xl font-semibold max-w-2xl mx-auto leading-relaxed mb-8">
-                    Build better products. SDKs for your users, MCP servers for LLMs. On a platform made for your team.
-                </h2>
-                <div className="relative mb-8">
-                     <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-lg opacity-50"></div>
-                     <div className="relative w-16 h-16 bg-[#1D2432] border border-gray-700 rounded-2xl flex items-center justify-center shadow-lg">
-                        <Bot className="w-8 h-8 text-blue-400"/>
-                    </div>
-                </div>
-                <div className="h-24 w-px bg-gradient-to-b from-gray-700 to-transparent"></div>
-            </div>
-        </section>
+      {/* Trust Bar */}
+      <section className="border-y border-gray-200 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-sm font-medium text-gray-700">
+          <div className="flex items-center justify-center gap-2"><Shield size={16}/> SOC‑2 Ready</div>
+          <div className="flex items-center justify-center gap-2"><CreditCard size={16}/> Stripe Billing</div>
+          <div className="flex items-center justify-center gap-2"><Lock size={16}/> Google SSO</div>
+          <div className="flex items-center justify-center gap-2"><Server size={16}/> Kubernetes‑Backed</div>
+        </div>
+      </section>
 
-        {/* Section 3: GTM at Full Throttle */}
-        <section className="max-w-screen-xl mx-auto px-6 md:px-10 pb-24">
-            <div className="inline-flex items-center gap-2 bg-gray-800/50 border border-gray-700 text-gray-400 text-xs font-bold px-3 py-1 rounded-md mb-4">
-                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                WHAT WE DO
-            </div>
-            <h3 className="text-2xl md:text-4xl font-semibold max-w-3xl leading-snug">
-                GTM at full throttle. Execute your revenue strategy with precision. Design powerful workflows.
-            </h3>
-        </section>
-      </div>
+      {/* Features */}
+      <section className="max-w-7xl mx-auto px-8 py-24">
+        <div className="grid md:grid-cols-3 gap-10">
+          <Feature icon={<Zap />} title="Instant Provisioning" desc="Deploy apps, sites, and containers globally in seconds." />
+          <Feature icon={<BarChart3 />} title="Usage Transparency" desc="Real‑time visibility into CPU, memory, bandwidth, and spend." />
+          <Feature icon={<Shield />} title="Enterprise Security" desc="SSO, audit logs, isolation, and compliance‑ready architecture." />
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="bg-gray-50">
+        <div className="max-w-7xl mx-auto px-8 py-24">
+          <h2 className="text-4xl font-bold text-center mb-16">How it works</h2>
+          <div className="grid md:grid-cols-4 gap-8">
+            {[
+              'Create your organization',
+              'Start your free trial',
+              'Deploy instantly',
+              'Pay only for what you use',
+            ].map((step, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm">
+                <div className="text-2xl font-bold mb-4">{i + 1}</div>
+                <p className="text-gray-700">{step}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="bg-black text-white">
+        <div className="max-w-7xl mx-auto px-8 py-28 text-center">
+          <h2 className="text-5xl font-bold mb-6">Launch with confidence</h2>
+          <p className="text-xl text-gray-300 mb-10">
+            Full control, transparent pricing, and serious infrastructure — without the enterprise friction.
+          </p>
+          <a href="/signup" className="inline-block px-10 py-4 rounded-xl bg-white text-black font-semibold hover:bg-gray-100">
+            Start Your Free Trial
+          </a>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-400">
+        <div className="max-w-7xl mx-auto px-8 py-12 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
+          <div>© {new Date().getFullYear()} JusHost It</div>
+          <div className="flex gap-6">
+            <a href="/terms" className="hover:text-white">Terms</a>
+            <a href="/privacy" className="hover:text-white">Privacy</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function Feature({ icon, title, desc }: { icon: JSX.Element; title: string; desc: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+      <div className="mb-4 text-black">{icon}</div>
+      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-gray-600">{desc}</p>
     </div>
   );
 }
