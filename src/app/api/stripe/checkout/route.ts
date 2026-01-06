@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { headers } from "next/headers";
+import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
 
 export const runtime = 'nodejs';
 
@@ -12,20 +13,23 @@ export async function POST(req: NextRequest) {
         return new NextResponse("Unauthorized: Missing user ID", { status: 401 });
     }
     
+    const { priceId } = await req.json();
+    if (!priceId) {
+        return new NextResponse("Price ID is required", { status: 400 });
+    }
+
+    // Validate that the priceId corresponds to a known plan
+    if (!Object.keys(PLAN_BY_PRICE_ID).includes(priceId)) {
+        return new NextResponse("Invalid price ID", { status: 400 });
+    }
+
     const userDocRef = adminDb.collection('users').doc(uid);
     const userDoc = await userDocRef.get();
     const email = userDoc.data()?.email;
     let stripeCustomerId = userDoc.data()?.stripeCustomerId;
 
     if (!email) {
-      // This should ideally not happen if user exists
       return new NextResponse("User email not found", { status: 404 });
-    }
-
-    const { priceId } = await req.json();
-
-    if (!priceId) {
-        return new NextResponse("Price ID is required", { status: 400 });
     }
 
     if (!stripeCustomerId) {
@@ -49,12 +53,11 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/#pricing`,
       subscription_data: {
-        trial_period_days: 7,
         metadata: { firebaseUID: uid },
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
     });
 
     return NextResponse.json({ url: session.url });
