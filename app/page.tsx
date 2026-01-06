@@ -40,8 +40,8 @@ export default function LandingPage() {
             <Button size="lg" className="rounded-full px-8" onClick={() => window.location.href = '/login'}>
               Start Building
             </Button>
-            <Button size="lg" variant="outline" className="rounded-full px-8 border-neutral-700" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
-              Explore Features
+            <Button size="lg" variant="outline" className="rounded-full px-8 border-neutral-700" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+              Explore Pricing
             </Button>
           </div>
         </div>
