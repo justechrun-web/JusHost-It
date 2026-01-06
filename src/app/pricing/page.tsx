@@ -109,15 +109,6 @@ export default function PricingPage() {
     };
 
 
-    const handleSelect = (plan: typeof tiers[0]) => {
-      if (plan.href) {
-        router.push(plan.href);
-        return;
-      }
-      startCheckout(plan.id as "pro" | "business" | "starter");
-    }
-
-
   return (
     <div className="bg-background text-foreground">
        <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
@@ -178,17 +169,28 @@ export default function PricingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter>
-                            <Button 
-                                className="w-full" 
-                                variant={tier.featured ? 'default' : 'outline'}
-                                onClick={() => handleSelect(tier)}
-                                disabled={loadingPlan === tier.id || isUserLoading}
-                            >
-                                {loadingPlan === tier.id ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : null}
-                                {tier.cta}
-                            </Button>
+                            {tier.id === 'pro' ? (
+                                <button
+                                    onClick={() => startCheckout("pro")}
+                                    disabled={loadingPlan === 'pro' || isUserLoading}
+                                    className="mt-8 w-full rounded-xl bg-blue-600 py-2 font-medium hover:bg-blue-500 transition-all flex items-center justify-center"
+                                >
+                                    {loadingPlan === 'pro' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Upgrade to Pro
+                                </button>
+                            ) : (
+                                 <Button 
+                                    className="w-full" 
+                                    variant={tier.featured ? 'default' : 'outline'}
+                                    onClick={() => tier.href ? router.push(tier.href) : startCheckout(tier.id as any)}
+                                    disabled={loadingPlan === tier.id || isUserLoading}
+                                >
+                                    {loadingPlan === tier.id ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : null}
+                                    {tier.cta}
+                                </Button>
+                            )}
                         </CardFooter>
                     </Card>
                 ))}
