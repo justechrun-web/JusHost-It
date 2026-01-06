@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ShieldCheck, Database, Lock, CreditCard, GanttChartSquare, Users, Sparkles, Loader2, FileQuestion } from 'lucide-react';
