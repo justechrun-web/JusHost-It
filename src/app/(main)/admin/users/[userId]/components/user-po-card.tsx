@@ -55,7 +55,7 @@ export function UserPurchaseOrderCard({ orgId }: { orgId: string }) {
     }
     setIsAdding(true);
     try {
-        const poCollection = collection(db, 'purchaseOrders');
+        const poCollection = collection(db!, 'purchaseOrders');
         await addDoc(poCollection, {
             orgId,
             poNumber,

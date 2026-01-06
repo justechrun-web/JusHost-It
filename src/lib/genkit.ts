@@ -12,5 +12,11 @@ import { googleAI } from '@genkit-ai/google-genai';
 // This `ai` object is used throughout the server-side of the application
 // to define prompts, flows, and interact with generative models.
 export const ai = genkit({
-  plugins: [googleAI()],
+  plugins: [
+    googleAI({
+      // Use the API key from environment variables for server-side authentication.
+      // This is crucial for environments like App Hosting where OAuth tokens are not available.
+      apiKey: process.env.GEMINI_API_KEY,
+    }),
+  ],
 });

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc } from "firebase/firestore";
 
 type UserProfile = {

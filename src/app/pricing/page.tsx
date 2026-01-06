@@ -1,11 +1,10 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, HardDrive, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';

@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const { user } = useUser();
   const db = useFirestore();
   
-  const userRef = useMemoFirebase(() => user ? doc(db, 'users', user.uid) : null, [user, db]);
+  const userRef = useMemoFirebase(() => user && db ? doc(db, 'users', user.uid) : null, [user, db]);
   const { data: userData, isLoading: isUserLoading } = useDoc(userRef);
 
   const statCards = [

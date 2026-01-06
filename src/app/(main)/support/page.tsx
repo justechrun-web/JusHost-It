@@ -45,7 +45,7 @@ export default function SupportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const ticketsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !db) return null;
     return query(collection(db, `users/${user.uid}/supportTickets`), orderBy('createdAt', 'desc'));
   }, [user, db]);
 
@@ -63,7 +63,7 @@ export default function SupportPage() {
     }
     setIsSubmitting(true);
     try {
-        const ticketsCollection = collection(db, `users/${user.uid}/supportTickets`);
+        const ticketsCollection = collection(db!, `users/${user.uid}/supportTickets`);
         await addDoc(ticketsCollection, {
             userId: user.uid,
             subject,
