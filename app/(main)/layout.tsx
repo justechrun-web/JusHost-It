@@ -1,19 +1,35 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { MainSidebar } from "@/components/main-sidebar";
-import { Header } from "@/components/header";
-import { usePathname } from "next/navigation";
+import * as React from 'react';
+import { useUser } from '@/firebase';
+import { useRouter, usePathname } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { MainSidebar } from '@/components/main-sidebar';
+import { Header } from '@/components/header';
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
-  // The admin layout handles its own structure.
-  if (pathname.startsWith('/admin')) {
-    return <>{children}</>
+  React.useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
-  
+
+  if (!user) {
+    return null; // or a redirect component
+  }
+
   return (
     <SidebarProvider>
       <div className="flex h-screen bg-muted/40">
@@ -27,4 +43,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       </div>
     </SidebarProvider>
   );
+}
+
+export default function MainLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  // The admin layout handles its own structure.
+  if (pathname.startsWith('/admin')) {
+    return <>{children}</>;
+  }
+
+  return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
 }

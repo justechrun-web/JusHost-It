@@ -1,9 +1,8 @@
+'use client';
 
-"use client";
-
-import * as React from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import * as React from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarHeader,
@@ -12,7 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 import {
   HardDrive,
   LayoutGrid,
@@ -22,16 +21,16 @@ import {
   Settings,
   LogOut,
   Shield,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useUser, useAuth } from "@/firebase";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useUser, useAuth } from '@/firebase';
 
 const menuItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/sites", label: "Sites", icon: Server },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/support", label: "Support", icon: LifeBuoy },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
+  { href: '/sites', label: 'Sites', icon: Server },
+  { href: '/billing', label: 'Billing', icon: CreditCard },
+  { href: '/support', label: 'Support', icon: LifeBuoy },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function MainSidebar() {
@@ -48,7 +47,7 @@ export function MainSidebar() {
       });
     }
   }, [user]);
-  
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
@@ -59,7 +58,9 @@ export function MainSidebar() {
       <SidebarHeader>
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <HardDrive className="w-7 h-7 text-sidebar-primary" />
-          <span className="font-bold text-lg font-headline text-sidebar-foreground">JusHostIt</span>
+          <span className="font-bold text-lg font-headline text-sidebar-foreground">
+            JusHostIt
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent className="p-2">
@@ -70,7 +71,7 @@ export function MainSidebar() {
                 asChild
                 isActive={pathname.startsWith(item.href)}
                 className={cn(
-                  pathname.startsWith(item.href) && "bg-sidebar-accent"
+                  pathname.startsWith(item.href) && 'bg-sidebar-accent'
                 )}
               >
                 <Link href={item.href}>
@@ -81,12 +82,12 @@ export function MainSidebar() {
             </SidebarMenuItem>
           ))}
           {isAdmin && (
-             <SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={pathname.startsWith('/admin')}
                 className={cn(
-                  pathname.startsWith('/admin') && "bg-sidebar-accent"
+                  pathname.startsWith('/admin') && 'bg-sidebar-accent'
                 )}
               >
                 <Link href="/admin">

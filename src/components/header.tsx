@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import {
   DropdownMenu,
@@ -8,21 +7,21 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
-import Link from "next/link";
-import { Settings, User, LifeBuoy, LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import Link from 'next/link';
+import { Settings, User, LifeBuoy, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
   const router = useRouter();
-  const userAvatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
+  const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   };
 
@@ -32,13 +31,17 @@ export function Header() {
         <SidebarTrigger />
       </div>
       <div className="flex w-full items-center justify-end gap-4">
-         <Button variant="ghost" onClick={handleLogout} size="sm">
-            <LogOut className="mr-2 h-4 w-4" />
-            Log out
+        <Button variant="ghost" onClick={handleLogout} size="sm">
+          <LogOut className="mr-2 h-4 w-4" />
+          Log out
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-9 w-9 rounded-full"
+            >
               <Avatar className="h-9 w-9">
                 {userAvatar && (
                   <AvatarImage

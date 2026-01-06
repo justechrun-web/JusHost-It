@@ -2,7 +2,6 @@
 
 import React, { useMemo, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
-import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
@@ -16,17 +15,17 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   // useMemo ensures that Firebase is initialized only once on the client
   // and that the services are memoized.
   const firebaseServices = useMemo(() => {
-    if (getApps().length) {
-      const app = getApp();
-      return {
-        app,
-        auth: getAuth(app),
-        firestore: getFirestore(app),
-        functions: getFunctions(app),
-      };
-    }
+    const clientFirebaseConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+    };
     
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length > 0 ? getApp() : initializeApp(clientFirebaseConfig);
+    
     return {
       app,
       auth: getAuth(app),
