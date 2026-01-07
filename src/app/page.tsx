@@ -1,121 +1,186 @@
 'use client';
 
-import { Check, Server, Shield, BarChart3, Zap, CreditCard, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from 'next/link';
 
-// =====================
-// app/page.tsx — High‑quality marketing landing page
-// =====================
-// Tailwind-only, no external UI libs, production-safe
-
-export default function JusHostItLanding() {
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
-        <div className="text-xl font-bold">JusHost It</div>
-        <nav className="flex items-center gap-6 text-sm font-medium">
-          <a href="/pricing" className="hover:text-black text-gray-600">Pricing</a>
-          <a href="/trust" className="hover:text-black text-gray-600">Trust</a>
-          <a href="/login" className="hover:text-black text-gray-600">Login</a>
-          <a href="/signup" className="px-4 py-2 rounded-lg bg-black text-white hover:bg-gray-800">Get Started</a>
+    <div className="flex flex-col min-h-screen">
+      <header className="px-4 lg:px-6 h-14 flex items-center">
+        <Link href="#" className="flex items-center justify-center" prefetch={false}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6"
+          >
+            <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
+          </svg>
+          <span className="sr-only">JusHostIt</span>
+        </Link>
+        <nav className="ml-auto flex gap-4 sm:gap-6">
+          <Link href="/pricing" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            Pricing
+          </Link>
+          <Link href="/about" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            About
+          </Link>
+          <Link href="/contact" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            Contact
+          </Link>
+          <Link href="/login" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            Login
+          </Link>
+          <Button asChild>
+            <Link href="/signup">Sign Up</Link>
+          </Button>
         </nav>
       </header>
-
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100" />
-        <div className="relative max-w-7xl mx-auto px-8 py-32 text-center">
-          <h1 className="text-6xl font-extrabold tracking-tight mb-8">
-            Hosting without surprises
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-10">
-            Transparent usage‑based hosting with built‑in cost controls,
-            enterprise‑grade security, and instant provisioning.
-          </p>
-          <div className="flex justify-center gap-4 mb-6">
-            <a href="/signup" className="px-8 py-4 rounded-xl bg-black text-white font-semibold hover:bg-gray-800">
-              Start Free Trial
-            </a>
-            <a href="/pricing" className="px-8 py-4 rounded-xl border border-gray-300 font-semibold hover:bg-gray-100">
-              View Pricing
-            </a>
-          </div>
-          <p className="text-sm text-gray-500">7‑day free trial · No credit card required</p>
-        </div>
-      </section>
-
-      {/* Trust Bar */}
-      <section className="border-y border-gray-200 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-sm font-medium text-gray-700">
-          <div className="flex items-center justify-center gap-2"><Shield size={16}/> SOC‑2 Ready</div>
-          <div className="flex items-center justify-center gap-2"><CreditCard size={16}/> Stripe Billing</div>
-          <div className="flex items-center justify-center gap-2"><Lock size={16}/> Google SSO</div>
-          <div className="flex items-center justify-center gap-2"><Server size={16}/> Kubernetes‑Backed</div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="max-w-7xl mx-auto px-8 py-24">
-        <div className="grid md:grid-cols-3 gap-10">
-          <Feature icon={<Zap />} title="Instant Provisioning" desc="Deploy apps, sites, and containers globally in seconds." />
-          <Feature icon={<BarChart3 />} title="Usage Transparency" desc="Real‑time visibility into CPU, memory, bandwidth, and spend." />
-          <Feature icon={<Shield />} title="Enterprise Security" desc="SSO, audit logs, isolation, and compliance‑ready architecture." />
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="bg-gray-50">
-        <div className="max-w-7xl mx-auto px-8 py-24">
-          <h2 className="text-4xl font-bold text-center mb-16">How it works</h2>
-          <div className="grid md:grid-cols-4 gap-8">
-            {[
-              'Create your organization',
-              'Start your free trial',
-              'Deploy instantly',
-              'Pay only for what you use',
-            ].map((step, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm">
-                <div className="text-2xl font-bold mb-4">{i + 1}</div>
-                <p className="text-gray-700">{step}</p>
+      <main className="flex-1">
+        <section className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
+              <div className="flex flex-col justify-center space-y-4">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
+                    Deploy Your Next-Gen Apps with Ease
+                  </h1>
+                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                    JusHostIt is a cutting-edge platform that simplifies the deployment and management of modern web
+                    applications. Focus on your code, we'll handle the rest.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                  <Link
+                    href="/signup"
+                    className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                    prefetch={false}
+                  >
+                    Get Started
+                  </Link>
+                  <Link
+                    href="/contact"
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                    prefetch={false}
+                  >
+                    Contact Sales
+                  </Link>
+                </div>
               </div>
-            ))}
+              <img
+                src="https://picsum.photos/seed/1/600/400"
+                width="550"
+                height="550"
+                alt="Hero"
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
+              />
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-black text-white">
-        <div className="max-w-7xl mx-auto px-8 py-28 text-center">
-          <h2 className="text-5xl font-bold mb-6">Launch with confidence</h2>
-          <p className="text-xl text-gray-300 mb-10">
-            Full control, transparent pricing, and serious infrastructure — without the enterprise friction.
-          </p>
-          <a href="/signup" className="inline-block px-10 py-4 rounded-xl bg-white text-black font-semibold hover:bg-gray-100">
-            Start Your Free Trial
-          </a>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400">
-        <div className="max-w-7xl mx-auto px-8 py-12 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
-          <div>© {new Date().getFullYear()} JusHost It</div>
-          <div className="flex gap-6">
-            <a href="/terms" className="hover:text-white">Terms</a>
-            <a href="/privacy" className="hover:text-white">Privacy</a>
+        </section>
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-muted-foreground px-3 py-1 text-sm text-primary-foreground">
+                  Key Features
+                </div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+                  Everything You Need to Succeed
+                </h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  JusHostIt provides a comprehensive suite of tools and services to help you build, deploy, and scale
+                  your applications with confidence.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
+              <div className="grid gap-1">
+                <h3 className="text-xl font-bold">Seamless Deployment</h3>
+                <p className="text-muted-foreground">
+                  Connect your Git repository and automatically deploy your applications with every push.
+                </p>
+              </div>
+              <div className="grid gap-1">
+                <h3 className="text-xl font-bold">Scalable Infrastructure</h3>
+                <p className="text-muted-foreground">
+                  Our platform is built on a modern, scalable infrastructure that can handle any workload.
+                </p>
+              </div>
+              <div className="grid gap-1">
+                <h3 className="text-xl font-bold">Global CDN</h3>
+                <p className="text-muted-foreground">
+                  Serve your content from the edge with our global content delivery network for lightning-fast
+                  performance.
+                </p>
+              </div>
+              <div className="grid gap-1">
+                <h3 className="text-xl font-bold">Custom Domains</h3>
+                <p className="text-muted-foreground">
+                  Easily configure custom domains for your applications with automatic SSL encryption.
+                </p>
+              </div>
+              <div className="grid gap-1">
+                <h3 className="text-xl font-bold">Analytics and Monitoring</h3>
+                <p className="text-muted-foreground">
+                  Gain valuable insights into your application's performance with our built-in analytics and monitoring
+                  tools.
+                </p>
+              </div>
+              <div className="grid gap-1">
+                <h3 className="text-xl font-bold">Developer-Friendly Tools</h3>
+                <p className="text-muted-foreground">
+                  We provide a suite of developer-friendly tools and integrations to streamline your workflow.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
+        <section className="w-full py-12 md:py-24 lg:py-32">
+          <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
+                Ready to Get Started?
+              </h2>
+              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Sign up today and experience the future of application deployment.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 min-[400px]:flex-row justify-center">
+              <Link
+                href="/signup"
+                className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                prefetch={false}
+              >
+                Sign Up
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                prefetch={false}
+              >
+                Contact Sales
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+        <p className="text-xs text-muted-foreground">&copy; 2024 JusHostIt. All rights reserved.</p>
+        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+          <Link href="/terms" className="text-xs hover:underline underline-offset-4" prefetch={false}>
+            Terms of Service
+          </Link>
+          <Link href="/privacy" className="text-xs hover:underline underline-offset-4" prefetch={false}>
+            Privacy
+          </Link>
+        </nav>
       </footer>
     </div>
-  );
-}
-
-function Feature({ icon, title, desc }: { icon: JSX.Element; title: string; desc: string }) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-      <div className="mb-4 text-black">{icon}</div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-600">{desc}</p>
-    </div>
-  );
+  )
 }

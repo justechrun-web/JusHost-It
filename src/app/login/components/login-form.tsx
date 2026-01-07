@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import {
   signInWithPopup,
   GoogleAuthProvider,
-  fetchSignInMethodsForEmail,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
+  signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
@@ -60,6 +57,7 @@ async function createSession(idToken: string) {
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(1, { message: "Password is required." }),
 });
 
 
@@ -75,52 +73,20 @@ export function LoginForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
+      password: ""
     },
     mode: 'onTouched'
   });
-
-  // Handle the email link sign-in on page load
-  useEffect(() => {
-    if (auth && isSignInWithEmailLink(auth, window.location.href)) {
-      let emailFromStorage = window.localStorage.getItem('emailForSignIn');
-      if (!emailFromStorage) {
-        // This can happen if the user opens the link on a different device.
-        // We can ask them for their email again.
-        emailFromStorage = window.prompt('Please provide your email for confirmation');
-      }
-      
-      if (emailFromStorage) {
-        setLoading(true);
-        signInWithEmailLink(auth, emailFromStorage, window.location.href)
-          .then(async (result) => {
-            window.localStorage.removeItem('emailForSignIn');
-            const idToken = await result.user.getIdToken();
-            await createSession(idToken);
-            router.push('/dashboard');
-          })
-          .catch((err) => {
-            setError(mapAuthError(err.code));
-            setLoading(false);
-          });
-      }
-    }
-  }, [auth, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth) return;
     setLoading(true);
     setError(null);
     try {
-      await sendSignInLinkToEmail(auth, values.email, {
-        url: `${window.location.origin}/login`,
-        handleCodeInApp: true,
-      });
-      window.localStorage.setItem('emailForSignIn', values.email);
-      toast({
-        title: 'Check your email',
-        description: `A sign-in link has been sent to ${values.email}.`,
-      });
-      form.reset();
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const idToken = await userCredential.user.getIdToken();
+      await createSession(idToken);
+      router.push('/dashboard');
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
@@ -146,30 +112,13 @@ export function LoginForm() {
       await createSession(idToken);
       router.push('/dashboard');
     } catch (err: any) {
-      if (err.code === 'auth/account-exists-with-different-credential') {
-         const email = err.customData.email;
-         if (!email) {
-            setError("Could not determine email. Please try signing in with your original method.");
-            return;
-         }
-         const methods = await fetchSignInMethodsForEmail(auth, email);
-         const message = `An account already exists with this email using the ${methods[0]} provider. Please sign in with that method.`;
-         setError(message);
-         toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: message,
-        });
-
-      } else {
-        const friendlyError = mapAuthError(err.code);
-        setError(friendlyError);
-        toast({
-          variant: 'destructive',
-          title: 'Google Login Failed',
-          description: friendlyError,
-        });
-      }
+      const friendlyError = mapAuthError(err.code);
+      setError(friendlyError);
+      toast({
+        variant: 'destructive',
+        title: 'Google Login Failed',
+        description: friendlyError,
+      });
     } finally {
       setGoogleLoading(false);
     }
@@ -199,9 +148,22 @@ export function LoginForm() {
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Continue with Email
+            Log In
             </Button>
         </form>
         </Form>

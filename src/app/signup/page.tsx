@@ -1,22 +1,18 @@
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
-import Image from 'next/image';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { GraduationCap, Loader2, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink
+  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -30,6 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 
+
 function mapAuthError(code: string): string {
   switch (code) {
     case 'auth/email-already-in-use':
@@ -38,6 +35,8 @@ function mapAuthError(code: string): string {
       return 'Sign-up process was cancelled.';
     case 'auth/invalid-email':
       return 'Please enter a valid email address.';
+    case 'auth/weak-password':
+      return 'Password should be at least 6 characters.';
     default:
       return 'An unexpected error occurred during signup. Please try again.';
   }
@@ -57,11 +56,11 @@ async function createSession(idToken: string) {
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
 function SignupForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const auth = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -72,62 +71,22 @@ function SignupForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
+      password: ""
     },
     mode: 'onTouched'
   });
-
-  // Handle email link sign-in on component mount
-  useEffect(() => {
-    if (!auth) return;
-    const email = window.localStorage.getItem('emailForSignIn');
-    if (isSignInWithEmailLink(auth, window.location.href) && email) {
-      signInWithEmailLink(auth, email, window.location.href)
-        .then(async (result) => {
-          window.localStorage.removeItem('emailForSignIn');
-          const idToken = await result.user.getIdToken();
-          await createSession(idToken);
-          
-          const plan = searchParams.get('plan');
-          const priceId = searchParams.get('priceId');
-          if (plan && priceId) {
-            router.push(`/pricing?plan=${plan}`);
-          } else {
-            router.push('/dashboard');
-          }
-        })
-        .catch((err) => {
-          setError(mapAuthError(err.code));
-        });
-    }
-  }, [auth, router, searchParams]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth) return;
     setLoading(true);
     setError(null);
-    const plan = searchParams.get('plan');
-    const priceId = searchParams.get('priceId');
-    let redirectUrl = `${window.location.origin}/signup`;
-    if (plan && priceId) {
-        redirectUrl += `?plan=${plan}&priceId=${priceId}`;
-    }
-
-
     try {
-      await sendSignInLinkToEmail(auth, values.email, {
-        url: redirectUrl,
-        handleCodeInApp: true,
-      });
-      window.localStorage.setItem('emailForSignIn', values.email);
-      
-      toast({
-        title: 'Check your email',
-        description: `A sign-in link has been sent to ${values.email}. Click it to complete your registration.`,
-      });
-      form.reset();
-
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const idToken = await userCredential.user.getIdToken();
+        await createSession(idToken);
+        router.push('/dashboard');
     } catch (err: any) {
-      const friendlyError = err.code ? mapAuthError(err.code) : (err.message || 'An unexpected error occurred.');
+      const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
       toast({
         variant: 'destructive',
@@ -166,12 +125,12 @@ function SignupForm() {
     return (
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
-            <GraduationCap className="h-8 w-8 mx-auto text-primary" />
+            <HardDrive className="h-8 w-8 mx-auto text-primary" />
             <h1 className="text-3xl font-bold font-headline">
               Create an Account
             </h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email to get started with Learnsphere.
+              Enter your details to get started with JusHostIt.
             </p>
           </div>
           <Form {...form}>
@@ -196,9 +155,22 @@ function SignupForm() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Continue with Email
+                Sign Up
               </Button>
             </form>
           </Form>
@@ -249,24 +221,9 @@ function SignupForm() {
 }
 
 function SignupPageComponent() {
-  const loginImage = PlaceHolderImages.find((img) => img.id === 'login-splash');
-
   return (
-      <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-        <div className="flex items-center justify-center py-12">
-            <SignupForm />
-        </div>
-        <div className="hidden bg-muted lg:block relative">
-          {loginImage && (
-            <Image
-              src={loginImage.imageUrl}
-              alt={loginImage.description}
-              data-ai-hint={loginImage.imageHint}
-              fill
-              className="object-cover"
-            />
-          )}
-        </div>
+      <div className="w-full flex items-center justify-center min-h-screen">
+          <SignupForm />
       </div>
   );
 }
