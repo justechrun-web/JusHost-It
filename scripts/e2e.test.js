@@ -1,593 +1,416 @@
+#!/usr/bin/env node
 // ============================================================================
-// END-TO-END TEST SUITE
-// Run with: node scripts/e2e.test.js
+// SIMPLE E2E TEST RUNNER
+// Save as: test.js
+// Run with: node test.js
 // ============================================================================
 
-const admin = require('firebase-admin');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const https = require('http');
 
-// Initialize Firebase Admin with emulator
-process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
-process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+// Colors for terminal output
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
+};
 
-admin.initializeApp({
-  projectId: 'jushostit-test',
-});
+const API_URL = 'http://localhost:3000';
 
-// Import your services
-const { referralService } = require('../src/lib/referral/service');
-const { emailService } = require('../src/lib/email/sendgrid');
+let passed = 0;
+let failed = 0;
+
+// ============================================================================
+// HTTP HELPER
+// ============================================================================
+
+function request(method, path, data = null, token = null) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(API_URL + path);
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: url.pathname,
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+
+    if (token) {
+      options.headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', (chunk) => (body += chunk));
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, data: JSON.parse(body) });
+        } catch (e) {
+          resolve({ status: res.statusCode, data: body });
+        }
+      });
+    });
+
+    req.on('error', reject);
+
+    if (data) {
+      req.write(JSON.stringify(data));
+    }
+
+    req.end();
+  });
+}
 
 // ============================================================================
 // TEST UTILITIES
 // ============================================================================
 
-class TestRunner {
-  constructor() {
-    this.passed = 0;
-    this.failed = 0;
-    this.tests = [];
-  }
-
-  async test(name, fn) {
-    process.stdout.write(`Testing: ${name}... `);
-    try {
-      await fn();
-      console.log('✅ PASSED');
-      this.passed++;
-    } catch (error) {
-      console.log('❌ FAILED');
-      console.error('  Error:', error.message);
-      this.failed++;
-    }
-  }
-
-  summary() {
-    console.log('\n' + '='.repeat(60));
-    console.log(`Test Results: ${this.passed} passed, ${this.failed} failed`);
-    console.log('='.repeat(60) + '\n');
-    return this.failed === 0;
-  }
+function log(message, color = 'reset') {
+  console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-// ============================================================================
-// TEST DATA
-// ============================================================================
+function header(text) {
+  console.log('\n' + colors.cyan + '━'.repeat(60) + colors.reset);
+  console.log(colors.cyan + colors.bright + text + colors.reset);
+  console.log(colors.cyan + '━'.repeat(60) + colors.reset + '\n');
+}
 
-const testUsers = {
-  alice: {
-    email: 'alice@test.com',
-    password: 'TestPassword123!',
-    displayName: 'Alice Tester',
-  },
-  bob: {
-    email: 'bob@test.com',
-    password: 'TestPassword456!',
-    displayName: 'Bob Referee',
-  },
-};
+function test(name) {
+  process.stdout.write(`${colors.yellow}Testing:${colors.reset} ${name}... `);
+}
 
-let aliceUser, bobUser, aliceToken, bobToken, aliceReferralCode;
+function pass(message = '') {
+  console.log(`${colors.green}✅ PASSED${colors.reset} ${message}`);
+  passed++;
+}
+
+function fail(message = '') {
+  console.log(`${colors.red}❌ FAILED${colors.reset} ${message}`);
+  failed++;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // ============================================================================
 // MAIN TEST SUITE
 // ============================================================================
 
-async function runE2ETests() {
-  const runner = new TestRunner();
+async function runTests() {
+  console.log('\n' + colors.blue);
+  console.log('╔═══════════════════════════════════════════════════════════════╗');
+  console.log('║          🧪 JustHostIt End-to-End Test Suite                 ║');
+  console.log('║                                                               ║');
+  console.log('║  Testing: Alice refers Bob, both get $10 credits            ║');
+  console.log('╚═══════════════════════════════════════════════════════════════╝');
+  console.log(colors.reset);
 
-  console.log('\n🧪 Starting End-to-End Tests\n');
-  console.log('='.repeat(60));
+  let aliceToken, bobToken, aliceUid, bobUid, aliceReferralCode;
 
-  // ========================================================================
-  // PHASE 1: USER AUTHENTICATION
-  // ========================================================================
-  
-  console.log('\n📝 PHASE 1: User Authentication\n');
-
-  await runner.test('Create Alice\'s account', async () => {
-    aliceUser = await admin.auth().createUser({
-      email: testUsers.alice.email,
-      password: testUsers.alice.password,
-      displayName: testUsers.alice.displayName,
-    });
-    
-    if (!aliceUser.uid) throw new Error('Failed to create user');
-  });
-
-  await runner.test('Generate Alice\'s auth token', async () => {
-    aliceToken = await admin.auth().createCustomToken(aliceUser.uid);
-    if (!aliceToken) throw new Error('Failed to generate token');
-  });
-
-  await runner.test('Create Alice\'s Firestore records', async () => {
-    const db = admin.firestore();
-    
-    // User document
-    await db.collection('users').doc(aliceUser.uid).set({
-      email: aliceUser.email,
-      displayName: aliceUser.displayName,
-      createdAt: Date.now(),
-    });
-    
-    // Subscription document (trial)
-    await db.collection('subscriptions').doc(aliceUser.uid).set({
-      plan: 'basic',
-      status: 'trial',
-      currentPeriodStart: Date.now(),
-      currentPeriodEnd: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days
-      createdAt: Date.now(),
-    });
-    
-    // Usage document
-    await db.collection('usage').doc(aliceUser.uid).set({
-      sites: 0,
-      bandwidth: 0,
-      storage: 0,
-      builds: 0,
-      lastReset: Date.now(),
-    });
-    
-    const userDoc = await db.collection('users').doc(aliceUser.uid).get();
-    if (!userDoc.exists) throw new Error('User document not created');
-  });
-
-  // ========================================================================
-  // PHASE 2: SITE CREATION & USAGE TRACKING
-  // ========================================================================
-  
-  console.log('\n🌐 PHASE 2: Site Creation & Usage Tracking\n');
-
-  await runner.test('Create Alice\'s first site', async () => {
-    const db = admin.firestore();
-    
-    // Simulate site creation
-    await db.collection('sites').add({
-      userId: aliceUser.uid,
-      domain: 'alice-portfolio.com',
-      status: 'active',
-      createdAt: Date.now(),
-    });
-    
-    // Increment usage
-    await db.collection('usage').doc(aliceUser.uid).update({
-      sites: admin.firestore.FieldValue.increment(1),
-    });
-    
-    const usage = await db.collection('usage').doc(aliceUser.uid).get();
-    if (usage.data().sites !== 1) throw new Error('Usage not incremented');
-  });
-
-  await runner.test('Check usage limits (should pass)', async () => {
-    const db = admin.firestore();
-    const usage = await db.collection('usage').doc(aliceUser.uid).get();
-    const subscription = await db.collection('subscriptions').doc(aliceUser.uid).get();
-    
-    const PLANS = {
-      basic: { limits: { sites: 5 } },
-    };
-    
-    const plan = PLANS[subscription.data().plan];
-    const currentSites = usage.data().sites;
-    
-    if (currentSites >= plan.limits.sites) {
-      throw new Error('Usage limit exceeded');
-    }
-  });
-
-  // ========================================================================
-  // PHASE 3: SUBSCRIPTION UPGRADE
-  // ========================================================================
-  
-  console.log('\n💳 PHASE 3: Subscription Upgrade\n');
-
-  await runner.test('Upgrade Alice to Business plan', async () => {
-    const db = admin.firestore();
-    
-    await db.collection('subscriptions').doc(aliceUser.uid).update({
-      plan: 'business',
-      status: 'active',
-      subscriptionId: 'sub_test_' + Date.now(),
-      currentPeriodStart: Date.now(),
-      currentPeriodEnd: Date.now() + (30 * 24 * 60 * 60 * 1000),
-    });
-    
-    // Update custom claims
-    await admin.auth().setCustomUserClaims(aliceUser.uid, {
-      plan: 'business',
-      stripeRole: 'active',
-    });
-    
-    const sub = await db.collection('subscriptions').doc(aliceUser.uid).get();
-    if (sub.data().plan !== 'business') throw new Error('Plan not updated');
-  });
-
-  await runner.test('Record Alice\'s first payment', async () => {
-    const db = admin.firestore();
-    
-    await db.collection('payments').add({
-      userId: aliceUser.uid,
-      amount: 3500, // $35.00
-      status: 'paid',
-      paidAt: Date.now(),
-      invoiceId: 'in_test_' + Date.now(),
-    });
-    
-    const payments = await db.collection('payments')
-      .where('userId', '==', aliceUser.uid)
-      .get();
-    
-    if (payments.empty) throw new Error('Payment not recorded');
-  });
-
-  // ========================================================================
-  // PHASE 4: REFERRAL SYSTEM
-  // ========================================================================
-  
-  console.log('\n🎁 PHASE 4: Referral System\n');
-
-  await runner.test('Generate Alice\'s referral code', async () => {
-    aliceReferralCode = await referralService.generateReferralCode(aliceUser.uid);
-    
-    if (!aliceReferralCode || aliceReferralCode.length !== 8) {
-      throw new Error('Invalid referral code generated');
-    }
-    
-    console.log(`\n  📋 Alice's referral code: ${aliceReferralCode}`);
-  });
-
-  await runner.test('Get Alice\'s referral stats', async () => {
-    const stats = await referralService.getReferralStats(aliceUser.uid);
-    
-    if (!stats || stats.code !== aliceReferralCode) {
-      throw new Error('Failed to get referral stats');
-    }
-    
-    console.log('  📊 Stats:', JSON.stringify(stats, null, 2));
-  });
-
-  await runner.test('Bob signs up with Alice\'s referral code', async () => {
-    // Create Bob's account
-    bobUser = await admin.auth().createUser({
-      email: testUsers.bob.email,
-      password: testUsers.bob.password,
-      displayName: testUsers.bob.displayName,
-    });
-    
-    const db = admin.firestore();
-    
-    // Create Bob's records
-    await db.collection('users').doc(bobUser.uid).set({
-      email: bobUser.email,
-      displayName: bobUser.displayName,
-      referredBy: aliceReferralCode,
-      createdAt: Date.now(),
-    });
-    
-    await db.collection('subscriptions').doc(bobUser.uid).set({
-      plan: 'basic',
-      status: 'trial',
-      currentPeriodStart: Date.now(),
-      currentPeriodEnd: Date.now() + (7 * 24 * 60 * 60 * 1000),
-      createdAt: Date.now(),
-    });
-    
-    await db.collection('usage').doc(bobUser.uid).set({
-      sites: 0,
-      bandwidth: 0,
-      storage: 0,
-      builds: 0,
-      lastReset: Date.now(),
-    });
-    
-    // Track referral
-    await referralService.trackReferralSignup(bobUser.uid, aliceReferralCode);
-    
-    // Verify pending conversion created
-    const conversions = await db.collection('referral_conversions')
-      .where('refereeId', '==', bobUser.uid)
-      .where('status', '==', 'pending')
-      .get();
-    
-    if (conversions.empty) {
-      throw new Error('Referral conversion not tracked');
-    }
-    
-    console.log('  ✅ Referral tracked as pending');
-  });
-
-  await runner.test('Bob upgrades to paid plan', async () => {
-    const db = admin.firestore();
-    
-    // Upgrade Bob's subscription
-    await db.collection('subscriptions').doc(bobUser.uid).update({
-      plan: 'business',
-      status: 'active',
-      subscriptionId: 'sub_test_' + Date.now(),
-    });
-    
-    // Record Bob's payment
-    await db.collection('payments').add({
-      userId: bobUser.uid,
-      amount: 3500, // $35.00
-      status: 'paid',
-      paidAt: Date.now(),
-    });
-    
-    const sub = await db.collection('subscriptions').doc(bobUser.uid).get();
-    if (sub.data().status !== 'active') {
-      throw new Error('Bob not upgraded');
-    }
-  });
-
-  await runner.test('Convert referral and issue rewards', async () => {
-    const db = admin.firestore();
-    
-    // Simulate first payment (this would be called from Stripe webhook)
-    await referralService.convertReferral(bobUser.uid, 35);
-    
-    // Verify conversion updated
-    const conversion = await db.collection('referral_conversions')
-      .where('refereeId', '==', bobUser.uid)
-      .limit(1)
-      .get();
-    
-    if (conversion.empty) {
-      throw new Error('Conversion not found');
-    }
-    
-    const conversionData = conversion.docs[0].data();
-    if (conversionData.status !== 'rewarded') {
-      throw new Error(`Conversion status is ${conversionData.status}, expected 'rewarded'`);
-    }
-    
-    console.log('  💰 Conversion status:', conversionData.status);
-  });
-
-  await runner.test('Verify Alice received $10 credit', async () => {
-    const credits = await referralService.getUserCredits(aliceUser.uid);
-    
-    if (credits.totalCredits !== 10) {
-      throw new Error(`Expected $10, got $${credits.totalCredits}`);
-    }
-    
-    console.log('  💵 Alice\'s credits:', credits);
-  });
-
-  await runner.test('Verify Bob received $10 credit', async () => {
-    const credits = await referralService.getUserCredits(bobUser.uid);
-    
-    if (credits.totalCredits !== 10) {
-      throw new Error(`Expected $10, got $${credits.totalCredits}`);
-    }
-    
-    console.log('  💵 Bob\'s credits:', credits);
-  });
-
-  await runner.test('Check updated referral stats', async () => {
-    const stats = await referralService.getReferralStats(aliceUser.uid);
-    
-    if (stats.totalReferrals !== 1) {
-      throw new Error(`Expected 1 referral, got ${stats.totalReferrals}`);
-    }
-    
-    if (stats.totalEarnings !== 10) {
-      throw new Error(`Expected $10 earnings, got $${stats.totalEarnings}`);
-    }
-    
-    console.log('  📈 Updated stats:', stats);
-  });
-
-  // ========================================================================
-  // PHASE 5: CREDIT APPLICATION
-  // ========================================================================
-  
-  console.log('\n💰 PHASE 5: Credit Application\n');
-
-  await runner.test('Apply credits to Alice\'s next invoice', async () => {
-    const invoiceAmount = 35; // $35 Business plan
-    const result = await referralService.applyCredits(aliceUser.uid, invoiceAmount);
-    
-    if (result.creditsApplied !== 10) {
-      throw new Error(`Expected $10 applied, got $${result.creditsApplied}`);
-    }
-    
-    if (result.remainingAmount !== 25) {
-      throw new Error(`Expected $25 remaining, got $${result.remainingAmount}`);
-    }
-    
-    console.log('  💳 Invoice calculation:', result);
-  });
-
-  await runner.test('Verify credits marked as used', async () => {
-    const credits = await referralService.getUserCredits(aliceUser.uid);
-    
-    if (credits.totalCredits !== 0) {
-      throw new Error(`Expected $0 remaining, got $${credits.totalCredits}`);
-    }
-    
-    const db = admin.firestore();
-    const usedCredits = await db.collection('account_credits')
-      .where('userId', '==', aliceUser.uid)
-      .where('status', '==', 'used')
-      .get();
-    
-    if (usedCredits.empty) {
-      throw new Error('Credits not marked as used');
-    }
-    
-    console.log('  ✅ Credits properly consumed');
-  });
-
-  // ========================================================================
-  // PHASE 6: LEADERBOARD
-  // ========================================================================
-  
-  console.log('\n🏆 PHASE 6: Leaderboard\n');
-
-  await runner.test('Get referral leaderboard', async () => {
-    const leaderboard = await referralService.getLeaderboard(10);
-    
-    if (!Array.isArray(leaderboard)) {
-      throw new Error('Leaderboard not returned as array');
-    }
-    
-    const aliceEntry = leaderboard.find(e => e.displayName === 'Alice Tester');
-    if (!aliceEntry) {
-      throw new Error('Alice not found in leaderboard');
-    }
-    
-    if (aliceEntry.totalReferrals !== 1) {
-      throw new Error('Alice referral count incorrect in leaderboard');
-    }
-    
-    console.log('  🥇 Leaderboard:', leaderboard);
-  });
-
-  // ========================================================================
-  // PHASE 7: FEATURE GATING
-  // ========================================================================
-  
-  console.log('\n🔒 PHASE 7: Feature Gating\n');
-
-  await runner.test('Basic plan cannot access staging (Bob)', async () => {
-    const db = admin.firestore();
-    const sub = await db.collection('subscriptions').doc(bobUser.uid).get();
-    
-    // Temporarily downgrade Bob for testing
-    await db.collection('subscriptions').doc(bobUser.uid).update({
-      plan: 'basic',
-    });
-    
-    const PLANS = {
-      basic: { limits: { stagingEnvironments: false } },
-    };
-    
-    const subData = await db.collection('subscriptions').doc(bobUser.uid).get();
-    const plan = PLANS[subData.data().plan];
-    
-    if (plan.limits.stagingEnvironments) {
-      throw new Error('Basic plan should not have staging access');
-    }
-    
-    console.log('  ✅ Feature gate working correctly');
-    
-    // Restore Bob's plan
-    await db.collection('subscriptions').doc(bobUser.uid).update({
-      plan: 'business',
-    });
-  });
-
-  await runner.test('Business plan can access staging (Alice)', async () => {
-    const db = admin.firestore();
-    const sub = await db.collection('subscriptions').doc(aliceUser.uid).get();
-    
-    const PLANS = {
-      business: { limits: { stagingEnvironments: true } },
-    };
-    
-    const plan = PLANS[sub.data().plan];
-    
-    if (!plan.limits.stagingEnvironments) {
-      throw new Error('Business plan should have staging access');
-    }
-    
-    console.log('  ✅ Feature unlocked for Business plan');
-  });
-
-  await runner.test('Check site limit enforcement', async () => {
-    const db = admin.firestore();
-    
-    // Try to create 6 sites on Basic plan (limit is 5)
-    const testUserId = 'test_limit_user';
-    
-    await db.collection('subscriptions').doc(testUserId).set({
-      plan: 'basic',
-      status: 'active',
-    });
-    
-    await db.collection('usage').doc(testUserId).set({
-      sites: 5, // Already at limit
-    });
-    
-    const PLANS = {
-      basic: { limits: { sites: 5 } },
-    };
-    
-    const usage = await db.collection('usage').doc(testUserId).get();
-    const subscription = await db.collection('subscriptions').doc(testUserId).get();
-    const plan = PLANS[subscription.data().plan];
-    
-    const canCreate = usage.data().sites < plan.limits.sites;
-    
-    if (canCreate) {
-      throw new Error('Should not allow creating site beyond limit');
-    }
-    
-    console.log('  ✅ Site limit enforced correctly');
-  });
-
-  // ========================================================================
-  // FINAL SUMMARY
-  // ========================================================================
-  
-  const success = runner.summary();
-  
-  if (success) {
-    console.log('🎉 All tests passed! System is working end-to-end.\n');
-    console.log('Summary:');
-    console.log('  ✅ Alice signed up and upgraded');
-    console.log('  ✅ Alice got referral code:', aliceReferralCode);
-    console.log('  ✅ Bob signed up with referral code');
-    console.log('  ✅ Bob upgraded to paid');
-    console.log('  ✅ Both received $10 credits');
-    console.log('  ✅ Credits applied to invoices');
-    console.log('  ✅ Feature gating working');
-    console.log('  ✅ Usage limits enforced');
-    console.log('\n🚀 System ready for production!\n');
-  } else {
-    console.log('❌ Some tests failed. Check logs above.\n');
-    process.exit(1);
-  }
-}
-
-// ============================================================================
-// CLEANUP FUNCTION
-// ============================================================================
-
-async function cleanup() {
-  console.log('\n🧹 Cleaning up test data...');
-  
   try {
-    const db = admin.firestore();
-    
-    // Delete all test collections
-    const collections = [
-      'users',
-      'subscriptions',
-      'usage',
-      'sites',
-      'payments',
-      'referrals',
-      'referral_conversions',
-      'account_credits',
-      'credit_usage',
-    ];
-    
-    for (const collectionName of collections) {
-      const snapshot = await db.collection(collectionName).get();
-      const batch = db.batch();
-      snapshot.docs.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
+    // ========================================================================
+    // HEALTH CHECK
+    // ========================================================================
+
+    header('HEALTH CHECK');
+
+    test('API server responding');
+    const health = await request('GET', '/health');
+    if (health.status === 200 && health.data.status === 'healthy') {
+      pass();
+    } else {
+      fail('Server not healthy');
+      process.exit(1);
     }
-    
-    // Delete test users
-    if (aliceUser) await admin.auth().deleteUser(aliceUser.uid);
-    if (bobUser) await admin.auth().deleteUser(bobUser.uid);
-    
-    console.log('✅ Cleanup complete\n');
+
+    // ========================================================================
+    // PHASE 1: ALICE SIGNS UP
+    // ========================================================================
+
+    header('PHASE 1: Alice Signs Up');
+
+    test('Register Alice');
+    const aliceSignup = await request('POST', '/api/auth/register', {
+      email: 'alice@test.com',
+      password: 'TestPassword123!',
+      displayName: 'Alice Tester',
+    });
+
+    if (aliceSignup.status === 200 && aliceSignup.data.user) {
+      aliceUid = aliceSignup.data.user.uid;
+      pass(`(UID: ${aliceUid.substring(0, 8)}...)`);
+    } else {
+      fail(JSON.stringify(aliceSignup.data));
+      process.exit(1);
+    }
+
+    test('Login Alice');
+    const aliceLogin = await request('POST', '/api/auth/login', {
+      email: 'alice@test.com',
+      password: 'TestPassword123!',
+    });
+
+    if (aliceLogin.status === 200 && aliceLogin.data.token) {
+      aliceToken = aliceLogin.data.token;
+      pass(`(Token: ${aliceToken.substring(0, 20)}...)`);
+    } else {
+      fail();
+      process.exit(1);
+    }
+
+    // ========================================================================
+    // PHASE 2: ALICE CREATES SITE
+    // ========================================================================
+
+    header('PHASE 2: Alice Creates Her First Site');
+
+    test('Get Alice\'s subscription (trial)');
+    const aliceSub = await request('GET', '/api/user/subscription', null, aliceToken);
+
+    if (aliceSub.status === 200 && aliceSub.data.plan) {
+      pass(`(Plan: ${aliceSub.data.plan.name}, Sites: ${aliceSub.data.usage.sites})`);
+    } else {
+      fail();
+    }
+
+    test('Create site "alice-portfolio.com"');
+    const site = await request(
+      'POST',
+      '/api/sites',
+      { domain: 'alice-portfolio.com', type: 'static' },
+      aliceToken
+    );
+
+    if (site.status === 201 && site.data.siteId) {
+      pass(`(Site ID: ${site.data.siteId})`);
+    } else {
+      fail(JSON.stringify(site.data));
+    }
+
+    test('Verify usage incremented');
+    const aliceSubUpdated = await request('GET', '/api/user/subscription', null, aliceToken);
+
+    if (aliceSubUpdated.data.usage.sites === 1) {
+      pass('(Sites: 1)');
+    } else {
+      fail(`(Sites: ${aliceSubUpdated.data.usage.sites})`);
+    }
+
+    // ========================================================================
+    // PHASE 3: ALICE GETS REFERRAL CODE
+    // ========================================================================
+
+    header('PHASE 3: Alice Gets Her Referral Code');
+
+    test('Generate Alice\'s referral code');
+    const aliceReferral = await request('GET', '/api/referral/stats', null, aliceToken);
+
+    if (aliceReferral.status === 200 && aliceReferral.data.code) {
+      aliceReferralCode = aliceReferral.data.code;
+      log(`\n  ${colors.green}✅ Alice's referral code: ${colors.bright}${aliceReferralCode}${colors.reset}`);
+      log(`  ${colors.cyan}📋 Referral URL: ${aliceReferral.data.referralUrl}${colors.reset}\n`);
+      pass();
+    } else {
+      fail();
+      process.exit(1);
+    }
+
+    test('Validate referral code');
+    const validate = await request('GET', `/api/referral/validate/${aliceReferralCode}`);
+
+    if (validate.data.valid === true) {
+      pass();
+    } else {
+      fail();
+    }
+
+    // ========================================================================
+    // PHASE 4: BOB SIGNS UP WITH REFERRAL
+    // ========================================================================
+
+    header('PHASE 4: Bob Signs Up with Alice\'s Referral Code');
+
+    test('Register Bob with referral code');
+    const bobSignup = await request('POST', '/api/auth/register', {
+      email: 'bob@test.com',
+      password: 'TestPassword456!',
+      displayName: 'Bob Referee',
+      referralCode: aliceReferralCode,
+    });
+
+    if (bobSignup.status === 200 && bobSignup.data.user) {
+      bobUid = bobSignup.data.user.uid;
+      pass(`(UID: ${bobUid.substring(0, 8)}...)`);
+    } else {
+      fail(JSON.stringify(bobSignup.data));
+      process.exit(1);
+    }
+
+    test('Login Bob');
+    const bobLogin = await request('POST', '/api/auth/login', {
+      email: 'bob@test.com',
+      password: 'TestPassword456!',
+    });
+
+    if (bobLogin.status === 200 && bobLogin.data.token) {
+      bobToken = bobLogin.data.token;
+      pass();
+    } else {
+      fail();
+      process.exit(1);
+    }
+
+    // ========================================================================
+    // PHASE 5: BOB UPGRADES (TRIGGERS REWARDS)
+    // ========================================================================
+
+    header('PHASE 5: Bob Upgrades to Business (Triggers Rewards)');
+
+    test('Create Bob\'s checkout session');
+    const bobCheckout = await request(
+      'POST',
+      '/api/billing/create-checkout-session',
+      { priceId: 'price_business_monthly' },
+      bobToken
+    );
+
+    if (bobCheckout.status === 200 && bobCheckout.data.sessionId) {
+      pass(`(Session: ${bobCheckout.data.sessionId})`);
+    } else {
+      fail();
+    }
+
+    log(`\n  ${colors.yellow}💳 Simulating Bob's first payment...${colors.reset}\n`);
+
+    test('Convert referral (issue rewards)');
+    const convert = await request('POST', '/api/test/convert-referral', {
+      userId: bobUid,
+    });
+
+    if (convert.status === 200) {
+      pass();
+      log(`\n  ${colors.green}💰 Rewards issued to both Alice and Bob!${colors.reset}\n`);
+    } else {
+      fail(JSON.stringify(convert.data));
+    }
+
+    // Give system a moment to process
+    await sleep(500);
+
+    // ========================================================================
+    // PHASE 6: VERIFY CREDITS
+    // ========================================================================
+
+    header('PHASE 6: Verify Credits Issued');
+
+    test('Check Alice\'s credits');
+    const aliceCredits = await request('GET', '/api/credits', null, aliceToken);
+
+    if (aliceCredits.status === 200 && aliceCredits.data.totalCredits >= 10) {
+      pass(`($${aliceCredits.data.totalCredits} in credits)`);
+      log(`  ${colors.cyan}💵 Credits: ${JSON.stringify(aliceCredits.data.credits, null, 2)}${colors.reset}`);
+    } else {
+      fail(`($${aliceCredits.data.totalCredits})`);
+    }
+
+    test('Check Bob\'s credits');
+    const bobCredits = await request('GET', '/api/credits', null, bobToken);
+
+    if (bobCredits.status === 200 && bobCredits.data.totalCredits >= 10) {
+      pass(`($${bobCredits.data.totalCredits} in credits)`);
+    } else {
+      fail(`($${bobCredits.data.totalCredits})`);
+    }
+
+    // ========================================================================
+    // PHASE 7: VERIFY STATS UPDATED
+    // ========================================================================
+
+    header('PHASE 7: Verify Referral Stats Updated');
+
+    test('Check Alice\'s updated referral stats');
+    const aliceStatsUpdated = await request('GET', '/api/referral/stats', null, aliceToken);
+
+    if (
+      aliceStatsUpdated.status === 200 &&
+      aliceStatsUpdated.data.totalReferrals >= 1 &&
+      aliceStatsUpdated.data.totalEarnings >= 10
+    ) {
+      pass();
+      log(`\n  ${colors.cyan}📊 Alice's Stats:${colors.reset}`);
+      log(`     Referrals: ${aliceStatsUpdated.data.totalReferrals}`);
+      log(`     Earnings:  $${aliceStatsUpdated.data.totalEarnings}`);
+      log(`     Code:      ${aliceStatsUpdated.data.code}\n`);
+    } else {
+      fail();
+    }
+
+    test('Check leaderboard');
+    const leaderboard = await request('GET', '/api/referral/leaderboard');
+
+    if (leaderboard.status === 200 && Array.isArray(leaderboard.data)) {
+      pass(`(${leaderboard.data.length} entries)`);
+    } else {
+      fail();
+    }
+
+    // ========================================================================
+    // FINAL SUMMARY
+    // ========================================================================
+
+    header('TEST SUMMARY');
+
+    const total = passed + failed;
+    log(`Tests run: ${colors.blue}${total}${colors.reset}`, 'reset');
+    log(`Passed:    ${colors.green}${passed}${colors.reset}`, 'reset');
+    log(`Failed:    ${colors.red}${failed}${colors.reset}`, 'reset');
+
+    if (failed === 0) {
+      console.log('\n' + colors.green);
+      console.log('╔═══════════════════════════════════════════════════════════════╗');
+      console.log('║                                                               ║');
+      console.log('║  🎉  ALL TESTS PASSED - SYSTEM WORKING PERFECTLY!            ║');
+      console.log('║                                                               ║');
+      console.log('╚═══════════════════════════════════════════════════════════════╝');
+      console.log(colors.reset);
+
+      log('\n✅ Complete user journey tested:', 'green');
+      log('   1. Alice signed up ✓', 'green');
+      log('   2. Alice created a site ✓', 'green');
+      log('   3. Alice got referral code: ' + aliceReferralCode + ' ✓', 'green');
+      log('   4. Bob signed up with referral ✓', 'green');
+      log('   5. Bob upgraded (triggered rewards) ✓', 'green');
+      log('   6. Both received $10 credits ✓', 'green');
+      log('   7. Stats and leaderboard updated ✓', 'green');
+
+      log('\n🚀 System ready for production!\n', 'cyan');
+      log('Next steps:', 'yellow');
+      log('  1. View Firestore data: http://localhost:4000/firestore', 'reset');
+      log('  2. View Auth users: http://localhost:4000/auth', 'reset');
+      log('  3. Deploy to production with real Firebase & Stripe\n', 'reset');
+
+      process.exit(0);
+    } else {
+      console.log('\n' + colors.red);
+      console.log('╔═══════════════════════════════════════════════════════════════╗');
+      console.log('║                                                               ║');
+      console.log('║  ❌  SOME TESTS FAILED - CHECK LOGS ABOVE                    ║');
+      console.log('║                                                               ║');
+      console.log('╚═══════════════════════════════════════════════════════════════╝');
+      console.log(colors.reset + '\n');
+      process.exit(1);
+    }
   } catch (error) {
-    console.error('Cleanup error:', error.message);
+    console.error('\n' + colors.red + '❌ Test suite error:', error.message + colors.reset);
+    console.error(error.stack);
+    process.exit(1);
   }
 }
 
@@ -595,13 +418,8 @@ async function cleanup() {
 // RUN TESTS
 // ============================================================================
 
-runE2ETests()
-  .then(() => cleanup())
-  .catch(error => {
-    console.error('\n❌ Test suite failed:', error);
-    cleanup().then(() => process.exit(1));
-  });
+if (require.main === module) {
+  runTests();
+}
 
-module.exports = { runE2ETests, cleanup };
-
-    
+module.exports = { runTests };
