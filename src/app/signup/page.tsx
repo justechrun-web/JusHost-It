@@ -1,31 +1,21 @@
-'use client';
+"use client";
 
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { HardDrive, Loader2, AlertCircle } from 'lucide-react';
 import {
-  GoogleAuthProvider,
-  signInWithPopup,
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  OAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-
 
 function mapAuthError(code: string): string {
   switch (code) {
@@ -54,184 +44,137 @@ async function createSession(idToken: string) {
     }
 }
 
-const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-});
-
-function SignupForm() {
+function SignupFormComponent() {
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: ""
-    },
-    mode: 'onTouched'
-  });
+  const searchParams = useSearchParams();
+  const plan = searchParams.get('plan');
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) return;
-    setLoading(true);
-    setError(null);
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        const idToken = await userCredential.user.getIdToken();
-        await createSession(idToken);
+  const handleAuthSuccess = async (user: any) => {
+     const idToken = await user.getIdToken();
+     await createSession(idToken);
+     
+     if (plan) {
+        router.push(`/pricing?plan=${plan}`);
+     } else {
         router.push('/dashboard');
+     }
+  }
+
+  const signupEmail = async () => {
+    if (!auth) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await handleAuthSuccess(userCredential.user);
     } catch (err: any) {
-      const friendlyError = mapAuthError(err.code);
-      setError(friendlyError);
-      toast({
-        variant: 'destructive',
-        title: 'Signup Failed',
-        description: friendlyError,
-      });
+      setError(mapAuthError(err.code));
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  const handleGoogleLogin = async () => {
+  const signupWithProvider = async (provider: GoogleAuthProvider | FacebookAuthProvider | OAuthProvider) => {
     if (!auth) return;
-    setGoogleLoading(true);
-    setError(null);
-    const provider = new GoogleAuthProvider();
-
     try {
+      setError(null);
       const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      await createSession(idToken);
-      router.push('/dashboard');
+      await handleAuthSuccess(result.user);
     } catch (err: any) {
-      const friendlyError = mapAuthError(err.code);
-      setError(friendlyError);
-      toast({
-        variant: 'destructive',
-        title: 'Google Sign-up Failed',
-        description: friendlyError,
-      });
-    } finally {
-      setGoogleLoading(false);
+      setError(mapAuthError(err.code));
     }
   };
-  
-    return (
-        <div className="mx-auto grid w-[400px] gap-6">
-          <div className="grid gap-2 text-center">
+
+  return (
+    <div className="mx-auto grid w-[400px] gap-6">
+        <div className="grid gap-2 text-center">
             <HardDrive className="h-8 w-8 mx-auto text-primary" />
             <h1 className="text-3xl font-bold font-headline">
-              Create an Account
+                Create an Account
             </h1>
             <p className="text-balance text-muted-foreground">
-              Enter your details to get started with JusHostIt.
+                Enter your details to get started.
             </p>
-          </div>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="m@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign Up
-              </Button>
-            </form>
-          </Form>
-          <div className="relative">
+        </div>
+
+        {error && (
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Signup Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        )}
+        
+        <div className="grid gap-4">
+            <div className="grid gap-2">
+                <Input
+                    id="email"
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
+            </div>
+            <div className="grid gap-2">
+                <Input 
+                    id="password" 
+                    type="password" 
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+            </div>
+            <Button onClick={signupEmail} disabled={loading} className="w-full">
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign up with Email"}
+            </Button>
+        </div>
+
+        <div className="relative">
             <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
             </div>
-          </div>
-           <Button
-              variant="outline"
-              className="w-full"
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={googleLoading}
-            >
-              {googleLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <svg
-                  className="mr-2 h-4 w-4"
-                  aria-hidden="true"
-                  focusable="false"
-                  data-prefix="fab"
-                  data-icon="google"
-                  role="img"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 488 512"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 64.5C308.6 102.3 279.2 88 248 88c-73.2 0-132.3 59.2-132.3 132.3s59.1 132.3 132.3 132.3c76.9 0 111.2-52.8 114.7-81.8h-114.7v-92.7h216.5c1.1 10.4 1.7 21.4 1.7 32.8z"
-                  ></path>
-                </svg>
-              )}
-              Sign up with Google
+        </div>
+        
+        <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" onClick={() => signupWithProvider(new GoogleAuthProvider())}>
+                Google
             </Button>
-          <div className="mt-4 text-center text-sm">
+            <Button variant="outline" onClick={() => signupWithProvider(new OAuthProvider('apple.com'))}>
+                Apple
+            </Button>
+            <Button variant="outline" onClick={() => signupWithProvider(new FacebookAuthProvider())}>
+                Facebook
+            </Button>
+        </div>
+        
+        <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/login" className="underline">
-              Sign in
+                Sign in
             </Link>
-          </div>
         </div>
-    );
-}
-
-function SignupPageComponent() {
-  return (
-      <div className="w-full flex items-center justify-center min-h-screen">
-          <SignupForm />
-      </div>
+    </div>
   );
 }
 
 export default function SignupPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
-            <SignupPageComponent />
-        </Suspense>
-    )
+        <div className="w-full flex items-center justify-center min-h-screen">
+            <Suspense fallback={<Loader2 className="h-8 w-8 animate-spin" />}>
+                <SignupFormComponent />
+            </Suspense>
+        </div>
+    );
 }
