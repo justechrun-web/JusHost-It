@@ -102,7 +102,7 @@ export function CreateSiteDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
+          <PlusCircle className="mr-2 h-4" />
           Create Site
         </Button>
       </DialogTrigger>
