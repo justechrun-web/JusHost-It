@@ -15,8 +15,8 @@ admin.initializeApp({
 });
 
 // Import your services
-const { referralService } = require('./referral-service');
-const { emailService } = require('./email-service');
+const { referralService } = require('../src/lib/referral/service');
+const { emailService } = require('../src/lib/email/sendgrid');
 
 // ============================================================================
 // TEST UTILITIES
@@ -603,3 +603,5 @@ runE2ETests()
   });
 
 module.exports = { runE2ETests, cleanup };
+
+    
