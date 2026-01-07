@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # ============================================================================
 # API END-TO-END TEST SCRIPT
@@ -335,8 +336,12 @@ if [ -n "$BOB_SESSION" ]; then
 fi
 
 print_test "Simulate Bob's first payment"
-echo "Note: This would trigger invoice.paid webhook"
-echo "Webhook would call: referralService.convertReferral(bobUid, 35)"
+curl -s -X POST "$API_URL/test/convert-referral" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "'$BOB_UID'"
+  }' > /dev/null
+
 print_success "Payment webhook simulation"
 
 # Check if rewards were issued (would be done by webhook handler)
@@ -351,8 +356,8 @@ ALICE_CREDIT_AMOUNT=$(echo "$ALICE_CREDITS" | jq -r '.totalCredits // 0')
 if [ "$ALICE_CREDIT_AMOUNT" -ge "10" ]; then
     print_success "Alice received \$$ALICE_CREDIT_AMOUNT in credits"
 else
-    echo "Note: Credits may not show immediately in test environment"
-    echo "Alice credits: \$$ALICE_CREDIT_AMOUNT"
+    print_error "Alice credits check" "Expected >= 10, got $ALICE_CREDIT_AMOUNT"
+    echo "Response: $ALICE_CREDITS"
 fi
 
 print_test "Check Bob's credits"
@@ -364,8 +369,8 @@ BOB_CREDIT_AMOUNT=$(echo "$BOB_CREDITS" | jq -r '.totalCredits // 0')
 if [ "$BOB_CREDIT_AMOUNT" -ge "10" ]; then
     print_success "Bob received \$$BOB_CREDIT_AMOUNT in credits"
 else
-    echo "Note: Credits may not show immediately in test environment"
-    echo "Bob credits: \$$BOB_CREDIT_AMOUNT"
+    print_error "Bob credits check" "Expected >= 10, got $BOB_CREDIT_AMOUNT"
+    echo "Response: $BOB_CREDITS"
 fi
 
 # ============================================================================
@@ -401,7 +406,7 @@ echo "  - Pending referrals: $(echo $ALICE_STATS_UPDATED | jq -r '.pendingReferr
 if [ "$TOTAL_REFERRALS" -ge "1" ]; then
     print_success "Referral stats updated correctly"
 else
-    echo "Note: Stats may not update immediately in test environment"
+    print_error "Referral stats check" "Expected >= 1 referral, got $TOTAL_REFERRALS"
 fi
 
 # ============================================================================

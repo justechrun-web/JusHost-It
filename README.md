@@ -1,3 +1,4 @@
+
 # JusHostIt - Production-Ready SaaS Platform
 
 This repository contains a complete, production-grade SaaS application built with Next.js, Firebase, and Stripe. It includes user authentication, subscription billing, a viral referral system, and comprehensive admin dashboards.
@@ -348,16 +349,11 @@ node server.js
 ```bash
 cd jushostit-test
 
-# Download test script from artifact or create manually
-curl -o test_api.sh https://your-artifact-url/test_api.sh
-
-# Or create it manually with the content from the artifact above
-
 # Make executable
-chmod +x test_api.sh
+chmod +x ../scripts/test_api.sh
 
 # Run tests
-./test_api.sh
+../scripts/test_api.sh
 ```
 
 ---
