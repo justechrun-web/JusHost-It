@@ -15,11 +15,9 @@ import {
 
 const adminTabs = [
   { name: 'Overview', href: '/admin' },
-  { name: 'Sites', href: '/admin/sites' },
-  { name: 'Users', href: '/admin/users' },
-  { name: 'Billing', href: '/admin/billing' },
-  { name: 'Audit', href: '/admin/audit' },
   { name: 'Metrics', href: '/admin/metrics' },
+  { name: 'Audit', href: '/admin/audit' },
+  { name: 'Support', href: '/admin/support' },
 ];
 
 export default function AdminLayout({
@@ -33,7 +31,7 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   
-  const activeTab = adminTabs.find(tab => pathname === tab.href || (tab.href !== '/admin' && pathname.startsWith(tab.href)))?.href || '/admin';
+  const activeTab = adminTabs.find(tab => pathname.startsWith(tab.href))?.href || '/admin';
 
 
   React.useEffect(() => {
@@ -69,28 +67,8 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/dashboard">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back to Dashboard</span>
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold font-headline tracking-tight">
-          Admin Panel
-        </h1>
-      </div>
-      <Tabs value={activeTab} className="w-full" onValueChange={(value) => router.push(value)}>
-        <TabsList className="grid w-full grid-cols-6 mb-4">
-            {adminTabs.map((tab) => (
-                <TabsTrigger value={tab.href} key={tab.href}>
-                    {tab.name}
-                </TabsTrigger>
-            ))}
-        </TabsList>
-        <div className="mt-6">{children}</div>
-      </Tabs>
+    <div>
+      {children}
     </div>
   );
 }
