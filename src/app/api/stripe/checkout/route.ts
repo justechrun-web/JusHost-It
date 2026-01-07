@@ -1,3 +1,4 @@
+import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { adminDb } from "@/lib/firebase/admin";
@@ -17,10 +18,10 @@ export async function POST(req: NextRequest) {
 
     const priceId =
       plan === "pro"
-        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO
+        ? process.env.STRIPE_PRICE_PRO
         : plan === "business"
-        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS
-        : process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER;
+        ? process.env.STRIPE_PRICE_BUSINESS
+        : process.env.STRIPE_PRICE_STARTER;
 
 
     if (!priceId) {

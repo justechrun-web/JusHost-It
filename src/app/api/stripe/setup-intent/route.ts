@@ -1,6 +1,3 @@
-
-'use server';
-
 import 'server-only';
 import { NextResponse } from 'next/server';
 import { requireOrg } from '@/lib/org/requireOrg';

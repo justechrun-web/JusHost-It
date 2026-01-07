@@ -169,28 +169,17 @@ export default function PricingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter>
-                            {tier.id === 'pro' ? (
-                                <button
-                                    onClick={() => startCheckout("pro")}
-                                    disabled={loadingPlan === 'pro' || isUserLoading}
-                                    className="mt-8 w-full rounded-xl bg-blue-600 py-2 font-medium hover:bg-blue-500 transition-all flex items-center justify-center"
-                                >
-                                    {loadingPlan === 'pro' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    Upgrade to Pro
-                                </button>
-                            ) : (
-                                 <Button 
-                                    className="w-full" 
-                                    variant={tier.featured ? 'default' : 'outline'}
-                                    onClick={() => tier.href ? router.push(tier.href) : startCheckout(tier.id as any)}
-                                    disabled={loadingPlan === tier.id || isUserLoading}
-                                >
-                                    {loadingPlan === tier.id ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : null}
-                                    {tier.cta}
-                                </Button>
-                            )}
+                            <Button 
+                                className="w-full" 
+                                variant={tier.featured ? 'default' : 'outline'}
+                                onClick={() => tier.href ? router.push(tier.href) : startCheckout(tier.id as any)}
+                                disabled={loadingPlan === tier.id || isUserLoading}
+                            >
+                                {loadingPlan === tier.id ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null}
+                                {tier.cta}
+                            </Button>
                         </CardFooter>
                     </Card>
                 ))}
