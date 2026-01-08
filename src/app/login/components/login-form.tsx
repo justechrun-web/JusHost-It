@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import {
@@ -8,7 +8,8 @@ import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   OAuthProvider,
-  FacebookAuthProvider,
+  createUserWithEmailAndPassword,
+  updateProfile,
 } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ function mapAuthError(code: string): string {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Invalid email or password. Please try again.';
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists.';
     case 'auth/popup-closed-by-user':
       return 'Sign-in process was cancelled.';
     case 'auth/account-exists-with-different-credential':
@@ -42,6 +45,8 @@ function mapAuthError(code: string): string {
       return 'This sign-in method is not enabled. Please contact support.';
     case 'auth/invalid-email':
       return 'Please enter a valid email address.';
+    case 'auth/weak-password':
+        return 'Password must be at least 6 characters long.';
     default:
       return 'An unexpected error occurred. Please try again.';
   }
@@ -60,8 +65,9 @@ async function createSession(idToken: string) {
 }
 
 const formSchema = z.object({
+  name: z.string().optional(),
   email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(1, { message: "Password is required." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
 
@@ -71,17 +77,18 @@ export function LoginForm() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: ""
-    },
+    defaultValues: { name: "", email: "", password: "" },
     mode: 'onTouched'
   });
   
-  const handleAuthSuccess = async (user: any) => {
+  const handleAuthSuccess = async (user: any, displayName?: string | null) => {
+     if (displayName && !user.displayName) {
+        await updateProfile(user, { displayName });
+     }
      const idToken = await user.getIdToken();
      await createSession(idToken);
      router.push('/dashboard');
@@ -92,40 +99,35 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      await handleAuthSuccess(userCredential.user);
+      if (isSignUp) {
+        if (!values.name) {
+          form.setError("name", { type: "manual", message: "Name is required for sign up."});
+          setLoading(false);
+          return;
+        }
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        await handleAuthSuccess(userCredential.user, values.name);
+      } else {
+        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+        await handleAuthSuccess(userCredential.user);
+      }
     } catch (err: any) {
       const friendlyError = mapAuthError(err.code);
       setError(friendlyError);
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: friendlyError,
-      });
     } finally {
       setLoading(false);
     }
   };
   
-  const signupWithProvider = async (providerName: 'google' | 'apple' | 'facebook') => {
+  const signupWithProvider = async (providerName: 'google' | 'github') => {
     if (!auth) return;
     setLoading(true);
     setError(null);
     
     let provider;
     switch (providerName) {
-        case 'google':
-            provider = new GoogleAuthProvider();
-            break;
-        case 'apple':
-            provider = new OAuthProvider('apple.com');
-            break;
-        case 'facebook':
-            provider = new FacebookAuthProvider();
-            break;
-        default:
-            setLoading(false);
-            return;
+        case 'google': provider = new GoogleAuthProvider(); break;
+        case 'github': provider = new OAuthProvider('github.com'); break;
     }
 
     try {
@@ -146,19 +148,38 @@ export function LoginForm() {
                 <span className="text-primary text-2xl">⚡</span>
                 JustHostIt
             </div>
-            <h1 className="text-4xl font-light tracking-tight">Welcome back to the darkness</h1>
+            <h1 className="text-4xl font-light tracking-tight">{isSignUp ? "We're watching the darkness so you don't have to" : "Welcome back to the darkness"}</h1>
         </div>
 
         {error && (
             <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Login Error</AlertTitle>
+                <AlertTitle>Authentication Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
 
         <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {isSignUp && (
+                <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="text-base font-medium text-foreground/90">Full Name</FormLabel>
+                        <FormControl>
+                        <Input 
+                            placeholder="Your name" 
+                            {...field} 
+                            className="h-12 text-base bg-white/5 border-white/15 focus:border-primary/50"
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            )}
             <FormField
                 control={form.control}
                 name="email"
@@ -183,9 +204,11 @@ export function LoginForm() {
                   <FormItem>
                      <div className="flex items-center justify-between">
                       <FormLabel className="text-base font-medium text-foreground/90">Password</FormLabel>
-                      <Link href="/forgot-password" passHref className="text-sm text-primary hover:text-primary/80 transition-colors">
-                        Forgot Password?
-                      </Link>
+                      {!isSignUp && (
+                        <Link href="/forgot-password" passHref className="text-sm text-primary hover:text-primary/80 transition-colors">
+                            Forgot Password?
+                        </Link>
+                      )}
                     </div>
                     <FormControl>
                       <Input 
@@ -199,9 +222,14 @@ export function LoginForm() {
                   </FormItem>
                 )}
               />
+               <p className="text-xs text-muted-foreground pt-2">
+                    By clicking continue, you agree to our{' '}
+                    <Link href="/terms" className="text-primary hover:text-primary/80 transition-colors">Terms of Service</Link> and{' '}
+                    <Link href="/privacy" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</Link>.
+                </p>
             <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Sign In
+                {isSignUp ? "Continue with Email" : "Sign In"}
             </Button>
         </form>
         </Form>
@@ -222,7 +250,7 @@ export function LoginForm() {
             </svg>
             Google
           </Button>
-          <Button variant="outline" className="h-12 text-base bg-white/5 border-white/15 hover:bg-white/10">
+          <Button variant="outline" className="h-12 text-base bg-white/5 border-white/15 hover:bg-white/10" onClick={() => signupWithProvider('github')}>
              <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 18 18">
                 <path d="M9 0C4.025 0 0 4.025 0 9c0 3.975 2.575 7.35 6.15 8.55.45.075.6-.195.6-.435v-1.53c-2.505.54-3.03-1.065-3.03-1.065-.405-1.05-.99-1.32-.99-1.32-.81-.555.06-.54.06-.54.9.06 1.365.915 1.365.915.795 1.365 2.085.975 2.595.75.075-.585.315-.975.57-1.2-1.98-.225-4.065-.99-4.065-4.41 0-.975.345-1.77.915-2.4-.09-.225-.405-1.14.09-2.37 0 0 .75-.24 2.46.915A8.36 8.36 0 019 4.365c.765.015 1.53.105 2.25.3 1.71-1.155 2.46-.915 2.46-.915.495 1.23.18 2.145.09 2.37.57.63.915 1.425.915 2.4 0 3.435-2.085 4.185-4.08 4.395.33.285.615.84.615 1.695v2.52c0 .24.15.525.615.435C15.425 16.35 18 12.975 18 9c0-4.975-4.025-9-9-9z"/>
             </svg>
@@ -231,10 +259,10 @@ export function LoginForm() {
         </div>
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-semibold text-primary hover:text-primary/80 transition-colors">
-            Sign Up
-          </Link>
+          {isSignUp ? "Already have an account?" : "Don't have an account?"}{' '}
+          <Button variant="link" className="p-0 h-auto font-semibold text-primary hover:text-primary/80" onClick={() => setIsSignUp(!isSignUp)}>
+            {isSignUp ? "Log In" : "Sign Up"}
+          </Button>
         </p>
     </div>
   )
