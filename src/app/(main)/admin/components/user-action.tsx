@@ -1,11 +1,12 @@
 'use client';
 
+import { useFunctions } from '@/firebase/provider';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
+import { httpsCallable } from 'firebase/functions';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { userAdminAction } from '@/app/actions/user-admin-actions';
 
 export function UserAction({
   user,
@@ -14,29 +15,25 @@ export function UserAction({
   user: any;
   currentUser: User | null;
 }) {
+  const functions = useFunctions();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const toggleRole = async () => {
     if (!user.id) return;
     setLoading(true);
-
     const newRole = user.role === 'admin' ? 'user' : 'admin';
     const action = newRole === 'admin' ? 'promoteUser' : 'demoteUser';
+    const userAdminAction = httpsCallable(functions, 'userAdminAction');
 
     try {
-      const result = await userAdminAction({ userId: user.id, action: action });
-      if (result.success) {
-        toast({
-          title: 'Success',
-          description: `User role changed successfully.`,
-        });
-      } else {
-        // Use the specific error message from the server action
-        throw new Error(result.error || 'An unknown error occurred.');
-      }
+      await userAdminAction({ userId: user.id, action: action });
+      toast({
+        title: 'Success',
+        description: `User role changed successfully.`,
+      });
     } catch (error: any) {
-      console.error('User admin action failed:', error);
+      console.error('Cloud Function error:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
