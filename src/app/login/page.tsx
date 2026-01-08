@@ -2,39 +2,26 @@
 
 import React, { Suspense } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { LoginForm } from './components/login-form';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
+import { AuthVisual } from './components/auth-visual';
 
 function LoginPageComponent() {
-  const loginImage = PlaceHolderImages.find(p => p.id === 'ai-head-login');
-
   return (
-      <div className="flex items-stretch justify-center min-h-screen bg-background text-foreground">
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-            <LoginForm />
-        </div>
-         <div className="hidden lg:flex w-1/2 items-center justify-center bg-muted/20 p-8 relative overflow-hidden">
-            {loginImage && (
-                 <Image
-                    src={loginImage.imageUrl}
-                    alt={loginImage.description}
-                    fill
-                    className="object-cover"
-                    data-ai-hint={loginImage.imageHint}
-                />
-            )}
-        </div>
+    <div className="flex min-h-screen">
+      <div className="flex flex-1 items-center justify-center p-8 lg:p-12 bg-[#1c1f26]">
+        <LoginForm />
       </div>
+      <div className="hidden lg:flex flex-1 items-center justify-center relative overflow-hidden">
+        <AuthVisual />
+      </div>
+    </div>
   );
 }
 
-
 export default function LoginPage() {
-    return (
-        <Suspense fallback={<div>Loading...</div>}>
-            <LoginPageComponent />
-        </Suspense>
-    )
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPageComponent />
+    </Suspense>
+  );
 }
