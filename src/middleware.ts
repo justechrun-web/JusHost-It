@@ -2,29 +2,25 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionCookie } from '@/lib/auth/verify-session';
 
-const PLAN_ORDER = ['free', 'starter', 'pro', 'business'];
-
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get('__session')?.value;
 
-  const protectedPaths = ['/dashboard', '/sites', '/billing', '/settings', '/support', '/admin', '/api'];
-  const isAuthPath = req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup');
+  const isProtectedRoute = 
+    req.nextUrl.pathname.startsWith('/dashboard') ||
+    req.nextUrl.pathname.startsWith('/admin') ||
+    req.nextUrl.pathname.startsWith('/sites') ||
+    req.nextUrl.pathname.startsWith('/billing') ||
+    req.nextUrl.pathname.startsWith('/settings') ||
+    req.nextUrl.pathname.startsWith('/support');
 
-  const isProtectedPath = protectedPaths.some(p => req.nextUrl.pathname.startsWith(p));
+  const isAuthPath = req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup');
 
   // If user is logged in and tries to access login/signup, redirect to dashboard
   if (token && isAuthPath) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
-
-  // If it's not a protected path, let it through.
-  if (!isProtectedPath) {
-    return NextResponse.next();
-  }
   
-  // Specific public API routes that don't require auth
-  const publicApiRoutes = ['/api/stripe/webhook', '/api/slack/actions'];
-  if (publicApiRoutes.some(p => req.nextUrl.pathname.startsWith(p))) {
+  if (!isProtectedRoute) {
     return NextResponse.next();
   }
 
@@ -44,22 +40,9 @@ export async function middleware(req: NextRequest) {
     // Admin check
     const isAdmin = decodedToken.admin === true;
     if (req.nextUrl.pathname.startsWith('/admin') && !isAdmin) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-    
-    // Plan-based access control
-    const userPlan = (decodedToken.plan as string) || 'free';
-    
-    if (req.nextUrl.pathname.startsWith('/dashboard/pro')) {
-        if (PLAN_ORDER.indexOf(userPlan) < PLAN_ORDER.indexOf('pro')) {
-            return NextResponse.redirect(new URL('/billing?reason=upgrade_required', req.url));
-        }
-    }
-    
-    if (req.nextUrl.pathname.startsWith('/dashboard/team')) {
-        if (PLAN_ORDER.indexOf(userPlan) < PLAN_ORDER.indexOf('business')) {
-            return NextResponse.redirect(new URL('/billing?reason=upgrade_required', req.url));
-        }
+      // For non-admins trying to access /admin, you might want to redirect
+      // to a specific page or just back to the dashboard.
+      return NextResponse.redirect(new URL('/mfa-setup', req.url));
     }
       
     const requestHeaders = new Headers(req.headers);
@@ -74,6 +57,7 @@ export async function middleware(req: NextRequest) {
   } catch (error) {
     console.error('Middleware Auth Error:', error);
     const response = NextResponse.redirect(new URL('/login', req.url));
+    // Clear the potentially invalid cookie
     response.cookies.delete('__session');
     return response;
   }
@@ -83,11 +67,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api/stripe/webhook (Stripe webhooks are public)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - .*\\.(?:svg|png|jpg|jpeg|gif|webp)$ (image files)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api/stripe/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
