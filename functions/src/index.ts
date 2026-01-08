@@ -12,8 +12,13 @@ export const reportUsageToStripe = onDocumentCreated({
     secrets: ["STRIPE_SECRET_KEY"],
 }, async (event) => {
   
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error("STRIPE_SECRET_KEY is not set. Function cannot proceed.");
+    return;
+  }
+
   // Initialize Stripe inside the function to use the provided secret
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2023-10-16',
   });
 
