@@ -229,6 +229,6 @@ export function LoginForm() {
             Sign Up for free
           </Link>
         </p>
-    </>
+    </div>
   )
 }
