@@ -1,14 +1,22 @@
+
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import Stripe from "stripe";
 
-// Initialize Firebase Admin and Stripe
+// Initialize Firebase Admin
 admin.initializeApp();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2023-10-16',
-});
 
-export const reportUsageToStripe = onDocumentCreated("sites/{siteId}/metrics/{metricId}", async (event) => {
+// Define the Cloud Function with the secret manager integration
+export const reportUsageToStripe = onDocumentCreated({
+    document: "sites/{siteId}/metrics/{metricId}",
+    secrets: ["STRIPE_SECRET_KEY"],
+}, async (event) => {
+  
+  // Initialize Stripe inside the function to use the provided secret
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2023-10-16',
+  });
+
   const snapshot = event.data;
   if (!snapshot) {
     console.log("No data associated with the event");
@@ -28,7 +36,6 @@ export const reportUsageToStripe = onDocumentCreated("sites/{siteId}/metrics/{me
       console.error(`No stripe_customer_id found for site ${siteId}`);
       return;
   }
-
 
   // Map your Firestore data to Stripe Meter Event names
   // Ensure 'event_name' matches the Meter ID you created in the Stripe Dashboard
