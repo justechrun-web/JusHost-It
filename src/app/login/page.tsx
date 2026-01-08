@@ -1,18 +1,16 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import { LoginForm } from './components/login-form';
 import { AuthVisual } from './components/auth-visual';
 
 function LoginPageComponent() {
   return (
-    <div className="flex min-h-screen">
-      <div className="flex flex-1 items-center justify-center p-8 lg:p-12 bg-[#1c1f26]">
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <AuthVisual />
+      <div className="relative z-10 w-full max-w-md">
         <LoginForm />
-      </div>
-      <div className="hidden lg:flex flex-1 items-center justify-center relative overflow-hidden">
-        <AuthVisual />
       </div>
     </div>
   );
@@ -20,7 +18,13 @@ function LoginPageComponent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="flex h-screen w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
       <LoginPageComponent />
     </Suspense>
   );

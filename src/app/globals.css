@@ -8,14 +8,14 @@ body {
 
 @layer base {
   :root {
-    --background: 195 86% 5%;
+    --background: 228 14% 6%;
     --foreground: 210 20% 98%;
     --card: 220 26% 14%;
     --card-foreground: 210 20% 98%;
     --popover: 224 71.4% 4.1%;
     --popover-foreground: 210 20% 98%;
     --primary: 147 47% 69%;
-    --primary-foreground: 195 86% 5%;
+    --primary-foreground: 228 14% 6%;
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 215 27.9% 16.9%;
@@ -47,14 +47,14 @@ body {
   }
 
   .dark {
-    --background: 195 86% 5%;
+    --background: 228 14% 6%;
     --foreground: 210 20% 98%;
     --card: 220 26% 14%;
     --card-foreground: 210 20% 98%;
     --popover: 224 71.4% 4.1%;
     --popover-foreground: 210 20% 98%;
     --primary: 147 47% 69%;
-    --primary-foreground: 195 86% 5%;
+    --primary-foreground: 228 14% 6%;
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 215 27.9% 16.9%;

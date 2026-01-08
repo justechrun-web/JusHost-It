@@ -2,7 +2,6 @@
 
 import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import {
@@ -18,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Form,
   FormControl,
@@ -110,15 +108,14 @@ function SignupFormComponent() {
     }
   };
 
-  const signupWithProvider = async (providerName: 'google' | 'apple' | 'facebook') => {
+  const signupWithProvider = async (providerName: 'google' | 'github') => {
     if (!auth) return;
     setLoading(true);
     setError(null);
     let provider;
     switch (providerName) {
         case 'google': provider = new GoogleAuthProvider(); break;
-        case 'apple': provider = new OAuthProvider('apple.com'); break;
-        case 'facebook': provider = new FacebookAuthProvider(); break;
+        case 'github': provider = new OAuthProvider('github.com'); break;
     }
 
     try {
@@ -132,16 +129,19 @@ function SignupFormComponent() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      <div className="flex flex-1 items-center justify-center p-8 lg:p-12 bg-[#1c1f26]">
-        <div className="w-full max-w-sm space-y-6">
-            <div className="space-y-4">
-                <div className="text-sm font-semibold tracking-wider opacity-70">⚡ JustHostIt</div>
-                <h1 className="text-4xl font-light tracking-tight">Create an account</h1>
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+        <AuthVisual />
+        <div className="relative z-10 w-full max-w-lg">
+            <div className="text-center mb-8">
+                <div className="flex items-center justify-center gap-2 text-lg font-semibold tracking-wider opacity-90">
+                    <span className="text-primary text-2xl">⚡</span>
+                    JustHostIt
+                </div>
+                <h1 className="text-4xl font-light tracking-tight mt-4">We're watching the darkness so you don't have to</h1>
             </div>
 
             {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="mb-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Signup Error</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
@@ -150,17 +150,17 @@ function SignupFormComponent() {
             
             <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
+                 <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel className="text-base font-medium text-foreground/90">Full Name</FormLabel>
                         <FormControl>
                         <Input 
                             placeholder="Your name" 
                             {...field} 
-                            className="h-12 bg-zinc-800/50 border-zinc-700 focus:border-primary"
+                            className="h-12 text-base bg-white/5 border-white/15 focus:border-primary/50"
                         />
                         </FormControl>
                         <FormMessage />
@@ -172,12 +172,12 @@ function SignupFormComponent() {
                     name="email"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel className="text-base font-medium text-foreground/90">Email</FormLabel>
                         <FormControl>
                         <Input 
-                            placeholder="Enter your email" 
+                            placeholder="Your email" 
                             {...field} 
-                            className="h-12 bg-zinc-800/50 border-zinc-700 focus:border-primary"
+                            className="h-12 text-base bg-white/5 border-white/15 focus:border-primary/50"
                         />
                         </FormControl>
                         <FormMessage />
@@ -189,13 +189,13 @@ function SignupFormComponent() {
                     name="password"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel className="text-base font-medium text-foreground/90">Password</FormLabel>
                         <FormControl>
                         <Input 
                             type="password"
                             placeholder="••••••••"
                             {...field} 
-                            className="h-12 bg-zinc-800/50 border-zinc-700 focus:border-primary"
+                            className="h-12 text-base bg-white/5 border-white/15 focus:border-primary/50"
                         />
                         </FormControl>
                         <FormMessage />
@@ -205,8 +205,8 @@ function SignupFormComponent() {
 
                 <div className="text-xs text-muted-foreground pt-2">
                     By clicking continue, you agree to our{' '}
-                    <Link href="/terms" className="underline hover:text-primary">Terms of Service</Link> and{' '}
-                    <Link href="/privacy" className="underline hover:text-primary">Privacy Policy</Link>.
+                    <Link href="/terms" className="text-primary hover:text-primary/80 transition-colors">Terms of Service</Link> and{' '}
+                    <Link href="/privacy" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</Link>.
                 </div>
 
                 <Button type="submit" disabled={loading} className="w-full h-12 text-base font-semibold">
@@ -216,48 +216,38 @@ function SignupFormComponent() {
             </form>
             </Form>
 
-            <div className="relative">
+            <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-zinc-700" />
+                    <span className="w-full border-t border-white/15" />
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-[#1c1f26] px-2 text-muted-foreground">or</span>
+                <div className="relative flex justify-center text-sm">
+                    <span className="bg-background px-2 text-muted-foreground">or</span>
                 </div>
             </div>
             
-            <div className="flex items-center gap-2">
-                <Button variant="outline" className="w-full h-12 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700/50 hover:text-foreground" onClick={() => signupWithProvider('google')}>
-                   <svg className="mr-2 h-5 w-5" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+            <div className="grid grid-cols-2 gap-4">
+                <Button variant="outline" className="h-12 text-base bg-white/5 border-white/15 hover:bg-white/10" onClick={() => signupWithProvider('google')}>
+                    <svg className="mr-2 h-5 w-5" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
                         <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 64.5C308.6 102.3 279.2 88 248 88c-73.2 0-132.3 59.2-132.3 132.3s59.1 132.3 132.3 132.3c76.9 0 111.2-52.8 114.7-81.8h-114.7v-92.7h216.5c1.1 10.4 1.7 21.4 1.7 32.8z"></path>
                     </svg>
                     Google
                 </Button>
-                <Button variant="outline" className="w-full h-12 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700/50 hover:text-foreground" onClick={() => signupWithProvider('facebook')}>
-                    <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.991 22 12Z"></path>
+                 <Button variant="outline" className="h-12 text-base bg-white/5 border-white/15 hover:bg-white/10" onClick={() => signupWithProvider('github')}>
+                    <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 18 18">
+                        <path d="M9 0C4.025 0 0 4.025 0 9c0 3.975 2.575 7.35 6.15 8.55.45.075.6-.195.6-.435v-1.53c-2.505.54-3.03-1.065-3.03-1.065-.405-1.05-.99-1.32-.99-1.32-.81-.555.06-.54.06-.54.9.06 1.365.915 1.365.915.795 1.365 2.085.975 2.595.75.075-.585.315-.975.57-1.2-1.98-.225-4.065-.99-4.065-4.41 0-.975.345-1.77.915-2.4-.09-.225-.405-1.14.09-2.37 0 0 .75-.24 2.46.915A8.36 8.36 0 019 4.365c.765.015 1.53.105 2.25.3 1.71-1.155 2.46-.915 2.46-.915.495 1.23.18 2.145.09 2.37.57.63.915 1.425.915 2.4 0 3.435-2.085 4.185-4.08 4.395.33.285.615.84.615 1.695v2.52c0 .24.15.525.615.435C15.425 16.35 18 12.975 18 9c0-4.975-4.025-9-9-9z"/>
                     </svg>
-                    Facebook
-                </Button>
-                 <Button variant="outline" className="w-full h-12 bg-zinc-800/50 border-zinc-700 hover:bg-zinc-700/50 hover:text-foreground" onClick={() => signupWithProvider('apple')}>
-                    <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M15.226 1.455C14.072.772 12.753 0 11.291 0c-2.33 0-4.328 1.25-5.522 3.125-.395.62-.647 1.378-.62 2.227.025.86.38 1.637.95 2.296.533.619 1.264 1.01 2.085 1.033.22.004.44-.025.658-.08.647-.17 1.344-.55 2.05-1.127-1.196 1.05-2.07 2.454-2.07 4.098 0 2.62 1.67 4.394 4.037 4.394 1.134 0 2.19-.395 3.013-1.176a.35.35 0 0 1 .15-.07c.07-.03.14-.04.2-.04.07 0 .14.01.2.04.05.03.1.07.15.11a11.17 11.17 0 0 1-1.39 2.03c-.64.84-1.28 1.68-1.28 2.82 0 2.25 1.79 3.32 3.56 3.32 1.74 0 2.76-1.13 3.56-2.22.8-.93 1.2-1.89 1.2-2.85 0-2.05-1.18-3.16-2.58-4.04-.5-.31-1.03-.53-1.6-.66.86-.09 1.8-.46 2.5-1.2.98-1.02 1.5-2.37 1.5-3.8 0-2.3-1.3-3.9-3.3-3.9-1.34 0-2.5.54-3.3 1.34Zm-2.73 6.32c.31-.38.56-.8.75-1.25.13-.3.2-.6.2-.92 0-.6-.31-1.22-.84-1.63-.5-.38-1.07-.6-1.7-.6s-1.2.22-1.7.6c-.53.4-.84 1.02-.84 1.63 0 .32.07.62.2.92.2.45.45.87.75 1.25.32.4.68.65.99.75.31.09.7.09.99-.02.43-.16.85-.46 1.28-.73Z"></path>
-                    </svg>
-                    Apple
+                    GitHub
                 </Button>
             </div>
 
             <p className="mt-8 text-center text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link href="/login" className="font-semibold text-primary hover:underline">
+              <Link href="/login" className="font-semibold text-primary hover:text-primary/80 transition-colors">
                 Log In
               </Link>
             </p>
         </div>
       </div>
-      <div className="hidden lg:flex flex-1 items-center justify-center relative overflow-hidden">
-        <AuthVisual />
-      </div>
-    </div>
   );
 }
 
