@@ -2,73 +2,55 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Helper Functions ---
+
+    // Checks if the user is logged in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Checks if the user owns the document they are trying to access
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Checks if the user has an admin role (via custom claims)
     function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+      return isSignedIn() && request.auth.token.admin == true;
     }
 
-    // ======================================================================
-    // User data is only writable by the user themselves.
-    // Contains public profile info and protected billing status.
-    // ======================================================================
+    // --- Collection Rules ---
+
+    // User Profile Rules
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-
-      match /supportTickets/{ticketId} {
-        allow read, write: if isOwner(userId);
-      }
-      match /login_events/{eventId} {
-        allow read: if isOwner(userId);
-        allow write: if false; // Only server can write
-      }
+      allow get, update: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow list: if isAdmin();
     }
 
-    // ======================================================================
-    // Organization, Site, and Member data is protected.
-    // High-level access is granted to organization members, but specific
-    // write operations are handled by secure Cloud Functions.
-    // ======================================================================
-    match /orgs/{orgId} {
-      allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(orgId));
-      allow write: if false; // All writes must go through Cloud Functions
+    // Site Management Rules
+    match /sites/{siteId} {
+      // Users can only see/edit their own sites; Admins can see/edit everything
+      allow read, write: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      
+      // Allow creation if the user sets themselves as the owner
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
-    match /orgs/{orgId}/sites/{siteId} {
-       allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(orgId));
-       allow write: if false; // All writes must go through Cloud Functions
+    // Audit Logs & Metrics (Admin Only)
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
     }
 
-    match /orgMembers/{membershipId} {
-       allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(resource.data.orgId));
-       allow write: if false; // All writes must go through Cloud Functions
+    match /site_metrics/{metricId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isAdmin(); // Only the system/admin can write metrics
     }
 
-     match /orgInvitations/{inviteId} {
-        allow read: if request.auth != null && resource.data.email == request.auth.token.email;
-        allow write: if false; // Written by server-side processes only
-     }
-     
-     match /orgUsage/{usageId} {
-        allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(usageId));
-        allow write: if false; // Written by server-side processes only
-     }
-
-
-    // ======================================================================
-    // Audit logs and metrics are admin-only collections.
-    // They are read-only from the client side.
-    // ======================================================================
-    match /auditLogs/{logId} {
-      allow read: if isAdmin();
-      allow write: if false; // Written by server-side processes only
-    }
-
-    match /metrics/{metricId} {
-      allow read: if isAdmin();
-      allow write: if false; // Written by server-side processes only
+    // Support Tickets
+    match /support_tickets/{ticketId} {
+      allow read, update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
   }
 }
