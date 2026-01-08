@@ -7,7 +7,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getFunctions, type Functions } from 'firebase/functions';
-import { firebaseConfig } from './config';
+import { firebaseConfig, isFirebaseConfigured } from './config';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -15,9 +15,8 @@ interface FirebaseClientProviderProps {
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const firebaseServices = useMemo(() => {
-    // Ensure all config values are present before initializing
-    if (!Object.values(firebaseConfig).every(Boolean)) {
-        console.error("Firebase config is missing one or more required values.");
+    if (!isFirebaseConfigured()) {
+        console.error("Firebase config is missing one or more required values. Please check your .env.local file.");
         // Return null services if config is incomplete
         return { app: null, auth: null, firestore: null, functions: null };
     }
@@ -34,7 +33,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
 
   // Do not render the provider if services couldn't be initialized
   if (!firebaseServices.app) {
-    // You might want to render a loading indicator or an error message here
+    // You might want to render an error message to the user in a real app
     return <>{children}</>;
   }
 
