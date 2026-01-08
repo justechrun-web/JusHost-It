@@ -1,3 +1,4 @@
+
 import "server-only";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
@@ -8,7 +9,9 @@ import { PLAN_BY_PRICE_ID } from "@/lib/stripePlans";
 export const runtime = 'nodejs';
 
 async function setPlanClaim(uid: string, plan: string) {
-    const currentClaims = (await adminAuth.getUser(uid)).customClaims;
+    const user = await adminAuth.getUser(uid);
+    const currentClaims = user.customClaims || {};
+    // Preserve existing claims, like admin status
     await adminAuth.setCustomUserClaims(uid, { ...currentClaims, plan });
 }
 
