@@ -3,54 +3,89 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Functions ---
-
-    // Checks if the user is logged in
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Checks if the user owns the document they are trying to access
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Checks if the user has an admin role (via custom claims)
+    // Checks for a custom claim set by the Stripe extension or an admin script.
     function isAdmin() {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
-    // --- Collection Rules ---
+    // Safely get the user's role from their auth token.
+    function getRole() {
+      return request.auth.token.stripeRole;
+    }
 
-    // User Profile Rules
+    // Get the current number of sites a user has.
+    // This assumes you have a 'sites' counter on the user document.
+    function getUserSiteCount() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.siteCount;
+    }
+
+    // --- User Profiles ---
     match /users/{userId} {
-      allow get, update: if isOwner(userId) || isAdmin();
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow list: if isAdmin();
+      // Admins can read any profile, users can only read/write their own.
+      allow read, write: if isAdmin() || isOwner(userId);
+      // Anyone can create their own user document upon signup.
+      allow create: if isOwner(userId);
     }
 
-    // Site Management Rules
-    match /sites/{siteId} {
-      // Users can only see/edit their own sites; Admins can see/edit everything
-      allow read, write: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      
-      // Allow creation if the user sets themselves as the owner
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // --- Organizations & Sites ---
+    match /orgs/{orgId} {
+      // Only members of the org can read it. Writing is restricted server-side.
+      allow read: if isSignedIn() && get(/databases/$(database)/documents/orgMembers/$(orgId + '_' + request.auth.uid)).data != null;
+      allow write: if false; // All writes must go through trusted server code.
+
+      match /sites/{siteId} {
+        // Org members can read sites.
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/orgMembers/$(orgId + '_' + request.auth.uid)).data != null;
+
+        // Creation logic based on plan limits.
+        allow create: if isSignedIn() && (
+          // Pro and Business plans have higher/unlimited sites
+          getRole() in ['pro', 'business'] ||
+          // Starter plan is limited to 1 site.
+          (getRole() == 'starter' && getUserSiteCount() < 1)
+        );
+
+        // Only org admins/owners or site creators can update/delete.
+        allow update, delete: if isSignedIn() && (
+          get(/databases/$(database)/documents/orgMembers/$(orgId + '_' + request.auth.uid)).data.role in ['owner', 'admin']
+        );
+      }
+    }
+    
+    // --- Org Membership & Invitations ---
+    match /orgMembers/{membershipId} {
+        // Org members can see other members. Admins can modify.
+        allow read: if isSignedIn() && string(resource.data.orgId).split('_')[0] == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.orgId;
+        allow write: if isAdmin();
     }
 
-    // Audit Logs & Metrics (Admin Only)
-    match /audit_logs/{logId} {
+    match /orgInvitations/{inviteId} {
+      // Logged-in users can read invitations to see if they've been invited.
+      allow read: if isSignedIn();
+      // Only admins/owners of the target org can create or modify invitations.
+      allow write: if isSignedIn() && get(/databases/$(database)/documents/orgMembers/$(request.resource.data.orgId + '_' + request.auth.uid)).data.role in ['owner', 'admin'];
+    }
+
+    // --- Admin-Only Collections ---
+    match /auditLogs/{logId} {
       allow read, write: if isAdmin();
     }
-
-    match /site_metrics/{metricId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow write: if isAdmin(); // Only the system/admin can write metrics
+    match /metrics/{metricId} {
+        allow read, write: if isAdmin();
     }
 
-    // Support Tickets
-    match /support_tickets/{ticketId} {
-      allow read, update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // --- User-Specific Subcollections ---
+    match /users/{userId}/{document=**} {
+      // Users can only access their own subcollections (e.g., support tickets, login events).
+      allow read, write: if isOwner(userId);
     }
   }
 }
