@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { User } from 'firebase/auth';
@@ -21,6 +20,7 @@ export function UserAction({
   const toggleRole = async () => {
     if (!user.id) return;
     setLoading(true);
+
     const newRole = user.role === 'admin' ? 'user' : 'admin';
     const action = newRole === 'admin' ? 'promoteUser' : 'demoteUser';
 
@@ -32,10 +32,11 @@ export function UserAction({
           description: `User role changed successfully.`,
         });
       } else {
+        // Use the specific error message from the server action
         throw new Error(result.error || 'An unknown error occurred.');
       }
     } catch (error: any) {
-      console.error('Server action error:', error);
+      console.error('User admin action failed:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
