@@ -18,7 +18,7 @@ exports.reportUsageToStripe = (0, firestore_1.onDocumentCreated)({
     }
     // Initialize Stripe inside the function to use the provided secret
     const stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY, {
-        apiVersion: '2023-10-16',
+        apiVersion: '2024-04-10',
     });
     const snapshot = event.data;
     if (!snapshot) {
