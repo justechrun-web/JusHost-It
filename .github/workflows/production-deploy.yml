@@ -1,3 +1,4 @@
+
 name: Production Deploy
 
 on:
@@ -23,11 +24,19 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build web app
         run: npm run build
+      
+      - name: Install functions dependencies
+        run: npm ci
+        working-directory: ./functions
+
+      - name: Build functions
+        run: npm run build
+        working-directory: ./functions
 
       - name: Deploy to Firebase Hosting (Production)
         uses: FirebaseExtended/action-hosting-deploy@v0
