@@ -1,3 +1,4 @@
+
 import "server-only";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
@@ -98,7 +99,10 @@ export async function POST(req: Request) {
         }
         case 'invoice.paid': {
             const invoice = event.data.object as Stripe.Invoice;
-            const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
+            if (typeof invoice.subscription !== 'string') {
+                break;
+            }
+            const sub = await stripe.subscriptions.retrieve(invoice.subscription);
             const uid = sub.metadata.firebaseUID;
 
             if (!uid) break;
@@ -106,13 +110,16 @@ export async function POST(req: Request) {
             const userRef = adminDb.collection('users').doc(uid);
             await userRef.update({
                 subscriptionStatus: 'active',
-                currentPeriodEnd: FieldValue.fromMillis(invoice.period_end * 1000),
+                currentPeriodEnd: FieldValue.fromMillis(sub.current_period_end * 1000),
             });
             break;
         }
         case 'invoice.payment_failed': {
             const invoice = event.data.object as Stripe.Invoice;
-            const sub = await stripe.subscriptions.retrieve(invoice.subscription as string);
+            if (typeof invoice.subscription !== 'string') {
+                break;
+            }
+            const sub = await stripe.subscriptions.retrieve(invoice.subscription);
             const uid = sub.metadata.firebaseUID;
 
             if (!uid) break;
