@@ -8,6 +8,7 @@
     "start": "next start -p 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:e2e": "node scripts/e2e.test.js",
     "stop": "npx kill-port 4000 8080 9000 9099 9199 5001 5002 4400"
   },
   "dependencies": {
