@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Providers } from './providers';
+import { Providers } from '@/components/providers';
 import './globals.css';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
@@ -21,7 +21,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark`}>
+    <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <head>
         <Script
           defer
