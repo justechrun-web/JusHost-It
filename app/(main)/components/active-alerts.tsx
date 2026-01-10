@@ -19,7 +19,7 @@ export function ActiveAlerts() {
   const db = useFirestore();
 
   const alertsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !db) return null;
     return query(collection(db, `users/${user.uid}/alerts`));
   }, [user, db]);
 

@@ -54,14 +54,14 @@ export default function OrganizationSettingsPage() {
   const orgId = userData?.orgId;
 
   const membersQuery = useMemoFirebase(() => {
-    if (!orgId) return null;
+    if (!orgId || !db) return null;
     return query(collection(db, 'orgMembers'), where('orgId', '==', orgId));
   }, [db, orgId]);
 
   const { data: members, isLoading: isMembersLoading } = useCollection<OrgMember>(membersQuery);
 
   const invitesQuery = useMemoFirebase(() => {
-    if (!orgId) return null;
+    if (!orgId || !db) return null;
     return query(collection(db, 'orgInvitations'), where('orgId', '==', orgId), where('status', '==', 'pending'));
   }, [db, orgId]);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useUser } from '@/firebase/provider';
+import { useUser } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -18,21 +18,17 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (!user) {
-    return null; // or a redirect component
-  }
-
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-muted/40">
+      <div className="flex h-screen bg-background">
         <MainSidebar />
         <div className="flex-1 flex flex-col">
           <Header />

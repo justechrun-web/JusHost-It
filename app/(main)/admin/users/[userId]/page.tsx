@@ -62,9 +62,9 @@ export default function UserDetailPage() {
     <div className="space-y-8">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/admin/users">
+          <Link href="/admin">
             <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back to Users</span>
+            <span className="sr-only">Back to Admin</span>
           </Link>
         </Button>
         <div>

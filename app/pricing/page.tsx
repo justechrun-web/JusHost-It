@@ -66,15 +66,46 @@ export default function PricingPage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    const startCheckout = async (plan: "pro" | "team") => {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-    
-      const data = await res.json();
-      window.location.href = data.url;
+    const startCheckout = async (plan: "pro" | "business" | "starter") => {
+      setLoadingPlan(plan);
+      try {
+        if (!user) {
+          router.push(`/signup?plan=${plan}`);
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const res = await fetch("/api/stripe/checkout", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ plan }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to create checkout session.');
+        }
+
+        const data = await res.json();
+        if (data.url) {
+           if (new URL(data.url).hostname === 'checkout.stripe.com') {
+             window.location.href = data.url;
+           } else {
+             throw new Error('Invalid redirect URL received.');
+           }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPlan(null);
+      }
     };
 
 
@@ -138,26 +169,17 @@ export default function PricingPage() {
                             </ul>
                         </CardContent>
                         <CardFooter>
-                            {tier.id === 'pro' ? (
-                                <button
-                                  onClick={() => startCheckout("pro")}
-                                  className="mt-8 w-full rounded-xl bg-blue-600 py-2 font-medium hover:bg-blue-500 transition"
-                                >
-                                  Upgrade to Pro
-                                </button>
-                            ) : (
-                                 <Button 
-                                    className="w-full" 
-                                    variant={tier.featured ? 'default' : 'outline'}
-                                    onClick={() => tier.href ? router.push(tier.href) : startCheckout(tier.id as any)}
-                                    disabled={loadingPlan === tier.id || isUserLoading}
-                                >
-                                    {loadingPlan === tier.id ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : null}
-                                    {tier.cta}
-                                </Button>
-                            )}
+                            <Button 
+                                className="w-full" 
+                                variant={tier.featured ? 'default' : 'outline'}
+                                onClick={() => tier.href ? router.push(tier.href) : startCheckout(tier.id as any)}
+                                disabled={loadingPlan === tier.id || isUserLoading}
+                            >
+                                {loadingPlan === tier.id ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null}
+                                {tier.cta}
+                            </Button>
                         </CardFooter>
                     </Card>
                 ))}

@@ -11,8 +11,10 @@ import { PaymentForm } from './components/payment-form';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import React from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -20,17 +22,41 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 export default function PaymentMethodPage() {
     const [clientSecret, setClientSecret] = React.useState<string | null>(null);
+    const [loadingSecret, setLoadingSecret] = React.useState(true);
+    const { toast } = useToast();
+    const { user } = useUser();
 
     React.useEffect(() => {
-        // In a real app, you would fetch a SetupIntent client secret from your server
-        // to securely initialize the Payment Element.
-        // For this demo, we'll simulate it after a delay.
-        const mockFetch = setTimeout(() => {
-             // This is a mock secret. Replace with a real one from your backend.
-            setClientSecret('seti_1PfY7kDEQaroqDjsB3zLp2fA_secret_QpLpQYvA5gX2h8z3s6g7h8k9l0m1n2o3');
-        }, 1000);
-        return () => clearTimeout(mockFetch);
-    }, []);
+        async function createSetupIntent() {
+            if (!user) return;
+            setLoadingSecret(true);
+
+            try {
+                const token = await user.getIdToken();
+                const response = await fetch('/api/stripe/setup-intent', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to create payment setup.');
+                }
+                const data = await response.json();
+                setClientSecret(data.client_secret);
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: error.message
+                });
+            } finally {
+                setLoadingSecret(false);
+            }
+        }
+
+        createSetupIntent();
+    }, [user, toast]);
 
     if (!stripePromise) {
         return (
@@ -49,17 +75,22 @@ export default function PaymentMethodPage() {
       <CardHeader>
         <CardTitle>Payment Method</CardTitle>
         <CardDescription>
-          Update your payment method. This will be used for all future invoices.
+          Update your payment method. This will be used for all future invoices and charges.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {clientSecret ? (
+        {loadingSecret ? (
+            <div className='flex items-center justify-center text-center text-muted-foreground p-8'>
+                <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                <span>Loading payment form...</span>
+            </div>
+        ) : clientSecret ? (
             <Elements options={{ clientSecret }} stripe={stripePromise}>
                 <PaymentForm />
             </Elements>
         ) : (
-            <div className='text-center text-muted-foreground'>
-                Loading payment form...
+            <div className='text-center text-muted-foreground p-8'>
+                Could not load payment form. Please try again later.
             </div>
         )}
       </CardContent>

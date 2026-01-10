@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { httpsCallable } from 'firebase/functions';
 import { useFunctions, useUser } from '@/firebase';
-import { suggestDomainsAction } from "@/app/actions/suggest-domains";
+import { suggestDomains } from '@/ai/flows/suggest-domains';
 
 export function CreateSiteDialog() {
   const [open, setOpen] = useState(false);
@@ -49,8 +49,8 @@ export function CreateSiteDialog() {
     }
     setSuggestionRunning(true);
     try {
-      const result = await suggestDomainsAction({ keywords: sitePurpose });
-      setSuggestions(result.domains);
+      const result = await suggestDomains({ keywords: sitePurpose });
+      setSuggestions(result.suggestions);
     } catch (error) {
       console.error(error);
       toast({

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Loader2 } from 'lucide-react';
 
@@ -17,7 +17,7 @@ export function ResourceUsageChart({ orgId, siteId }: { orgId: string, siteId: s
   const db = useFirestore();
   
   const metricsQuery = useMemoFirebase(() => {
-    if (!orgId || !siteId) return null;
+    if (!orgId || !siteId || !db) return null;
     return query(
       collection(db, `orgs/${orgId}/sites/${siteId}/metrics`),
       orderBy("timestamp", "desc"),

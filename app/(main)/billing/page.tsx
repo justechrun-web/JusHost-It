@@ -53,9 +53,7 @@ export default function BillingPage() {
     if (!user || !db) return null;
     return doc(db, `users/${user.uid}`);
   }, [db, user]);
-  const { data: userData, isLoading: isUserDataLoading } = useDoc<{orgId: string, primarySiteId?: string}>(userDocRef);
-  const orgId = userData?.orgId;
-  const primarySiteId = userData?.primarySiteId; // Assuming you have a primary site for charting
+  const { data: userData, isLoading: isUserDataLoading } = useDoc<{orgId: string}>(userDocRef);
 
   // Then, fetch the organization and usage data
   const orgRef = useMemoFirebase(() => {
@@ -242,16 +240,10 @@ export default function BillingPage() {
              <Card>
               <CardHeader>
                 <CardTitle>Resource Usage History</CardTitle>
-                <CardDescription>Real-time CPU usage for your primary site.</CardDescription>
+                <CardDescription>Bandwidth and storage over the last 6 months.</CardDescription>
               </CardHeader>
               <CardContent>
-                {orgId && primarySiteId ? (
-                   <ResourceUsageChart orgId={orgId} siteId={primarySiteId} />
-                ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-                        No primary site configured to display metrics.
-                    </div>
-                )}
+                <ResourceUsageChart />
               </CardContent>
             </Card>
             <Card>
