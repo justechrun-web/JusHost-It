@@ -7,18 +7,6 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-
-const adminTabs = [
-  { name: 'Overview', href: '/admin' },
-  { name: 'Metrics', href: '/admin/metrics' },
-  { name: 'Audit', href: '/admin/audit' },
-  { name: 'Support', href: '/admin/support' },
-];
 
 export default function AdminLayout({
   children,
@@ -27,13 +15,9 @@ export default function AdminLayout({
 }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   
-  const activeTab = adminTabs.find(tab => pathname.startsWith(tab.href))?.href || '/admin';
-
-
   React.useEffect(() => {
     if (!isUserLoading) {
       if (!user) {
@@ -67,8 +51,19 @@ export default function AdminLayout({
   }
 
   return (
-    <div>
-      {children}
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="flex items-center gap-4 mb-8">
+        <Button variant="outline" size="icon" asChild>
+          <Link href="/dashboard">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="sr-only">Back to Dashboard</span>
+          </Link>
+        </Button>
+        <h1 className="text-3xl font-bold font-headline tracking-tight">
+          Admin Panel
+        </h1>
+      </div>
+      <div className="mt-6">{children}</div>
     </div>
   );
 }

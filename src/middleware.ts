@@ -42,7 +42,7 @@ export async function middleware(req: NextRequest) {
     if (req.nextUrl.pathname.startsWith('/admin') && !isAdmin) {
       // For non-admins trying to access /admin, you might want to redirect
       // to a specific page or just back to the dashboard.
-      return NextResponse.redirect(new URL('/mfa-setup', req.url));
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
       
     const requestHeaders = new Headers(req.headers);
