@@ -15,6 +15,7 @@ import { Settings, User, LifeBuoy, LogOut, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { Input } from './ui/input';
+import { ThemeToggle } from './theme-toggle';
 
 export function Header() {
   const router = useRouter();
@@ -36,46 +37,49 @@ export function Header() {
             <Input placeholder="Search anything and everything" className="pl-10 bg-card border-border" />
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative h-9 w-9 rounded-full"
-            >
-             <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                 {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
-            </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/settings">
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/billing">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Billing</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/support">
-                <LifeBuoy className="mr-2 h-4 w-4" />
-                <span>Support</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 rounded-full"
+                >
+                <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                    {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                </div>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                <Link href="/settings">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                <Link href="/billing">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Billing</span>
+                </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                <Link href="/support">
+                    <LifeBuoy className="mr-2 h-4 w-4" />
+                    <span>Support</span>
+                </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </div>
     </header>
   );
