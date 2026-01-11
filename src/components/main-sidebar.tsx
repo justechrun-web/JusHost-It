@@ -25,7 +25,8 @@ import {
   GraduationCap,
   ShoppingCart,
   HelpCircle,
-  Gift
+  Gift,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase/provider';
@@ -46,6 +47,7 @@ const secondaryMenuItems = [
     { href: '/buy-course', label: 'Buy Course', icon: ShoppingCart },
     { href: '/referrals', label: 'Referrals', icon: Gift },
     { href: '/faq', label: 'FAQ', icon: HelpCircle },
+    { href: '/about', label: 'About Us', icon: Info },
 ];
 
 
