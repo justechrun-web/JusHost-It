@@ -74,7 +74,7 @@ export default function AboutUsPage() {
                             <a href="#about" className="nav-link text-slate-300 hover:text-white">About</a>
                             <a href="#approach" className="nav-link text-slate-300 hover:text-white">Approach</a>
                             <a href="#capabilities" className="nav-link text-slate-300 hover:text-white">Capabilities</a>
-                            <a href="/dashboard" className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all">Go to App</a>
+                            <Link href="/dashboard" className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all">Go to App</Link>
                         </div>
                         <button className="md:hidden text-white">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,11 +343,11 @@ export default function AboutUsPage() {
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10"></div>
                         <div className="relative z-10">
                             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-                                Ready to Build Something<br/>
+                                Ready to Build Something<br>
                                 <span className="gradient-text">Exceptional?</span>
                             </h2>
                             <p className="text-slate-400 text-xl mb-8 max-w-2xl mx-auto">
-                                Let's discuss how JusHost It can help you build the intelligent, scalable foundation your business deserves.
+                                Let's discuss how JusHostIt can help you build the intelligent, scalable foundation your business deserves.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                                 <a href="mailto:hello@jushostit.com" className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold text-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all transform hover:scale-105">
@@ -363,56 +363,92 @@ export default function AboutUsPage() {
             </section>
 
             {/* Footer */}
-            <footer className="border-t border-slate-800 py-12">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="grid md:grid-cols-4 gap-8 mb-8">
-                        <div className="md:col-span-2">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+            <footer class="border-t border-slate-800 py-12">
+                <div class="max-w-7xl mx-auto px-6">
+                    <div class="grid md:grid-cols-4 gap-8 mb-8">
+                        <div class="md:col-span-2">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
                                     </svg>
                                 </div>
-                                <span className="text-xl font-bold">JusHost It</span>
+                                <span class="text-xl font-bold">JusHostIt</span>
                             </div>
-                            <p className="text-slate-400 max-w-md">
+                            <p class="text-slate-400 max-w-md">
                                 Engineering intelligent systems for the modern world. Where systems meet intelligence.
                             </p>
                         </div>
                         
                         <div>
-                            <h4 className="font-semibold mb-4">Company</h4>
-                            <ul className="space-y-2 text-slate-400">
-                                <li><a href="#about" className="hover:text-white transition-colors">About Us</a></li>
-                                <li><a href="#approach" className="hover:text-white transition-colors">Our Approach</a></li>
-                                <li><a href="#capabilities" className="hover:text-white transition-colors">Capabilities</a></li>
-                                <li><a href="#contact" className="hover:text-white transition-colors">Contact</a></li>
+                            <h4 class="font-semibold mb-4">Company</h4>
+                            <ul class="space-y-2 text-slate-400">
+                                <li><a href="#about" class="hover:text-white transition-colors">About Us</a></li>
+                                <li><a href="#approach" class="hover:text-white transition-colors">Our Approach</a></li>
+                                <li><a href="#capabilities" class="hover:text-white transition-colors">Capabilities</a></li>
+                                <li><a href="#contact" class="hover:text-white transition-colors">Contact</a></li>
                             </ul>
                         </div>
                         
                         <div>
-                            <h4 className="font-semibold mb-4">Connect</h4>
-                            <ul className="space-y-2 text-slate-400">
-                                <li><a href="mailto:hello@jushostit.com" className="hover:text-white transition-colors">Email Us</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">LinkedIn</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Twitter</a></li>
-                                <li><a href="#" className="hover:text-white transition-colors">GitHub</a></li>
+                            <h4 class="font-semibold mb-4">Connect</h4>
+                            <ul class="space-y-2 text-slate-400">
+                                <li><a href="mailto:hello@jushostit.com" class="hover:text-white transition-colors">Email Us</a></li>
+                                <li><a href="#" class="hover:text-white transition-colors">LinkedIn</a></li>
+                                <li><a href="#" class="hover:text-white transition-colors">Twitter</a></li>
+                                <li><a href="#" class="hover:text-white transition-colors">GitHub</a></li>
                             </ul>
                         </div>
                     </div>
                     
-                    <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <p className="text-slate-500 text-sm">
-                            © 2025 JusHost It. All rights reserved.
+                    <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <p class="text-slate-500 text-sm">
+                            © 2025 JusHostIt. All rights reserved.
                         </p>
-                        <div className="flex gap-6 text-slate-500 text-sm">
-                            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                        <div class="flex gap-6 text-slate-500 text-sm">
+                            <a href="#" class="hover:text-white transition-colors">Privacy Policy</a>
+                            <a href="#" class="hover:text-white transition-colors">Terms of Service</a>
                         </div>
                     </div>
                 </div>
             </footer>
-        </div>
-    );
-}
 
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add scroll-based animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.feature-card, .glass').forEach((el) => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
