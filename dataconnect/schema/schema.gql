@@ -1,0 +1,52 @@
+type Client @table {
+  name: String!
+  email: String!
+  createdAt: Timestamp!
+  companyName: String
+  phone: String
+  address: String
+  notes: String
+}
+
+type ServiceType @table {
+  name: String!
+  price: Float!
+  currency: String!
+  createdAt: Timestamp!
+  description: String
+  setupFee: Float
+}
+
+type Service @table {
+  client: Client!
+  serviceType: ServiceType!
+  startDate: Date!
+  status: String!
+  createdAt: Timestamp!
+  endDate: Date
+  domainName: String
+  nextBillingDate: Date
+  notes: String
+}
+
+type Invoice @table {
+  client: Client!
+  invoiceNumber: String!
+  issueDate: Date!
+  dueDate: Date!
+  totalAmount: Float!
+  status: String!
+  createdAt: Timestamp!
+  paymentDate: Date
+  notes: String
+}
+
+type InvoiceItem @table {
+  invoice: Invoice!
+  service: Service
+  description: String!
+  quantity: Int!
+  unitPrice: Float!
+  lineTotal: Float!
+  taxRate: Float
+}

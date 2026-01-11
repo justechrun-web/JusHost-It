@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
 import { doc } from "firebase/firestore";
 import { Loader2, Cpu, MemoryStick, HardDrive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -26,16 +26,19 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FEATURES } from "@/lib/features";
 
-type UserData = {
+export const dynamic = 'force-dynamic';
+
+type OrgData = {
   plan: 'starter' | 'pro' | 'business' | 'free';
   subscriptionStatus: 'trialing' | 'active' | 'past_due' | 'canceled';
   currentPeriodEnd: { seconds: number };
-  usage: {
-    sites: number;
-    bandwidthGb: number;
-    storageGb: number;
-  };
 };
+
+type UsageData = {
+  sites: number;
+  bandwidthGb: number;
+  storageGb: number;
+}
 
 export default function BillingPage() {
   const { user, isUserLoading } = useUser();
@@ -45,14 +48,28 @@ export default function BillingPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
 
-  const userRef = useMemoFirebase(() => {
+  // First, get the user's orgId
+  const userDocRef = useMemoFirebase(() => {
     if (!user || !db) return null;
     return doc(db, `users/${user.uid}`);
   }, [db, user]);
+  const { data: userData, isLoading: isUserDataLoading } = useDoc<{orgId: string}>(userDocRef);
 
-  const { data: userData, isLoading: isBillingLoading } = useDoc<UserData>(userRef);
-  const planFeatures = userData?.plan ? FEATURES[userData.plan as keyof typeof FEATURES] : FEATURES['starter'];
+  // Then, fetch the organization and usage data
+  const orgRef = useMemoFirebase(() => {
+    if (!userData?.orgId || !db) return null;
+    return doc(db, `orgs/${userData.orgId}`);
+  }, [db, userData]);
 
+  const usageRef = useMemoFirebase(() => {
+    if (!userData?.orgId || !db) return null;
+    return doc(db, `orgUsage/${userData.orgId}`);
+  }, [db, userData]);
+
+  const { data: orgData, isLoading: isOrgLoading } = useDoc<OrgData>(orgRef);
+  const { data: usageData, isLoading: isUsageLoading } = useDoc<UsageData>(usageRef);
+
+  const planFeatures = orgData?.plan ? FEATURES[orgData.plan as keyof typeof FEATURES] : FEATURES['starter'];
 
   useEffect(() => {
     async function fetchInvoices() {
@@ -99,7 +116,11 @@ export default function BillingPage() {
 
       const { url } = await res.json();
       if (url) {
-        window.location.href = url;
+        if (new URL(url).hostname === 'billing.stripe.com') {
+          window.location.href = url;
+        } else {
+          throw new Error('Invalid redirect URL received.');
+        }
       }
     } catch (error: any) {
       toast({
@@ -107,14 +128,13 @@ export default function BillingPage() {
         title: 'Error',
         description: error.message,
       });
-    } finally {
-        setIsPortalLoading(false);
+      setIsPortalLoading(false);
     }
   };
 
-  const isLoading = isUserLoading || isBillingLoading;
+  const isLoading = isUserLoading || isUserDataLoading || isOrgLoading || isUsageLoading;
   
-  const getStatusBadgeVariant = (status?: UserData['subscriptionStatus']) => {
+  const getStatusBadgeVariant = (status?: OrgData['subscriptionStatus']) => {
     switch (status) {
       case 'active':
       case 'trialing':
@@ -128,10 +148,21 @@ export default function BillingPage() {
   };
   
   const getPeriodEndDate = () => {
-    if(!userData?.currentPeriodEnd) return '';
-    const date = new Date(userData.currentPeriodEnd.seconds * 1000);
+    if(!orgData?.currentPeriodEnd) return '';
+    const date = new Date(orgData.currentPeriodEnd.seconds * 1000);
     return date.toLocaleDateString();
   }
+
+  const isValidStripeUrl = (url: string) => {
+    try {
+      if (!url) return false;
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === 'https:' && parsedUrl.hostname.endsWith('.stripe.com');
+    } catch (e) {
+      return false;
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -146,10 +177,10 @@ export default function BillingPage() {
         <div className="flex justify-center items-center p-16">
           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
-      ) : !userData || !userData.subscriptionStatus ? (
+      ) : !orgData || !orgData.subscriptionStatus ? (
          <Card className="text-center p-8">
           <CardTitle>No Subscription Found</CardTitle>
-          <CardDescription className="mt-2">You do not have an active subscription plan.</CardDescription>
+          <CardDescription className="mt-2">Your organization does not have an active subscription.</CardDescription>
           <Button asChild className="mt-4">
             <Link href="/pricing">Choose a Plan</Link>
           </Button>
@@ -160,18 +191,18 @@ export default function BillingPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Current Plan</CardTitle>
-                <CardDescription>Your active subscription details.</CardDescription>
+                <CardDescription>Your organization's subscription.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-2xl font-semibold capitalize">{userData.plan} Plan</p>
+                  <p className="text-2xl font-semibold capitalize">{orgData.plan} Plan</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant={getStatusBadgeVariant(userData.subscriptionStatus)} className="capitalize">
-                      {userData.subscriptionStatus}
+                    <Badge variant={getStatusBadgeVariant(orgData.subscriptionStatus)} className="capitalize">
+                      {orgData.subscriptionStatus}
                     </Badge>
-                    {userData.currentPeriodEnd && (
+                    {orgData.currentPeriodEnd && (
                        <span className="text-sm text-muted-foreground">
-                        {userData.subscriptionStatus === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
+                        {orgData.subscriptionStatus === 'trialing' ? 'Trial ends' : 'Renews'} on {getPeriodEndDate()}
                        </span>
                     )}
                   </div>
@@ -191,11 +222,11 @@ export default function BillingPage() {
                 <CardContent className="space-y-4">
                      <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground"><HardDrive className="h-4 w-4" /><span>Sites</span></div>
-                        <span className="font-mono text-sm">{userData.usage?.sites || 0} / {planFeatures?.sites || '-'}</span>
+                        <span className="font-mono text-sm">{usageData?.sites || 0} / {planFeatures?.sites || '-'}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground"><Cpu className="h-4 w-4" /><span>Bandwidth</span></div>
-                        <span className="font-mono text-sm">{userData.usage?.bandwidthGb || 0} GB / {planFeatures?.bandwidthGb || '-'} GB</span>
+                        <span className="font-mono text-sm">{usageData?.bandwidthGb || 0} GB / {planFeatures?.bandwidthGb || '-'} GB</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground"><MemoryStick className="h-4 w-4" /><span>Analytics</span></div>
@@ -237,17 +268,19 @@ export default function BillingPage() {
                             </TableCell>
                         </TableRow>
                     ) : invoices && invoices.length > 0 ? (
-                      invoices.map((invoice, index) => (
+                      invoices.map((invoice, index) => {
+                        const isSafeUrl = isValidStripeUrl(invoice.invoice_pdf);
+                        return (
                         <TableRow key={index}>
                           <TableCell className="font-medium">{new Date(invoice.created * 1000).toLocaleDateString()}</TableCell>
                           <TableCell>${(invoice.amount_paid / 100).toFixed(2)}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={invoice.invoice_pdf} target="_blank" rel="noopener noreferrer">Download PDF</a>
+                            <Button variant="outline" size="sm" asChild disabled={!isSafeUrl}>
+                              <a href={isSafeUrl ? invoice.invoice_pdf : undefined} target="_blank" rel="noopener noreferrer">Download PDF</a>
                             </Button>
                           </TableCell>
                         </TableRow>
-                      ))
+                      )})
                     ) : (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center h-24">No invoice history found.</TableCell>

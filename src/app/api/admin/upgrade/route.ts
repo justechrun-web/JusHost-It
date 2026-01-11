@@ -1,34 +1,48 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from '@/lib/stripe/server';
-import { adminDb } from '@/lib/firebase/admin';
-import { headers } from 'next/headers';
+import { adminDb, adminAuth } from '@/lib/firebase/admin';
+import { cookies } from 'next/headers';
+import { verifySessionCookie } from "@/lib/auth/verify-session";
+
+export const runtime = 'nodejs';
 
 async function logAdminAction({ adminId, action, targetUserId, before, after }: { adminId: string, action: string, targetUserId: string, before: any, after: any }) {
   await adminDb.collection("auditLogs").add({
-    adminId,
-    action,
-    targetId: targetUserId,
-    before,
-    after,
-    timestamp: adminDb.FieldValue.serverTimestamp(),
+    actorUid: adminId,
+    actorRole: 'admin',
+    type: 'admin_plan_change',
+    orgId: targetUserId, // In this context, the target user's ID is used as the org identifier for the log
+    metadata: {
+        targetUserId,
+        action,
+        before,
+        after,
+    },
+    createdAt: adminDb.FieldValue.serverTimestamp(),
   });
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const adminId = headers().get('X-User-ID');
-    const isAdmin = headers().get('X-User-Is-Admin') === 'true';
-
-    if (!adminId || !isAdmin) {
-        return new NextResponse("Unauthorized", { status: 401 });
+    const session = cookies().get('__session')?.value;
+    if (!session) {
+      return new NextResponse("Unauthorized: No session", { status: 401 });
     }
+
+    const decodedToken = await verifySessionCookie(session);
+
+    if (!decodedToken || !decodedToken.admin) {
+        return new NextResponse("Unauthorized: Not an admin", { status: 403 });
+    }
+    const adminId = decodedToken.uid;
 
     const form = await req.formData()
     const uid = form.get("uid") as string
     const newPlan = form.get("plan") as string
 
 
-    if (!uid || !newPlan || !adminId) {
+    if (!uid || !newPlan) {
         return new NextResponse("Missing user ID or plan", { status: 400 });
     }
 
@@ -44,7 +58,7 @@ export async function POST(req: NextRequest) {
         return new NextResponse("User does not have a subscription to update.", { status: 400 });
     }
 
-    const priceId = process.env[`NEXT_PUBLIC_STRIPE_PRICE_${newPlan.toUpperCase()}`];
+    const priceId = process.env[`STRIPE_PRICE_${newPlan.toUpperCase()}`];
     if (!priceId) {
         return new NextResponse(`Price ID for plan '${newPlan}' not found in environment variables.`, { status: 500 });
     }

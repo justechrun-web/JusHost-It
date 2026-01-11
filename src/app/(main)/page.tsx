@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { Loader2 } from 'lucide-react';
 
 export default function MainPage() {

@@ -1,11 +1,10 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, HardDrive, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -67,60 +66,47 @@ export default function PricingPage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    async function handleSelect(plan: typeof tiers[0]) {
-        if (plan.href) {
-            router.push(plan.href);
-            return;
-        }
-        
-        if (!plan.priceId) {
-            toast({
-                title: 'Configuration Error',
-                description: `The price ID for the ${plan.name} plan is not set up. Please contact support.`,
-                variant: 'destructive',
-            });
-            return;
-        }
-
-        setLoadingPlan(plan.id);
-        
+    const startCheckout = async (plan: "pro" | "business" | "starter") => {
+      setLoadingPlan(plan);
+      try {
         if (!user) {
-            router.push(`/signup?plan=${plan.id}&priceId=${plan.priceId}`);
-            return;
+          router.push(`/signup?plan=${plan}`);
+          return;
         }
 
-        try {
-            const token = await user.getIdToken();
+        const token = await user.getIdToken();
+        const res = await fetch("/api/stripe/checkout", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ plan }),
+        });
 
-            const res = await fetch('/api/stripe/checkout', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ priceId: plan.priceId }),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to create checkout session.');
-            }
-
-            const { url } = await res.json();
-            if (url) {
-                window.location.href = url;
-            }
-        } catch (error: any) {
-            console.error("Checkout failed", error);
-            toast({
-                title: 'Checkout Error',
-                description: error.message,
-                variant: 'destructive',
-            });
-        } finally {
-             setLoadingPlan(null);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to create checkout session.');
         }
-    }
+
+        const data = await res.json();
+        if (data.url) {
+           if (new URL(data.url).hostname === 'checkout.stripe.com') {
+             window.location.href = data.url;
+           } else {
+             throw new Error('Invalid redirect URL received.');
+           }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPlan(null);
+      }
+    };
 
 
   return (
@@ -186,7 +172,7 @@ export default function PricingPage() {
                             <Button 
                                 className="w-full" 
                                 variant={tier.featured ? 'default' : 'outline'}
-                                onClick={() => handleSelect(tier)}
+                                onClick={() => tier.href ? router.push(tier.href) : startCheckout(tier.id as any)}
                                 disabled={loadingPlan === tier.id || isUserLoading}
                             >
                                 {loadingPlan === tier.id ? (

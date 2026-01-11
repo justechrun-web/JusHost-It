@@ -1,32 +1,41 @@
-import "server-only";
+
+'use server';
+
+import 'server-only';
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import * as dotenv from 'dotenv';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-dotenv.config();
-
-let app: App;
-
-const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-};
-
-if (!getApps().length) {
-  if (!serviceAccount.privateKey) {
-    console.warn("Firebase Admin SDK private key is not set. Skipping initialization.");
-    // @ts-ignore
-    app = {};
-  } else {
-    app = initializeApp({
-      credential: cert(serviceAccount),
-    });
+function getAdminApp(): App {
+  if (getApps().length > 0) {
+    return getApps()[0];
   }
-} else {
-  app = getApps()[0];
+
+  // Check if all required environment variables are present
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (projectId && clientEmail && privateKey) {
+    // Initialize with environment variables
+    return initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        // The private key needs newlines to be correctly parsed
+        privateKey: privateKey.replace(/\\n/g, '\n'),
+      }),
+    });
+  } else {
+    // Fallback to default credentials, which is useful for some cloud environments
+    console.warn(
+        'Firebase environment variables not fully set. Falling back to default application credentials.'
+    );
+    return initializeApp();
+  }
 }
 
-export const adminAuth = app.name ? getAuth(app) : ({} as any);
-export const adminDb = app.name ? getFirestore(app) : ({} as any);
+const adminApp = getAdminApp();
+export const adminAuth = getAuth(adminApp);
+export const adminDb = getFirestore(adminApp);
+export { FieldValue };

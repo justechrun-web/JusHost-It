@@ -1,8 +1,7 @@
-
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useParams } from 'next/navigation';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -11,12 +10,16 @@ import { UserOrgCard } from './components/user-org-card';
 import { UserUsageCard } from './components/user-usage-card';
 import { UserBillingCard } from './components/user-billing-card';
 import { UserDangerZone } from './components/user-danger-zone';
+import { UserPurchaseOrderCard } from './components/user-po-card';
+
+export const dynamic = 'force-dynamic';
 
 type AppUser = {
   id: string;
   email: string;
   displayName: string;
-  role?: 'free' | 'paid' | 'admin';
+  role?: 'user' | 'admin';
+  company?: string;
   plan?: 'starter' | 'pro' | 'business';
   subscriptionStatus?: 'trialing' | 'active' | 'past_due' | 'canceled';
   monthlySpend?: number;
@@ -55,23 +58,13 @@ export default function UserDetailPage() {
     );
   }
 
-  // Flatten user and subscription info for easier prop passing to legacy components
-  const displayUser = {
-    ...user,
-    plan: user.plan,
-    subscriptionStatus: user.subscriptionStatus,
-    monthlySpend: user.monthlySpend,
-    hardCap: user.hardCap,
-  };
-
-
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/admin/users">
+          <Link href="/admin">
             <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back to Users</span>
+            <span className="sr-only">Back to Admin</span>
           </Link>
         </Button>
         <div>
@@ -86,12 +79,13 @@ export default function UserDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-            <UserOrgCard user={displayUser} />
+            <UserOrgCard user={user} />
             <UserUsageCard />
+            <UserPurchaseOrderCard orgId={user.id} />
         </div>
         <div className="space-y-8">
-            <UserBillingCard user={displayUser} />
-            {user && <UserDangerZone orgId={user.id} />}
+            <UserBillingCard user={user} />
+            <UserDangerZone orgId={user.id} />
         </div>
       </div>
     </div>

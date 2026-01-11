@@ -2,68 +2,98 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Checks for a custom claim set by the Stripe extension or an admin script.
     function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+      return isSignedIn() && request.auth.token.admin == true;
     }
 
-    // ======================================================================
-    // User data is only writable by the user themselves.
-    // Contains public profile info and protected billing status.
-    // ======================================================================
+    // Safely get the user's role from their auth token.
+    function getRole() {
+      return request.auth.token.stripeRole;
+    }
+
+    // Get the current number of sites a user has.
+    // This assumes you have a 'sites' counter on the user document.
+    function getUserSiteCount() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.siteCount;
+    }
+
+    // --- User Profiles ---
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    // ======================================================================
-    // Organization, Site, and Member data is protected.
-    // High-level access is granted to organization members, but specific
-    // write operations are handled by secure Cloud Functions.
-    // ======================================================================
-    match /orgs/{orgId} {
-      allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(orgId));
-      allow write: if false; // All writes must go through Cloud Functions
-    }
-
-    match /orgs/{orgId}/sites/{siteId} {
-       allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(orgId));
-       allow write: if false; // All writes must go through Cloud Functions
-    }
-
-    match /orgMembers/{membershipId} {
-       allow read: if exists(/databases/$(database)/documents/orgMembers/$(request.auth.uid)_$(resource.data.orgId));
-       allow write: if false; // All writes must go through Cloud Functions
-    }
-
-    // ======================================================================
-    // Audit logs and metrics are admin-only collections.
-    // They are read-only from the client side.
-    // ======================================================================
-    match /auditLogs/{logId} {
-      allow read: if isAdmin();
-      allow write: if false; // Written by server-side processes only
-    }
-
-    match /metrics/{metricId} {
-      allow read: if isAdmin();
-      allow write: if false; // Written by server-side processes only
+      // Admins can read any profile, users can only read/write their own.
+      allow read, write: if isAdmin() || isOwner(userId);
+      // Anyone can create their own user document upon signup.
+      allow create: if isOwner(userId);
     }
     
-    // ======================================================================
-    // Other collections should be explicitly denied by default
-    // until rules are defined for them.
-    // ======================================================================
-     match /orgInvitations/{inviteId} {
-        allow read, write: if false;
-     }
-     match /users/{userId}/supportTickets/{ticketId} {
-        allow read, write: if isOwner(userId);
-     }
-     match /users/{userId}/login_events/{eventId} {
-        allow read, write: if isOwner(userId);
-     }
+    // --- Mail Collection for Trigger Email Extension ---
+    match /mail/{mailId} {
+      // Allow any authenticated user to create (send) an email.
+      // Read/update/delete are not needed for the user.
+      allow create: if isSignedIn();
+    }
+
+
+    // --- Organizations & Sites ---
+    match /orgs/{orgId} {
+      // Only members of the org can read it. Writing is restricted server-side.
+      allow read: if isSignedIn() && get(/databases/$(database)/documents/orgMembers/$(orgId + '_' + request.auth.uid)).data != null;
+      allow write: if false; // All writes must go through trusted server code.
+
+      match /sites/{siteId} {
+        // Org members can read sites.
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/orgMembers/$(orgId + '_' + request.auth.uid)).data != null;
+
+        // Creation logic based on plan limits.
+        allow create: if isSignedIn() && (
+          // Pro and Business plans have higher/unlimited sites
+          getRole() in ['pro', 'business'] ||
+          // Starter plan is limited to 1 site.
+          (getRole() == 'starter' && getUserSiteCount() < 1)
+        );
+
+        // Only org admins/owners or site creators can update/delete.
+        allow update, delete: if isSignedIn() && (
+          get(/databases/$(database)/documents/orgMembers/$(orgId + '_' + request.auth.uid)).data.role in ['owner', 'admin']
+        );
+      }
+    }
+    
+    // --- Org Membership & Invitations ---
+    match /orgMembers/{membershipId} {
+        // Org members can see other members. Admins can modify.
+        allow read: if isSignedIn() && string(resource.data.orgId).split('_')[0] == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.orgId;
+        allow write: if isAdmin();
+    }
+
+    match /orgInvitations/{inviteId} {
+      // Logged-in users can read invitations to see if they've been invited.
+      allow read: if isSignedIn();
+      // Only admins/owners of the target org can create or modify invitations.
+      allow write: if isSignedIn() && get(/databases/$(database)/documents/orgMembers/$(request.resource.data.orgId + '_' + request.auth.uid)).data.role in ['owner', 'admin'];
+    }
+
+    // --- Admin-Only Collections ---
+    match /auditLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+    match /metrics/{metricId} {
+        allow read, write: if isAdmin();
+    }
+
+    // --- User-Specific Subcollections ---
+    match /users/{userId}/{document=**} {
+      // Users can only access their own subcollections (e.g., support tickets, login events).
+      allow read, write: if isOwner(userId);
+    }
   }
 }

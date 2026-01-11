@@ -1,14 +1,14 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, getCountFromServer, where, query } from 'firebase/firestore';
+import { collection, getCountFromServer, where, query } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Users, Server, AlertTriangle } from 'lucide-react';
 import { SitesTable } from './components/sites-table';
 import { UsersTable } from './components/users-table';
 
+export const dynamic = 'force-dynamic';
 
 const StatCard = ({
   title,

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/chart';
 import { Loader2 } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
 import { doc } from 'firebase/firestore';

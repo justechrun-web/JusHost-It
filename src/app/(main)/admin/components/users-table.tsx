@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -11,10 +10,9 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { UserAction } from './user-action';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 
@@ -55,7 +53,7 @@ export function UsersTable() {
         <div className="p-4">
             <h3 className="text-xl font-bold tracking-tight">User Management</h3>
             <p className="text-muted-foreground">
-                Promote or demote users to administrators.
+                Promote or demote users to administrators. Click a user to see details.
             </p>
         </div>
       <Table>

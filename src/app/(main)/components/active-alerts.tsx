@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase/provider';
 import { collection, query } from 'firebase/firestore';
 import { AlertTriangle, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -20,7 +19,7 @@ export function ActiveAlerts() {
   const db = useFirestore();
 
   const alertsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !db) return null;
     return query(collection(db, `users/${user.uid}/alerts`));
   }, [user, db]);
 

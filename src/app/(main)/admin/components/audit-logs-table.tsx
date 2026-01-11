@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -11,30 +10,31 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 type AuditLog = {
   id: string;
-  adminId: string;
-  action: string;
-  targetId: string;
-  timestamp: { seconds: number; nanoseconds: number } | string;
+  actorUid: string;
+  type: string;
+  orgId: string;
+  metadata: Record<string, any>;
+  createdAt: { seconds: number; nanoseconds: number } | string;
 };
 
 export function AuditLogsTable() {
   const db = useFirestore();
   const auditLogQuery = useMemoFirebase(
-    () => db ? query(collection(db, 'auditLogs'), orderBy('timestamp', 'desc'), limit(100)) : null,
+    () => db ? query(collection(db, 'auditLogs'), orderBy('createdAt', 'desc'), limit(100)) : null,
     [db]
   );
   const { data: logs, isLoading } = useCollection<AuditLog>(auditLogQuery);
-  const [adminFilter, setAdminFilter] = useState('');
-  const [actionFilter, setActionFilter] = useState('');
+  const [actorFilter, setActorFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
 
-  const formatDate = (timestamp: AuditLog['timestamp']) => {
+  const formatDate = (timestamp: AuditLog['createdAt']) => {
     if (!timestamp) return 'N/A';
     if (typeof timestamp === 'string') {
       return format(new Date(timestamp), 'PPP p');
@@ -46,10 +46,10 @@ export function AuditLogsTable() {
   const filteredLogs = logs
     ? logs
         .filter((log) =>
-          log.adminId.toLowerCase().includes(adminFilter.toLowerCase())
+          log.actorUid.toLowerCase().includes(actorFilter.toLowerCase())
         )
         .filter((log) =>
-          log.action.toLowerCase().includes(actionFilter.toLowerCase())
+          log.type.toLowerCase().includes(typeFilter.toLowerCase())
         )
     : [];
 
@@ -64,15 +64,15 @@ export function AuditLogsTable() {
         </div>
         <div className="flex gap-4">
             <Input
-            placeholder="Filter by Admin ID..."
-            value={adminFilter}
-            onChange={(e) => setAdminFilter(e.target.value)}
+            placeholder="Filter by Actor ID..."
+            value={actorFilter}
+            onChange={(e) => setActorFilter(e.target.value)}
             className="max-w-sm"
             />
             <Input
-            placeholder="Filter by Action..."
-            value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
+            placeholder="Filter by Type..."
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
             className="max-w-sm"
             />
         </div>
@@ -81,15 +81,16 @@ export function AuditLogsTable() {
         <TableHeader>
           <TableRow>
             <TableHead>Timestamp</TableHead>
-            <TableHead>Admin ID</TableHead>
-            <TableHead>Action</TableHead>
-            <TableHead>Target ID</TableHead>
+            <TableHead>Actor ID</TableHead>
+            <TableHead>Action Type</TableHead>
+            <TableHead>Org ID</TableHead>
+            <TableHead>Metadata</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center">
+              <TableCell colSpan={5} className="text-center">
                 <div className="flex justify-center items-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
@@ -98,13 +99,16 @@ export function AuditLogsTable() {
           ) : (
             filteredLogs.map((log) => (
               <TableRow key={log.id}>
-                <TableCell>{formatDate(log.timestamp)}</TableCell>
+                <TableCell>{formatDate(log.createdAt)}</TableCell>
                 <TableCell className="font-mono text-xs">
-                  {log.adminId}
+                  {log.actorUid}
                 </TableCell>
-                <TableCell className="font-medium">{log.action}</TableCell>
+                <TableCell className="font-medium">{log.type}</TableCell>
                 <TableCell className="font-mono text-xs">
-                  {log.targetId}
+                  {log.orgId}
+                </TableCell>
+                 <TableCell className="font-mono text-xs max-w-sm truncate">
+                  {JSON.stringify(log.metadata)}
                 </TableCell>
               </TableRow>
             ))
@@ -112,7 +116,7 @@ export function AuditLogsTable() {
           {!isLoading && filteredLogs.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={4}
+                colSpan={5}
                 className="text-center text-muted-foreground"
               >
                 No audit logs found.

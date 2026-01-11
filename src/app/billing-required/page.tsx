@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { CreditCard, LogOut } from "lucide-react";
-import { useAuth } from "@/firebase";
-import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 export default function BillingRequiredPage() {
-  const auth = useAuth();
+  const router = useRouter();
   
-  const handleLogout = () => {
-    signOut(auth);
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
   };
 
   return (

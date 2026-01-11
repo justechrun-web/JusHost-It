@@ -1,0 +1,24 @@
+mutation CreateClient($name: String!, $email: String!, $createdAt: Timestamp!) @auth(level: USER) {
+  client_insert(data: {name: $name, email: $email, createdAt: $createdAt})
+}
+
+query ListClients @auth(level: USER) {
+  clients {
+    id
+    name
+    email
+  }
+}
+
+mutation UpdateInvoiceStatus($id: UUID!, $status: String!) @auth(level: USER) {
+  invoice_update(key: {id: $id}, data: {status: $status})
+}
+
+query GetServiceTypes @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  serviceTypes {
+    id
+    name
+    price
+    currency
+  }
+}

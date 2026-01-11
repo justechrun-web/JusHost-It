@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useFunctions } from '@/firebase';
+import { useFunctions } from '@/firebase/provider';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { httpsCallable } from 'firebase/functions';

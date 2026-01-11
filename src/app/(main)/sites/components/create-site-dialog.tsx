@@ -24,8 +24,8 @@ import { PlusCircle, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { httpsCallable } from 'firebase/functions';
-import { useFunctions, useUser } from '@/firebase';
-import { suggestDomains } from '@/ai/flows/domain-suggestion-flow';
+import { useFunctions, useUser } from '@/firebase/provider';
+import { suggestDomains } from '@/ai/flows/suggest-domains';
 
 export function CreateSiteDialog() {
   const [open, setOpen] = useState(false);
@@ -49,7 +49,7 @@ export function CreateSiteDialog() {
     }
     setSuggestionRunning(true);
     try {
-      const result = await suggestDomains({ purpose: sitePurpose });
+      const result = await suggestDomains({ keywords: sitePurpose });
       setSuggestions(result.suggestions);
     } catch (error) {
       console.error(error);
@@ -83,6 +83,7 @@ export function CreateSiteDialog() {
       });
       setDomain('');
       setSitePurpose('');
+      setSuggestions([]);
       setOpen(false);
     } catch (error: any) {
       console.error('Cloud Function error:', error);

@@ -1,28 +1,12 @@
-
 'use client';
 
 import * as React from 'react';
-import { useUser } from '@/firebase';
-import { multiFactor } from 'firebase/auth';
+import { useUser } from '@/firebase/provider';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-
-const adminTabs = [
-  { name: 'Overview', href: '/admin' },
-  { name: 'Sites', href: '/admin/sites' },
-  { name: 'Users', href: '/admin/users' },
-  { name: 'Billing', href: '/admin/billing' },
-  { name: 'Audit', href: '/admin/audit' },
-  { name: 'Metrics', href: '/admin/metrics' },
-];
 
 export default function AdminLayout({
   children,
@@ -31,13 +15,9 @@ export default function AdminLayout({
 }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   
-  const activeTab = adminTabs.find(tab => pathname === tab.href || (tab.href !== '/admin' && pathname.startsWith(tab.href)))?.href || '/admin';
-
-
   React.useEffect(() => {
     if (!isUserLoading) {
       if (!user) {
@@ -83,16 +63,7 @@ export default function AdminLayout({
           Admin Panel
         </h1>
       </div>
-      <Tabs value={activeTab} className="w-full" onValueChange={(value) => router.push(value)}>
-        <TabsList className="grid w-full grid-cols-6 mb-4">
-            {adminTabs.map((tab) => (
-                <TabsTrigger value={tab.href} key={tab.href}>
-                    {tab.name}
-                </TabsTrigger>
-            ))}
-        </TabsList>
-        <div className="mt-6">{children}</div>
-      </Tabs>
+      <div className="mt-6">{children}</div>
     </div>
   );
 }
