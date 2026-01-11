@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -67,7 +68,7 @@ export default function AboutUsPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
                                 </svg>
                             </div>
-                            <span className="text-xl font-bold">Justechrun Systems Inc</span>
+                            <span className="text-xl font-bold">JusHost It</span>
                         </div>
                         <div className="hidden md:flex items-center gap-8">
                             <a href="#about" className="nav-link text-slate-300 hover:text-white">About</a>
@@ -145,7 +146,7 @@ export default function AboutUsPage() {
                                 <span className="gradient-text">Designed for Clarity.</span>
                             </h2>
                             <p className="text-slate-400 text-lg leading-relaxed mb-6">
-                                Today's businesses face fragmented tools, complex infrastructure, and rapidly evolving technology. Justechrun Systems Inc was founded to simplify that complexity.
+                                Today's businesses face fragmented tools, complex infrastructure, and rapidly evolving technology. JusHost It was founded to simplify that complexity.
                             </p>
                             <p className="text-slate-400 text-lg leading-relaxed">
                                 We build systems that are modular, secure, and intelligent—designed to adapt as your business grows, engineered with reliability in mind, and powered by automation where it delivers real value.
@@ -346,10 +347,10 @@ export default function AboutUsPage() {
                                 <span className="gradient-text">Exceptional?</span>
                             </h2>
                             <p className="text-slate-400 text-xl mb-8 max-w-2xl mx-auto">
-                                Let's discuss how Justechrun Systems Inc can help you build the intelligent, scalable foundation your business deserves.
+                                Let's discuss how JusHost It can help you build the intelligent, scalable foundation your business deserves.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <a href="mailto:hello@justechrun.com" className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold text-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all transform hover:scale-105">
+                                <a href="mailto:hello@jushostit.com" className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold text-lg hover:shadow-xl hover:shadow-blue-500/50 transition-all transform hover:scale-105">
                                     Start a Conversation
                                 </a>
                                 <a href="#about" className="px-8 py-4 glass rounded-lg font-semibold text-lg hover:bg-white/10 transition-all">
@@ -372,7 +373,7 @@ export default function AboutUsPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
                                     </svg>
                                 </div>
-                                <span className="text-xl font-bold">Justechrun Systems Inc</span>
+                                <span className="text-xl font-bold">JusHost It</span>
                             </div>
                             <p className="text-slate-400 max-w-md">
                                 Engineering intelligent systems for the modern world. Where systems meet intelligence.
@@ -392,7 +393,7 @@ export default function AboutUsPage() {
                         <div>
                             <h4 className="font-semibold mb-4">Connect</h4>
                             <ul className="space-y-2 text-slate-400">
-                                <li><a href="mailto:hello@justechrun.com" className="hover:text-white transition-colors">Email Us</a></li>
+                                <li><a href="mailto:hello@jushostit.com" className="hover:text-white transition-colors">Email Us</a></li>
                                 <li><a href="#" className="hover:text-white transition-colors">LinkedIn</a></li>
                                 <li><a href="#" className="hover:text-white transition-colors">Twitter</a></li>
                                 <li><a href="#" className="hover:text-white transition-colors">GitHub</a></li>
@@ -402,7 +403,7 @@ export default function AboutUsPage() {
                     
                     <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                         <p className="text-slate-500 text-sm">
-                            © 2025 Justechrun Systems Inc. All rights reserved.
+                            © 2025 JusHost It. All rights reserved.
                         </p>
                         <div className="flex gap-6 text-slate-500 text-sm">
                             <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
@@ -414,3 +415,4 @@ export default function AboutUsPage() {
         </div>
     );
 }
+
