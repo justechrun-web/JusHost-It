@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useFirestore } from "@/firebase";
+import { useFirestore } from "@/firebase/provider";
 import { collection, addDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -45,9 +45,9 @@ export default function SupportPage() {
     try {
       // Writing to this collection triggers the Firebase Email Extension
       await addDoc(collection(db, "mail"), {
-        to: "support@jushostit.com",
+        to: "support@jushostit.com", // Updated branding
         message: {
-          subject: `Inquiry: ${formData.subject}`,
+          subject: `JusHostIt Inquiry: ${formData.subject}`,
           html: `
             <p><strong>From:</strong> ${formData.name} (${formData.email})</p>
             <p><strong>Message:</strong></p>
@@ -64,7 +64,7 @@ export default function SupportPage() {
     } catch (error) {
       console.error("Error sending message: ", error);
       setStatus('Failed to send. Please try again.');
-      toast({
+       toast({
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to send message. Please try again.',
@@ -84,7 +84,7 @@ export default function SupportPage() {
       </div>
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Send a Message</CardTitle>
+          <CardTitle>Contact JusHostIt Support</CardTitle>
           <CardDescription>Our team will get back to you as soon as possible.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,45 +92,45 @@ export default function SupportPage() {
             <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input 
-                id="name"
-                type="text" 
-                placeholder="Your Name" 
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                required 
+                  id="name"
+                  type="text" 
+                  placeholder="Your Name" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  required 
                 />
             </div>
              <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input 
-                id="email"
-                type="email" 
-                placeholder="Your Email" 
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                required 
+                  id="email"
+                  type="email" 
+                  placeholder="Your Email" 
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required 
                 />
             </div>
              <div className="space-y-2">
                 <Label htmlFor="subject">Subject</Label>
                 <Input 
-                id="subject"
-                type="text" 
-                placeholder="Subject" 
-                value={formData.subject}
-                onChange={(e) => setFormData({...formData, subject: e.target.value})}
-                required 
+                  id="subject"
+                  type="text" 
+                  placeholder="Subject" 
+                  value={formData.subject}
+                  onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                  required 
                 />
             </div>
             <div className="space-y-2">
                 <Label htmlFor="message">Message</Label>
                 <Textarea 
-                id="message"
-                placeholder="How can we help?" 
-                rows={5}
-                value={formData.message}
-                onChange={(e) => setFormData({...formData, message: e.target.value})}
-                required
+                  id="message"
+                  placeholder="How can JusHostIt help you today?" 
+                  rows={5}
+                  value={formData.message}
+                  onChange={(e) => setFormData({...formData, message: e.target.value})}
+                  required
                 />
             </div>
             <Button className="w-full" type="submit" disabled={isSubmitting}>
