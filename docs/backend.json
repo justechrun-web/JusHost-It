@@ -108,6 +108,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "orgId", "domain", "status"]
+    },
+    "Mail": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Mail",
+      "type": "object",
+      "description": "Represents an email to be sent by the Trigger Email Firebase Extension.",
+      "properties": {
+        "to": { "type": "string", "description": "The recipient's email address." },
+        "message": {
+          "type": "object",
+          "properties": {
+            "subject": { "type": "string" },
+            "html": { "type": "string" }
+          },
+          "required": ["subject", "html"]
+        }
+      },
+      "required": ["to", "message"]
     }
   },
   "auth": {
@@ -162,8 +180,16 @@
               "schema": { "$ref": "#/entities/OrgInvitation" },
               "description": "Stores pending invitations for users to join an organization. Documents can be cleaned up after they are accepted or expire."
           }
+      },
+      {
+        "path": "/mail/{mailId}",
+        "definition": {
+          "entityName": "Mail",
+          "schema": { "$ref": "#/entities/Mail" },
+          "description": "Collection for the Trigger Email extension. Authenticated users can create documents here to send emails."
+        }
       }
     ],
-    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. This structure is highly scalable, secure, and aligns with Stripe's subscription model."
+    "reasoning": "This data model is designed for a multi-tenant SaaS application with role-based access control (RBAC). The key decision is the separation of Users from Organizations. An `Organization` is the tenant that owns resources and is the source of truth for billing and plan limits. A `User` is a global entity representing an authenticated identity, with a lightweight document containing their org context. The flat `orgMembers` collection acts as a mapping table for efficient permission checks, and `orgUsage` provides a single document for atomic, pooled usage tracking. The `mail` collection is added for the Trigger Email extension."
   }
 }
