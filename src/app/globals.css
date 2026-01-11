@@ -89,4 +89,61 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  .gradient-text {
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+  }
+  
+  .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .animate-float {
+      animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+  }
+  
+  .grid-pattern {
+      background-image: 
+          linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+      background-size: 50px 50px;
+  }
+  
+  .feature-card {
+      transition: all 0.3s ease;
+  }
+  
+  .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+  }
+  
+  .nav-link {
+      position: relative;
+      transition: color 0.3s ease;
+  }
+  
+  .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      transition: width 0.3s ease;
+  }
+  
+  .nav-link:hover::after {
+      width: 100%;
+  }
 }
